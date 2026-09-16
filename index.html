@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mrwvisa · 论文解读作品集</title>
+<meta name="description" content="把论文读成单页交互解读：模块级架构图、真实 shape、代码核对的超参。">
+<style>
+/* ===== GitHub (Primer) 主题 —— 与 paper-explainer 产物同一套基因 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.wrap{max-width:860px;margin:0 auto;padding:32px 16px 80px}
+
+/* ============ 名片 hero（GitHub 仓库页头风） ============ */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:26px 30px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700}
+.hero .title{font-size:14.5px;color:var(--ink2);margin-top:4px}
+.hero .tagline{font-size:14px;color:var(--ink2);margin-top:14px;max-width:640px}
+.hero .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-family:var(--mono);font-size:12.5px}
+.hero .links a{color:var(--c-enc);text-decoration:none}
+.hero .links a:hover{text-decoration:underline}
+.skillrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+
+/* ============ 区块 ============ */
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+h2{font-size:19px;margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:18px}
+
+/* ============ 论文卡片 ============ */
+.paper{border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin-top:12px;transition:border-color .12s}
+.paper:hover{border-color:var(--c-enc)}
+.paper .phead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.paper .ptitle{font-size:15.5px;font-weight:650}
+.paper .ptitle a{color:var(--ink);text-decoration:none}
+.paper .ptitle a:hover{color:var(--c-enc)}
+.paper .pdate{font-family:var(--mono);font-size:12px;color:var(--ink3);white-space:nowrap}
+.paper .pmeta{font-family:var(--mono);font-size:12px;color:var(--ink2);margin-top:4px}
+.paper .pdesc{font-size:14px;color:var(--ink2);margin-top:8px}
+.paper .ptags{margin-top:10px}
+
+/* ============ 标签 ============ */
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* ============ 圆点 ============ */
+ul.dots{margin:12px 0 2px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+
+/* ============ 页脚 ============ */
+footer{margin-top:28px;text-align:center;font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+footer a{color:var(--ink2);text-decoration:none}
+footer a:hover{color:var(--c-enc)}
+
+@media(max-width:600px){
+  .hero,section{padding:20px 18px}
+  .wrap{padding:20px 10px 60px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 名片：内容由底部 PROFILE 对象驱动 -->
+  <div class="hero" id="hero"></div>
+
+  <!-- 论文解读作品集 -->
+  <section id="papers">
+    <h2>论文解读</h2>
+    <div class="sec-sub">每篇都是数小时精读水准的单页解读：模块级架构图（标真实 tensor shape）、逐模块流程演示、公式与主结果表，图文数字均与代码/论文核对。</div>
+    <div id="paperList"></div>
+  </section>
+
+  <!-- 关于本站 -->
+  <section id="about">
+    <h2>关于本站</h2>
+    <ul class="dots">
+      <li><b>解读由自研 paper-explainer 流程生成</b>：输入论文与官方代码仓，输出单文件 HTML——架构、超参、损失逐项从源码核对，不编造数字。</li>
+      <li><b>零依赖零构建</b>：每个页面是单个 HTML 文件，无框架、无外部 CDN，双击即开；本站由 GitHub Pages 直接托管，push 即部署。</li>
+      <li><b>持续更新</b>：新解读完成后会直接出现在上方列表。</li>
+    </ul>
+  </section>
+
+  <footer>© 2026 <span id="footName"></span> · 解读内容为原创，论文版权归原作者所有</footer>
+</div>
+
+<script>
+/* ============================================================
+ * 名片数据 —— 改这里就等于改整张名片，不用碰任何布局代码
+ * 占位符用【】标出，替换后保存 push 即生效
+ * ============================================================ */
+const PROFILE = {
+  name: "【你的名字】",                     // 名片大标题，如 "吴涛 · Wutao"
+  title: "【职位方向一句话】",               // 如 "3D 视觉 · 自动驾驶感知"
+  tagline: "【一两句话：你做什么、擅长什么、正在找什么机会】",
+  links: [
+    { label: "GitHub", url: "https://github.com/Mrwvisa" },
+    // 可继续加：{ label: "Email", url: "mailto:you@example.com" },
+  ],
+  skills: [
+    // 第一项会显示为蓝色，之后按 绿/橙/灰 轮换
+    "PyTorch", "3D 检测与分割", "MMDetection3D", "模型部署/TensorRT",
+    "【继续删改你的技能标签】",
+  ],
+};
+
+/* ============================================================
+ * 论文列表 —— 加新解读只需两步：
+ *   1. 把 <slug>_paper_explained.html 拷进 papers/ 目录
+ *   2. 在下面数组加一个条目
+ * ============================================================ */
+const PAPERS = [
+  {
+    file: "papers/unipad_paper_explained.html",
+    title: "UniPAD：面向自动驾驶的通用预训练范式",
+    meta: "CVPR 2024 · arXiv 2310.08370 · nuScenes · 结合官方代码",
+    desc: "用掩码重建做 3D 预训练的统一范式：一条链路同时覆盖检测、分割与占用预测，预训练收益跨任务可迁移。解读含模块级总图与代码核对的真实超参。",
+    tags: ["CVPR 2024", "预训练", "自动驾驶", "MIM"],
+    date: "2026-09",
+  },
+];
+
+/* ---------- 以下为渲染代码，无需改动 ---------- */
+const TAG_CYCLE = ["blue", "green", "orange", "gray"];
+
+function renderHero() {
+  const h = document.getElementById("hero");
+  h.innerHTML = `
+    <h1>${PROFILE.name}</h1>
+    <div class="title">${PROFILE.title}</div>
+    <div class="tagline">${PROFILE.tagline}</div>
+    <div class="links">${PROFILE.links.map(l =>
+      `<a href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join("")}</div>
+    <div class="skillrow">${PROFILE.skills.map((s, i) =>
+      `<span class="tag ${TAG_CYCLE[i % TAG_CYCLE.length]}">${s}</span>`).join("")}</div>`;
+  document.getElementById("footName").textContent = PROFILE.name.replace(/[【】]/g, "");
+}
+
+function renderPapers() {
+  const list = document.getElementById("paperList");
+  list.innerHTML = PAPERS.map(p => `
+    <div class="paper">
+      <div class="phead">
+        <div class="ptitle"><a href="${p.file}">${p.title}</a></div>
+        <div class="pdate">${p.date}</div>
+      </div>
+      <div class="pmeta">${p.meta}</div>
+      <div class="pdesc">${p.desc}</div>
+      <div class="ptags">${p.tags.map((t, i) =>
+        `<span class="tag ${TAG_CYCLE[i % TAG_CYCLE.length]}">${t}</span>`).join("")}</div>
+    </div>`).join("");
+}
+
+renderHero();
+renderPapers();
+</script>
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniPAD 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <h3>目 录</h3>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 Masked Sparse Encoder</a>
+  <a href="#s23" class="lv2">2.3 Volumetric Rendering</a>
+  <a href="#s24" class="lv2">2.4 UVTR Detector</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>UniPAD：面向自动驾驶的通用预训练范式</h1>
+  <div class="meta">UniPAD: A Universal Pre-training Paradigm for Autonomous Driving · arXiv 2310.08370 · github.com/Nightmare-n/UniPAD · nuScenes · CVPR 2024</div>
+</div>
+
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、UniPAD 怎么解。</div>
+
+  <p>自动驾驶的 3D 感知模型高度依赖预训练：3D 标注成本高，更现实的路径是先用海量无标注数据把骨干网络练好。但点云与图像差异很大，2D 的成熟方法直接迁移效果有限，原因见 1.1。UniPAD 的思路是：遮住输入的一部分，让网络从剩余观测中学出 3D 特征场，再把特征场渲染成 RGB 图或深度图，和真实传感器拍到的结果对比，误差全部回传。监督信号完全来自数据本身，不需要任何人工标注。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>点云数据先天稀疏不均</h4>
+      <p>图像是规则的像素网格，点云则稀疏、无序、分布不均：远处一辆车只有十几个点，近处地面却有海量点；传感器位置和遮挡关系都会改变点的分布。</p>
+      <p>结果是，2D 中效果很好的 MAE（遮住再恢复）迁移到 3D 效果有限：被遮区域可能本来就只有很少的点，恢复输入这个任务过于简单，学不到充分的表征。</p>
+    </div>
+    <div class="card">
+      <h4>已有代理任务的监督太粗</h4>
+      <p>对比学习需要精心构造正负样本对，选择不当会让训练偏离目标，计算开销也大；体素级的 MAE（Voxel-MAE、GD-MAE）在粗体素上做重建，监督只有"整块有没有点"这么粗的粒度，精细几何学不到。</p>
+      <p>这些方法都在 3D 域内部进行，丢掉了"这个世界长什么样"的先验知识。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:15%">路线</th><th style="width:26%">代表工作</th><th>做法 & 痛点</th></tr>
+    <tr>
+      <td>对比学习</td>
+      <td class="mono">PointContrast / Pri3D / Pixel-to-Point (P2P)</td>
+      <td>两个视角变换下拉近相同物理点的特征、推远不同的点。麻烦在于正负样本不好挑、训练开销大，P2P 还得做跨模态对齐。</td>
+    </tr>
+    <tr>
+      <td>MAE 式重建</td>
+      <td class="mono">Voxel-MAE / GD-MAE / ACT</td>
+      <td>遮住点云一部分，让网络在体素域或特征域恢复。但体素监督只有"一整块有没有点"这种粗粒度，几何学不细；而且点云冗余大，题目偏简单。</td>
+    </tr>
+    <tr>
+      <td>表面重建</td>
+      <td class="mono">ALSO</td>
+      <td>隐式 SDF 重建整个表面作为代理任务。主要给点云设计的，不好迁移给 2D 图像骨干。</td>
+    </tr>
+    <tr>
+      <td>2D 预训练迁移</td>
+      <td class="mono">ImageNet 初始化 / nuImages 检测器初始化</td>
+      <td>直接用 2D 预训练权重初始化图像骨干。问题是缺 3D 先验，或者干脆要标注：论文表 3 里即使拿 FCOS3D 带 3D 标注训出的权重，也只涨 6.5 NDS，UniPAD 涨 7.7。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>UniPAD 是怎么解决的</h3>
+  <p><b>核心思想：3D 表征好不好，看它能不能画出真实世界。</b>如果一个 3D 特征场真的记住了场景的几何（哪里有表面、离多远）和外观（什么颜色、什么纹理），那从任意角度把它投影渲染成 2D 图，结果就应该和真实相机拍到的一样。</p>
+  <p>预训练任务就可以这么定：遮住输入，编码成 3D 特征场，可微渲染出 RGB 或深度图，和真实图算 L1 误差，然后反向传播。渲染是可微的，误差能一路传回编码器。</p>
+  <p>这个任务的监督是逐像素、连续的，不用挑正负样本，也不受体素粒度的限制。约束也比 MAE 强得多：MAE 只要求恢复被遮住的输入本身，UniPAD 要求重建出的 3D 表征经得起任意视角的检验，渲染结果对不对，几何结构和外观特征两个维度都逃不掉。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>体渲染天然就是从 3D 特征到 2D 图像的桥，所以点云和多视角图像可以各自先变成同一种 3D 体素表征再渲染，一套流程同时覆盖两种模态，融合模态直接将两份特征相加。</li>
+    <li>监督信号就是传感器自己拍到的数据，不需要任何标注，而且是逐像素连续的，顺便避开了对比学习里挑正负样本的麻烦。</li>
+    <li>用起来也不挑：预训练只涉及编码器和渲染解码器，下游随便换检测头、分割头，编码器权重直接搬走。论文在 7 种骨干、2 类任务上都验证过。</li>
+    <li>提升幅度可观：LiDAR 检测从 67.7 到 70.6 NDS，少数据场景提升 9.1，分割达到 79.4 mIoU，全面超过对比学习和 MAE 式重建等路线（论文表 4）。</li>
+    <li>显存开销可控：配合三种节省内存的 ray 采样策略（§2.3），自动驾驶级别的大场景用 4 张 A100 即可训练。</li>
+    <li>效果上，LiDAR、相机、融合三种模态的检测基线全部提升，少数据场景最高 +9.1 NDS，语义分割达到 79.4 mIoU；具体数字和对比见 §4。</li>
+  </ul>
+</section>
+
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看双链路总流程（模块级视图，每个模块标真实输入输出 shape），细节留给下面三个子模块小节。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+        <marker id="aho" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#9a6700"/></marker>
+      </defs>
+
+      <!-- ===== 上排：LiDAR 链路 ===== -->
+      <text x="20" y="42" class="svg-cn" style="font-weight:700" fill="#1a7f37">① LiDAR 链路</text>
+      <rect x="20" y="80" width="150" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="112" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">LiDAR 点云 10帧</text>
+      <text x="95" y="140" text-anchor="middle" class="svg-nota">[B, ~34万, 5]</text>
+
+      <line x1="170" y1="119" x2="192" y2="119" class="arrow"/>
+
+      <rect x="194" y="80" width="168" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="278" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">体素化 + VFE</text>
+      <text x="278" y="132" text-anchor="middle" class="svg-nota">voxel 0.075m</text>
+      <text x="278" y="148" text-anchor="middle" class="svg-nota">→ [≤12万, 5]</text>
+
+      <line x1="362" y1="119" x2="384" y2="119" class="arrow"/>
+
+      <rect x="386" y="80" width="140" height="78" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="5 3"/>
+      <text x="456" y="112" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">Block Mask</text>
+      <text x="456" y="140" text-anchor="middle" class="svg-nota">8³ 块 · 80%</text>
+
+      <line x1="526" y1="119" x2="548" y2="119" class="arrow"/>
+
+      <rect x="550" y="80" width="240" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="670" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">SparseUNet 编码器</text>
+      <text x="670" y="126" text-anchor="middle" class="svg-cn" fill="#59636e">（+SECOND3D 骨干 / 3D FPN）</text>
+      <text x="670" y="148" text-anchor="middle" class="svg-nota">→ [B,256,5,180,180]</text>
+
+      <polyline points="790,119 1064,119 1064,250" fill="none" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
+
+      <!-- ===== 下排：Camera 链路 ===== -->
+      <text x="20" y="432" class="svg-cn" style="font-weight:700" fill="#1a7f37">② Camera 链路（相机模态启用）</text>
+      <rect x="20" y="458" width="150" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="490" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">6× 相机图像</text>
+      <text x="95" y="518" text-anchor="middle" class="svg-nota">[B,6,3,928,1600]</text>
+
+      <line x1="170" y1="497" x2="192" y2="497" class="arrow"/>
+
+      <rect x="194" y="458" width="140" height="78" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="5 3"/>
+      <text x="264" y="490" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">Patch Mask</text>
+      <text x="264" y="518" text-anchor="middle" class="svg-nota">1/32 网格 · 30%</text>
+
+      <line x1="334" y1="497" x2="356" y2="497" class="arrow"/>
+
+      <rect x="358" y="458" width="190" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="453" y="490" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">ConvNeXt-S + FPN</text>
+      <text x="453" y="518" text-anchor="middle" class="svg-nota">→ [B,6,256,29,50]</text>
+
+      <line x1="548" y1="497" x2="570" y2="497" class="arrow"/>
+
+      <rect x="572" y="458" width="218" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="681" y="486" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度头 + LSS 体素池化</text>
+      <text x="681" y="510" text-anchor="middle" class="svg-nota">2D特征 × 118档深度分布</text>
+      <text x="681" y="528" text-anchor="middle" class="svg-nota">→ [B,256,5,180,180]</text>
+
+      <polyline points="790,497 1064,497 1064,284" fill="none" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
+
+      <!-- ===== 汇聚 + 右列渲染解码器 ===== -->
+      <circle cx="1064" cy="267" r="16" fill="#fff" stroke="#9a6700" stroke-width="2.4"/>
+      <text x="1064" y="273" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#9a6700">⊕</text>
+      <text x="1032" y="240" text-anchor="end" class="svg-cn" fill="#59636e">fusion 逐元素相加</text>
+
+      <line x1="1080" y1="267" x2="1116" y2="267" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <text x="1128" y="42" class="svg-cn" style="font-weight:700" fill="#9a6700">③ 渲染解码器</text>
+
+      <rect x="1120" y="88" width="256" height="70" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="1248" y="116" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">特征投影 Conv3d 3×3×3</text>
+      <text x="1248" y="142" text-anchor="middle" class="svg-nota">[B,256,5,180,180]→[B,32,5,180,180]</text>
+
+      <polyline points="1128,267 1128,158" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+      <line x1="1248" y1="158" x2="1248" y2="182" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <rect x="1120" y="186" width="256" height="132" rx="8" fill="#fff8c5" stroke="#eac54f" stroke-width="1.4"/>
+      <text x="1248" y="210" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">NeuS 可微体渲染</text>
+      <text x="1248" y="238" text-anchor="middle" class="svg-cn" fill="#6e4f00">ray 512条/相机 · 96采样点/ray</text>
+      <text x="1248" y="262" text-anchor="middle" class="svg-cn" fill="#6e4f00">SDF MLP + RGB MLP</text>
+      <text x="1248" y="286" text-anchor="middle" class="svg-cn" fill="#6e4f00">体渲染积分 wⱼ=Tⱼαⱼ</text>
+      <text x="1248" y="308" text-anchor="middle" class="svg-cn" fill="#818b98">（细节见 §2.3）</text>
+
+      <line x1="1180" y1="318" x2="1180" y2="344" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+      <line x1="1316" y1="318" x2="1316" y2="344" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <rect x="1120" y="348" width="126" height="58" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1183" y="372" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染 Depth</text>
+      <text x="1183" y="392" text-anchor="middle" class="svg-nota">[3072, 1]</text>
+      <rect x="1256" y="348" width="120" height="58" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1316" y="372" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染 RGB</text>
+      <text x="1316" y="392" text-anchor="middle" class="svg-nota">[3072, 3]</text>
+
+      <line x1="1180" y1="406" x2="1180" y2="428" class="arrow-c"/>
+      <line x1="1316" y1="406" x2="1316" y2="428" class="arrow-c"/>
+      <rect x="1120" y="432" width="256" height="66" rx="8" fill="#fff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1248" y="458" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">L1 Loss：渲染值 vs 真实值</text>
+      <text x="1248" y="480" text-anchor="middle" class="svg-nota">λ_depth=10 · λ_rgb=10(相机)/0(LiDAR)</text>
+
+      <!-- ray 采样虚线 -->
+      <polyline points="95,458 95,372 1130,372" fill="none" stroke="#9a6700" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#aho)"/>
+      <text x="560" y="364" text-anchor="middle" class="svg-cn" fill="#6e4f00">ray 从图像采：512条/相机 · GT 深度 = LiDAR 点投影到该像素（无投影处记 −1 不计损）</text>
+
+      <!-- GT 虚线 -->
+      <polyline points="95,536 95,566 1248,566 1248,504" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
+      <text x="660" y="596" text-anchor="middle" class="svg-cn" fill="#a40e26">GT 来源：图像像素值（÷255）+ LiDAR 投影深度，无需人工标注</text>
+    </svg>
+    <div class="figcap">图 2-1 · UniPAD 预训练总流程（LiDAR 主线 + Camera 支线）。shape 与超参全部取自官方 config，B=4（每 GPU batch）。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>编码器</span>
+      <span><span class="sw" style="background:var(--c-mask-bg);border:1px dashed var(--c-mask)"></span>遮罩操作</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>渲染解码器</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw line" style="border-color:#3b82f6"></span>数据流</span>
+      <span><span class="sw dash"></span>监督/控制流</span>
+    </div>
+  </div>
+
+  <ul class="dots roadmap">
+    <li>LiDAR 链路先体素化再编码。10 帧 LiDAR 点（约 34 万个，每个点 5 维：坐标、强度、时间戳）先过滤距离，只留 3 到 100 米内的点，再按 0.075×0.075×0.2 米的体素做划分（网格 41×1440×1440，最多留 12 万个非空体素），HardVFE 把每个格子里最多 10 个点平均成一个 5 维特征。</li>
+    <li>遮罩作用在体素上，比例相当高：以 8×8×8 的块为单位随机移除 80%。被移除的体素直接从输入中去掉，不进网络（learnable=False，也没有替换成可学习 token），只保留 20% 进入 SparseUNet，四个 stage 逐级 2 倍下采样，稀疏卷积只在非空位置计算，最后 1×1 卷积升到 256 维变回稠密张量 <span class="mono">[B,256,5,180,180]</span>，再过 SECOND3D 骨干和 3D FPN 融合一下，分辨率不变。</li>
+    <li>Camera 链路（相机模态预训练时才有）：6 张图像 pad 到 928×1600，在 1/32 分辨率的 29×50 网格上随机遮 30%，被遮的像素直接置 0。ConvNeXt-S 被改成 SparK 式的稀疏卷积，只在可见区域算，用 ImageNet 权重初始化。特征过 FPN 降到 256 维；旁边一个 ComplexDepth 深度头预测每个像素的深度分布（118 档、每档 0.5 米、覆盖 1~60 米）。LSS 体素池化将 2D 特征与深度分布相乘后聚合到 3D 体素格，得到和 LiDAR 支路完全同构的 <span class="mono">[B,256,5,180,180]</span>，这就是论文说的统一 3D 体积表征。</li>
+    <li>汇聚之后走一个 3×3×3 的 Conv3d，把 256 维压到 32 维。这层看似简单，消融实验中去掉会下降 1.8~2.7 NDS。</li>
+    <li>一个容易忽略的细节：渲染的 ray 采样自 6 个相机的图像，每相机 512 条。方向由相机中心与像素的连线确定，GT RGB 取该像素的颜色值，GT 深度取投影落在该像素的 LiDAR 点的距离。所以 LiDAR 预训练虽然不编码图像，监督信号却完全来自图像和点云的投影关系。</li>
+    <li>NeuS 渲染器计算最终输出：每条 ray 先和场景包围盒求交拿到 near 和 far，沿途均匀采 72 个点、表面附近再加密 24 个（共 96 个）；每个点从特征场三线性插值出 32 维特征，过 SDF MLP 得到符号距离 sⱼ 和几何特征 hⱼ，过 RGB MLP 得到颜色 cⱼ，最后用遮挡感知的权重 wⱼ=Tⱼαⱼ加权求和，得到这条 ray 的 RGB 和深度，与 GT 计算 L1。</li>
+    <li>预训练结束后，编码器（SparseUNet 或 ConvNeXt，加上 FPN 和 LSS）的权重保留下来，渲染解码器整体丢弃，替换为检测或分割头做 finetune（§2.4）。</li>
+  </ul>
+
+  <p>两条支路按模态单独启用：LiDAR 版预训练只配点云编码器，图像不进骨干，只用来采 ray 和提供 GT；Camera 版正好相反，点云不进编码器，而是投影到图像上提供深度 GT。图里两条都画出来，是因为两边的编码器和渲染流程同构，融合检测时两条同时启用、特征相加。</p>
+</section>
+
+<!-- ============ §2.2 Mask 编码器 ============ -->
+<section id="s22">
+  <h2><span class="no">§2.2</span>Masked Sparse Encoder</h2>
+
+  <p>两条支路的遮罩方式差别很大，光看论文那张总图很容易搞混，这里分别说明：</p>
+  <table>
+    <tr><th></th><th>LiDAR 支路（Block 删除式）</th><th>Camera 支路（置零稀疏式）</th></tr>
+    <tr><td>遮罩单位</td><td class="mono">8×8×8 体素块（block）</td><td class="mono">1/32 分辨率 patch（29×50 网格）</td></tr>
+    <tr><td>遮罩比例</td><td>0.8（点云空间冗余大）</td><td>0.3（渲染重建任务难，遮多了不可解，论文表 8）</td></tr>
+    <tr><td>被遮部分怎么办</td><td>直接删除，不进网络（<span class="mono">learnable=False</span>）</td><td>像素置零，位置保留，卷积跳过</td></tr>
+    <tr><td>计算方式</td><td>稀疏卷积只在可见体素上算</td><td>ConvNeXt 改造成 SparK 稀疏卷积，只在可见 patch 上算</td></tr>
+    <tr><td>编码器输出</td><td class="mono">[B,256,5,180,180]</td><td class="mono">[B,6,768,29,50] → FPN [B,6,256,29,50]</td></tr>
+  </table>
+
+  <h3><span class="no">2.2.1</span>LiDAR 的 Block Mask 是怎么操作的（一步一图）</h3>
+  <div class="flowrow" id="lidar-mask-flow"></div>
+
+  <ul class="dots">
+    <li>为什么按块遮、不逐格遮？逐格遮留下的邻近信息太多，被遮格子的特征靠插值就能估计出来，任务过于简单；8³ 的块一遮一大片，网络必须掌握大范围上下文才能恢复。</li>
+    <li>3D 用 80% 的遮罩比例、图像只用 30%，原因不同：点云空间冗余大，一辆车几百个点的特征高度相似，遮掉 80% 信息仍然充分；而"从 3D 特征场渲染回 2D 图像"本身比图像到图像的重建难得多，图像遮太多任务就无解。论文表 8 从 0.1 试到 0.9，0.3 最优（32.9 NDS）。</li>
+    <li>被移除的 80% 没有替换成 token：learnable=False 时，代码直接用布尔索引 <span class="mono">voxel_features[voxel_active]</span> 过滤掉这些体素；也支持 learnable=True 替换为可学习 token 的方案，但官方配置未启用。</li>
+    <li>块大小 8 与编码器的 8 倍下采样正好对应：一个块恰好浓缩成特征图上的一格，渲染时需要恢复的正是这些格子。</li>
+    <li>mask 的结果会记在一个全局变量里（<span class="mono">sparse_utils._cur_active_voxel</span>），采样 ray 时可以只选被遮区域，不过发布的 config 未启用，采样在全图进行。</li>
+    <li>编码器本体就是 UVTR 用的那套 SparseUNet，四个 stage 通道从 16 到 128，前三段各做一次 2 倍下采样，最后 1×1 卷积升到 256 维并转回稠密张量。预训练学习的主体就是它，finetune 时权重原样保留。</li>
+  </ul>
+
+  <h3><span class="no">2.2.2</span>Camera 的 Patch Mask（置零 + 稀疏卷积，一步一图）</h3>
+  <div class="flowrow" id="cam-mask-flow"></div>
+
+  <ul class="dots">
+    <li>图像这边是置零，不是删除。被选中的 30% patch 像素乘 0，张量形状不变。ConvNeXt 的卷积和归一化都换成了稀疏版（SparK 的做法），只在可见 patch 上计算，被遮位置不消耗算力也不产生梯度。</li>
+    <li>初始化也有讲究：ConvNeXt-S 用 ImageNet 预训练权重初始化，还冻结了第一层。相当于先具备 2D 图像理解能力，再学习从 3D 视角理解图像。</li>
+    <li>输出端同样通过补零恢复稠密：骨干输出 [B,6,768,29,50]（只计算了约 70% 的位置），被遮 patch 位置的特征为 0，后续 FPN 和 LSS 正常进行。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 体渲染 ============ -->
+<section id="s23">
+  <h2><span class="no">§2.3</span>Volumetric Rendering</h2>
+
+  <p>渲染解码器只解决一个问题：给定一条光线，它的颜色是什么、终点在哪里。下面的流程图完整展示一条 ray 的处理过程。训练时每相机采 512 条 ray，6 个相机共 3072 条，每条都按这个流程处理。</p>
+
+  <div class="flowrow wrap" id="render-flow"></div>
+
+  <h3><span class="no">2.3.1</span>两个关键公式</h3>
+
+  <div class="formula">
+    <div class="fx">
+      Ŷ<sup>RGB</sup><sub>i</sub> = Σ<sub>j=1..D</sub> w<sub>j</sub> · c<sub>j</sub>&nbsp;&nbsp;&nbsp;&nbsp;
+      Ŷ<sup>depth</sup><sub>i</sub> = Σ<sub>j</sub> w<sub>j</sub> · t<sub>j</sub>
+    </div>
+    <div class="note">论文 Eq.2：一条 ray 的渲染值就是沿途 96 个采样点（72 均匀 + 24 加密）的加权平均，深度在代码里还会除以 Σwⱼ 做归一化，wⱼ 是每个点的权重。空气中的采样点权重接近零，物体表面附近的采样点权重最大，最终值基本由表面附近的点决定。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx">
+      w<sub>j</sub> = T<sub>j</sub> · α<sub>j</sub>,&nbsp;&nbsp;&nbsp;T<sub>j</sub> = Π<sub>k&lt;j</sub>(1 − α<sub>k</sub>)&nbsp;&nbsp;&nbsp;&nbsp;
+      α<sub>j</sub> = max( (σ(s<sub>j</sub>) − σ(s<sub>j+1</sub>)) / σ(s<sub>j</sub>), 0 ),&nbsp; σ = sigmoid
+    </div>
+    <div class="note">论文 Eq.3（NeuS 风格）。把 ray 想成雾里的一束手电筒光：Tⱼ 就是光穿过前面几段后还剩多少，前面碰到的东西越实（α 越大），漏到后面的光越少，所以第一个实体表面会吃掉几乎全部权重，后面的点自动没声。sⱼ 是符号距离（物体外为正、里面为负），相邻两点 SDF 的 sigmoid 差变化大，说明表面就在这附近；代码里还用视线和法向的夹角做了修正。</div>
+  </div>
+
+  <ul class="dots render">
+    <li>特征场是连续的：采样点用三线性插值从 <span class="mono">[B,32,5,180,180]</span> 里取 32 维特征，体素只有 0.6m 粗，但插值让任意位置都能查询。</li>
+    <li>SDF 头走跳连路线，每层把特征 fⱼ 注进去（<span class="mono">x = Linear(x + fc_c(fⱼ))</span>，类似 FiLM），hidden 只有 16 维，SDF/RGB 头分别为 5/3 个块；SDF 头输出符号距离 sⱼ 和 16 维几何特征 hⱼ。</li>
+    <li>法向 nⱼ 用 autograd 对采样点坐标求 SDF 梯度得到，<span class="mono">create_graph=True</span> 保证梯度能继续回传到编码器，不需要额外监督。</li>
+    <li>RGB 头的输入拼接是 <span class="mono">cat(d, fⱼ, nⱼ, hⱼ)</span>：视线方向 3 维 + 场特征 32 维 + 法向 3 维 + 几何特征 16 维，共 54 维，不含采样点坐标。</li>
+    <li>用 NeuS 不用原版 NeRF：NeuS 的权重无偏、表面更准（表 11：比 UniSurf +0.4、VolSDF +0.1 NDS），渲染器的质量直接决定预训练学到的表征。</li>
+    <li>两轮采样降低计算量：先均匀采 72 点，occupancy（<span class="mono">sigmoid(−10·sdf)</span>）指示表面位置后，再在表面附近加密 24 点（共 96 点），比全程密采省大约三四倍计算。</li>
+    <li>训练只在 3072 条采样的 ray 上算损失，不渲染整图（Memory-friendly Ray Sampling）；测试脚本 <span class="mono">sample_rays_test</span> 才会按半分辨率铺满全图渲染，论文图 3 的效果图就是这么生成的。</li>
+  </ul>
+
+</section>
+
+<!-- ============ §2.4 下游检测 ============ -->
+<section id="s24">
+  <h2><span class="no">§2.4</span>UVTR Detector</h2>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 900 118" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah5" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+
+      <rect x="50" y="14" width="212" height="90" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="6 4"/>
+      <text x="156" y="40" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">✕ 渲染解码器</text>
+      <text x="156" y="62" text-anchor="middle" class="svg-nota">render_conv + NeuS 渲染器</text>
+      <text x="156" y="84" text-anchor="middle" class="svg-nota">预训练后丢弃</text>
+
+      <rect x="286" y="14" width="236" height="90" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="404" y="40" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">预训练编码器</text>
+      <text x="404" y="62" text-anchor="middle" class="svg-nota">SparseUNet + SECOND3D + FPN</text>
+      <text x="404" y="84" text-anchor="middle" class="svg-nota">✓ 保留 → [B,256,5,180,180]</text>
+
+      <line x1="524" y1="59" x2="572" y2="59" stroke="#0969da" stroke-width="2" marker-end="url(#ah5)"/>
+      <text x="548" y="46" text-anchor="middle" class="svg-nota" fill="#0550ae">load_from</text>
+      <text x="548" y="84" text-anchor="middle" class="svg-nota">epoch_12.pth</text>
+
+      <rect x="576" y="14" width="252" height="90" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="702" y="40" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">UVTRDN 检测头（DETR 式）</text>
+      <text x="702" y="62" text-anchor="middle" class="svg-nota">可学习 query × N</text>
+      <text x="702" y="84" text-anchor="middle" class="svg-nota">→ (10 类, 3D 框)</text>
+    </svg>
+    <div class="figcap">图 2-4 · 权重交接：渲染解码器丢弃，编码器保留并 load_from 给 DETR 式检测头。</div>
+  </div>
+
+  <ul class="dots">
+    <li>交接很干净。finetune 用的编码器和预训练是同一个类、同一份 config，唯一区别是去掉 mae_cfg（不再遮罩，全量输入），然后 load_from 预训练的 checkpoint。论文表 14 拆解了各部分贡献：编码器占 6.8 NDS，是主要部分，FPN 和视角变换分别占 0.2 和 0.7。</li>
+    <li>检测头是 DETR 家族的查询式头：一组可学习的 query 用 deformable 风格的交叉注意力（<span class="mono">UniCrossAttenV2</span>）从 3D 特征里定位目标，训练时加 DN-DETR 式的去噪 query 加速收敛，每个 query 输出 10 类分数加一个 3D 框。</li>
+    <li>相机模态交接的东西多一点：预训练的 ConvNeXt 骨干、FPN、深度头、LSS 视角变换全部留给相机检测器，LiDAR 支路同理。融合模型 UVTR-M 就是两边权重各拿各的。</li>
+  </ul>
+</section>
+
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+
+  <h3><span class="no">3.1</span>预训练总损失：就两个 L1</h3>
+
+  <div class="formula">
+    <div class="fx">
+      L = λ<sub>RGB</sub>/K · Σ<sub>i=1..K</sub> |Ŷ<sup>RGB</sup><sub>i</sub> − Y<sup>RGB</sup><sub>i</sub>| &nbsp;+&nbsp; λ<sub>depth</sub>/K⁺ · Σ<sub>i=1..K⁺</sub> |Ŷ<sup>depth</sup><sub>i</sub> − Y<sup>depth</sup><sub>i</sub>|
+    </div>
+    <div class="note">论文 Eq.4。K 是 ray 总数（3072 = 6 相机 × 512），K⁺ 是其中有 GT 深度的那部分，两个 λ 都是 10（相机版）。预训练实际在做两个回归：预测每个采样像素的颜色（RGB，仅相机模态启用），以及每条光线的终点距离（深度）。预测值由渲染给出，目标值来自传感器本身，L1 差距回传给编码器，一直调到特征场能自洽地解释真实观测为止。</div>
+  </div>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 940 134" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah6" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+
+      <rect x="12" y="12" width="168" height="36" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="96" y="35" text-anchor="middle" class="svg-nota" fill="#a40e26">渲染 depth [3072,1]</text>
+      <rect x="12" y="60" width="168" height="36" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="96" y="83" text-anchor="middle" class="svg-nota" fill="#116329">GT depth（LiDAR 投影）</text>
+      <text x="96" y="122" text-anchor="middle" class="svg-nota">无投影的 ray 记 −1，被排除</text>
+
+      <polyline points="180,30 216,30 216,54 244,54" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <polyline points="180,78 216,78 216,54 244,54" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <rect x="248" y="36" width="132" height="36" rx="6" class="box" fill="#fff" stroke="#cf222e" stroke-dasharray="6 4"/>
+      <text x="314" y="59" text-anchor="middle" class="svg-nota" fill="#a40e26">深度 L1 ×10</text>
+
+      <rect x="420" y="12" width="168" height="36" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="504" y="35" text-anchor="middle" class="svg-nota" fill="#a40e26">渲染 RGB [3072,3]</text>
+      <rect x="420" y="60" width="168" height="36" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="504" y="83" text-anchor="middle" class="svg-nota" fill="#116329">GT RGB = 像素值 / 255</text>
+      <text x="504" y="122" text-anchor="middle" class="svg-nota">LiDAR 版关闭（λ=0）</text>
+
+      <polyline points="588,30 624,30 624,54 652,54" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <polyline points="588,78 624,78 624,54 652,54" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <rect x="656" y="36" width="150" height="36" rx="6" class="box" fill="#fff" stroke="#cf222e" stroke-dasharray="6 4"/>
+      <text x="731" y="59" text-anchor="middle" class="svg-nota" fill="#a40e26">RGB L1 ×10 · 仅相机</text>
+
+      <polyline points="806,54 838,54" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <polyline points="314,72 314,102 873,102 873,76" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah6)"/>
+      <rect x="842" y="38" width="64" height="36" rx="6" fill="#cf222e"/>
+      <text x="874" y="61" text-anchor="middle" class="svg-nota" style="font-weight:700" fill="#fff">总 L</text>
+      <text x="874" y="122" text-anchor="middle" class="svg-nota">backward → 编码器</text>
+    </svg>
+    <div class="figcap">图 3-1 · 预训练损失：两条支路各算一个 L1（深度全模态、RGB 仅相机），求和后回传。</div>
+  </div>
+
+  <ul class="dots loss">
+    <li>深度 GT 的排除机制值得细看。LiDAR 点投到 6 张图上，只有被投中的像素有 GT 深度，没投中的 ray 深度记 −1，算 loss 时用 <span class="mono">valid_gt_mask = depth_gt &gt; 0</span> 整条剔掉。天空和远处区域因此被排除，监督集中在有物体的位置。</li>
+    <li>LiDAR 预训练只用深度损失：LiDAR config 里 rgb_loss=0，点云本身没有颜色信息。相机版两个损失都用，各乘 10。</li>
+    <li>代码中还实现了四个正则项（free_space、sdf、eikonal、稀疏点 SDF 监督），但发布的两个 config 均未设置权重，全部不启用。因此按官方配置复现，预训练损失就是两个 L1。</li>
+    <li>注意场景归一化：所有坐标和深度都乘 scale_factor=1/54（pc_range 最长边），场景缩放到约 ±1 的立方体内再渲染，数值更稳定；GT 做同样缩放，口径一致。</li>
+    <li>推理（可视化）时不算 loss。测试脚本按半分辨率铺满全图渲染，把 RGB 和深度图存成 pkl，论文图 3 的效果图就是这么出的。预训练本身没有评测指标，效果好不好，要等 finetune 之后才见分晓。</li>
+  </ul>
+
+  <h3><span class="no">3.2</span>finetune 损失：DETR 式匹配 + focal/L1（简述）</h3>
+  <ul class="dots">
+    <li>匈牙利匹配把 N 个 query 的预测和 GT 框一对一配对（代价是分类加框距离），只有配上的 query 才有监督，避免多个 query 都去预测同一个目标。</li>
+    <li>分类用 focal（sigmoid，应付 10 类不平衡），框回归用 L1（中心、尺寸、朝向 sin/cos）。解码器每一层都有辅助损失，DN 去噪 query 还额外提供正样本。</li>
+    <li>相机版另有深度分布的 BCE 辅助损失，挂在 LSS 的深度头上。注意预训练 config 里它的权重是 [0.0]，预训练阶段未启用，finetune 时才启用。</li>
+  </ul>
+
+  <h3><span class="no">3.3</span>训练配方速查</h3>
+  <table>
+    <tr><th></th><th>预训练（LiDAR 版）</th><th>预训练（相机版）</th><th>finetune（LiDAR 检测）</th></tr>
+    <tr><td>硬件 / batch</td><td class="mono">4×A100 · 4/GPU</td><td class="mono">4×A100</td><td class="mono">4×A100</td></tr>
+    <tr><td>epochs</td><td>12（CyclicLR）</td><td>12</td><td>20</td></tr>
+    <tr><td>优化器 / lr</td><td class="mono">AdamW · 2e-5</td><td class="mono">AdamW · 1e-4</td><td class="mono">AdamW</td></tr>
+    <tr><td>损失</td><td class="mono">depth L1 ×10</td><td class="mono">depth ×10 + rgb ×10</td><td class="mono">focal + L1 (+深度BCE)</td></tr>
+    <tr><td>关键开关</td><td class="mono">mask 0.8 · fp16</td><td class="mono">mask 0.3 · 冻结第1层</td><td class="mono">load_from=pretrain</td></tr>
+  </table>
+</section>
+
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">均在 nuScenes 上评估；检测指标 NDS/mAP，分割指标 mIoU。除特别注明外为全量数据 finetune。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">70.6 <small>NDS</small></div><div class="k">3D 检测 · LiDAR<br>UVTR-L 67.7 → 70.6</div></div>
+    <div class="metric"><div class="v">73.2 <small>NDS</small></div><div class="k">3D 检测 · LiDAR+Cam 融合<br>UVTR-M 70.2 → 73.2</div></div>
+    <div class="metric"><div class="v">+9.1 <small>NDS</small></div><div class="k">少数据 finetune 提升<br>20% 数据：46.7 → 55.8</div></div>
+    <div class="metric"><div class="v">79.4 <small>mIoU</small></div><div class="k">3D 语义分割<br>SpUNet 73.3 → 79.4</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>主结果一览（NDS / mAP）</h3>
+  <table>
+    <tr><th>模型</th><th>模态</th><th>基线</th><th>+UniPAD</th></tr>
+    <tr><td>UVTR-L</td><td>LiDAR</td><td class="mono">67.7 / 60.9</td><td class="mono up">70.6 / 65.0</td></tr>
+    <tr><td>UVTR-C</td><td>相机</td><td class="mono">45.0 / 37.2</td><td class="mono up">47.4 / 41.5</td></tr>
+    <tr><td>UVTR-CS</td><td>多帧相机</td><td class="mono">48.8 / 39.2</td><td class="mono up">50.2 / 42.8</td></tr>
+    <tr><td>UVTR-M</td><td>LiDAR+Cam</td><td class="mono">70.2 / 65.4</td><td class="mono up">73.2 / 69.9</td></tr>
+    <tr><td>FCOS3D</td><td>单目相机</td><td class="mono">38.4 / 31.1</td><td class="mono up">40.1 / 33.2</td></tr>
+    <tr><td>SpUNet（分割，mIoU）</td><td>LiDAR</td><td class="mono">73.3</td><td class="mono up">79.4（test 81.1）</td></tr>
+  </table>
+
+  <h3><span class="no">4.2</span>跟其他预训练方法比（UVTR-L，20% 数据 finetune，NDS / mAP）</h3>
+  <table>
+    <tr><th>预训练方法</th><th>NDS</th><th>mAP</th></tr>
+    <tr><td>不预训练（baseline）</td><td class="mono">46.7</td><td class="mono">39.0</td></tr>
+    <tr><td>ALSO（表面重建）</td><td class="mono">48.2</td><td class="mono">41.2</td></tr>
+    <tr><td>GD-MAE（MAE 式重建）</td><td class="mono">48.8</td><td class="mono">42.6</td></tr>
+    <tr><td>P2P（像素到点对比学习）</td><td class="mono">49.2</td><td class="mono">48.8</td></tr>
+    <tr><td>UniPAD</td><td class="mono up">55.8</td><td class="mono">48.1</td></tr>
+  </table>
+</section>
+
+<!-- ============ §4 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li>核心想法是成立的：要求网络从 3D 特征场渲染出与真实世界一致的投影，确实能驱动它学到有效的 3D 表征。渲染要准确，几何（表面位置、距离）和外观（颜色、纹理）缺一不可。</li>
+    <li>三种模态都有效：同一套渲染解码器，LiDAR、相机、融合在 20% 数据 finetune 口径下分别提升 9.1、7.7、6.9 NDS，全量数据约 3 个点。</li>
+    <li>与其他预训练方法相比也占优：ALSO（表面重建）、GD-MAE（MAE 式重建）、P2P（像素到点对比学习），以及三种用现成权重初始化的方案，UniPAD 均优于它们（论文表 3、4），而且不需要设计正负样本，也不需要额外标注。</li>
+    <li>换骨干同样有效：ConvNeXt 三个尺寸、VoxelNet，以及 BEVDet、BEVDepth、BEVFormer 三种视角变换，接入后都有 5~9 NDS 的提升，说明方法不依赖特定结构。</li>
+    <li>分割从 73.3 提升到 79.4 mIoU（验证集最优），测试集 81.1。检测和分割同时提升，说明学到的是通用 3D 表征，不是为检测定制的特征。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自己说的，加上读代码看出来的）</h3>
+  <ul class="dots">
+    <li>显存随体素分辨率增长（论文明确提到）：统一体积是显式的 [B,C,5,180,180]，提高分辨率会显著增加显存，这是显式体素化的固有问题。</li>
+    <li>依赖标定和多传感器对齐（从代码看）：采 ray、投影 GT 深度、LSS 变换都依赖 lidar2img 和 lidar2cam 矩阵，标定误差会直接转化为监督噪声；LiDAR 版预训练也必须同时加载图像。</li>
+    <li>两阶段流程成本高：预训练 12 个 epoch、finetune 20 个，总开销超过端到端方案；渲染解码器的全部参数在 finetune 时被丢弃，这部分计算没有被复用。</li>
+    <li>NeuS 逐 ray 计算的速度一般：3072 条 ray × 96 个采样点 × 两个 MLP，依靠 fp16 和稀疏采样控制开销；三种采样策略本质上是在监督密度和显存之间权衡。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续计划与延伸方向</h3>
+  <ul class="dots">
+    <li>论文指出的方向：用 SAM 这类 2D 大模型为渲染增加语义监督，目标从颜色一致扩展到分割一致，把 2D 域的语义知识引入 3D 表征。</li>
+    <li>作者团队的后续工作已经出现：同一团队将这套范式扩展为 PonderV2（T-PAMI 2025），覆盖室内场景和更多任务，读完 UniPAD 可以接着看它。</li>
+    <li>可预期的技术升级：渲染器从 NeuS 换成 3D Gaussian Splatting（更快、质量更高）；显式体素换稀疏或混合表征，缓解分辨率与显存的矛盾；两阶段改为联合训练或在线蒸馏。</li>
+  </ul>
+</section>
+
+
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ============ 面板流构建器 ============ */
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+
+/* ============ ① LiDAR Block Mask 流程 ============ */
+(function(){
+  const root = document.getElementById("lidar-mask-flow");
+  const rnd = mulberry32(42);
+  const HAS = [];                                   // 固定的“有点”分布
+  for(let i=0;i<144;i++) HAS.push(rnd() < 0.62);
+  const KEPT = new Set([2, 6]);                     // 9 块中保留 2 块（≈20%）
+  function blockOf(r,c){ return Math.floor(r/4)*3 + Math.floor(c/4); }
+  function drawGrid(svg, mode){                     // mode: plain | blocks | gray | removed
+    const X0=6, Y0=6, P=8.5;
+    for(let r=0;r<12;r++) for(let c=0;c<12;c++){
+      const has = HAS[r*12+c], b = blockOf(r,c), kept = KEPT.has(b);
+      let fill = has ? "#57ab5a" : "#eff2f5", op = 1;
+      if(mode==="removed" && !kept) op = 0.10;
+      el("rect",{x:X0+c*P, y:Y0+r*P, width:P-1, height:P-1, rx:1.5, fill:fill, opacity:op,
+        stroke: has ? "#2da44e" : "#d1d9e0", "stroke-width":0.6}, svg);
+      if(mode==="gray" && !kept && (has || true)){
+        // 灰色蒙层画在块级
+      }
+    }
+    for(let br=0;br<3;br++) for(let bc=0;bc<3;bc++){
+      const kept = KEPT.has(br*3+bc);
+      if(mode==="blocks" || mode==="gray" || mode==="removed"){
+        el("rect",{x:X0+bc*4*P-1, y:Y0+br*4*P-1, width:4*P, height:4*P, rx:2.5,
+          fill:"none", stroke:"#59636e", "stroke-width":1.8}, svg);
+      }
+      if(mode==="gray" && !kept){
+        el("rect",{x:X0+bc*4*P-1, y:Y0+br*4*P-1, width:4*P, height:4*P, rx:2.5,
+          fill:"#818b98", opacity:0.55}, svg);
+      }
+    }
+    if(mode==="removed"){
+      txt(75, 148/2+38, "", {}, svg);
+    }
+  }
+  function drawFeat(svg, dense){
+    const X0=27, Y0=12, P=32;
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+      const kept = KEPT.has(r*3+c);
+      if(!dense && !kept) continue;
+      const cell = el("rect",{x:X0+c*P, y:Y0+r*P, width:P-3, height:P-3, rx:6,
+        fill: kept ? "#54aeff" : "#eff2f5", stroke: kept ? "#0969da" : "#818b98", "stroke-width":1.6}, svg);
+      txt(X0+c*P+(P-3)/2, Y0+r*P+(P-3)/2+4, kept ? "f" : "0",
+        {class:"svg-nota-b", fill: kept ? "#0550ae" : "#59636e"}, svg);
+      if(!kept && dense){
+        cell.setAttribute("stroke-dasharray","4 3");
+      }
+    }
+  }
+  const steps = [
+    ["体素化","LiDAR 点撒进 0.075m 格子；绿格=有点，浅格=空（空格本来就不进网络）", s=>drawGrid(s,"plain")],
+    ["划 block","4×4 格绑成 1 块（真实是 8×8×8 的 3D 块），之后按块抽签", s=>drawGrid(s,"blocks")],
+    ["抽签 80%","每块有 80% 概率被选中遮蔽：9 块遮 7 块、留 2 块（≈20% 可见）", s=>drawGrid(s,"gray")],
+    ["删除","被遮块的体素用布尔索引直接删除，完全不进网络（不是换成 token）", s=>drawGrid(s,"removed")],
+    ["稀疏编码","可见块进 SparseUNet，只在可见处计算；8× 下采样后每块→1 格特征", s=>drawFeat(s,false)],
+    ["补零 dense","摊回完整网格 [B,256,5,180,180]，被删位=0（灰格），由渲染器负责恢复", s=>drawFeat(s,true)],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② Camera Patch Mask 流程 ============ */
+(function(){
+  const root = document.getElementById("cam-mask-flow");
+  const rnd = mulberry32(7);
+  const PASTEL = ["#f7d76c","#8ddb8c","#8cb6ff","#f7a8c4","#c297ff","#ff9d8a","#96b8f7","#8ce0c0"];
+  const cols = [], masked = new Set();
+  const order = [];
+  for(let i=0;i<60;i++){ cols.push(PASTEL[Math.floor(rnd()*PASTEL.length)]); order.push(i); }
+  for(let i=order.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  order.slice(0,18).forEach(i=>masked.add(i));
+  function drawGrid(svg, mode){                     // plain | gray | zero | dense
+    const X0=12, Y0=8, P=13;
+    for(let r=0;r<6;r++) for(let c=0;c<10;c++){
+      const i = r*10+c, m = masked.has(i);
+      el("rect",{x:X0+c*P, y:Y0+r*P, width:P-1.5, height:P-1.5, rx:2,
+        fill: (mode==="zero"||mode==="dense") && m ? "#eff2f5" : cols[i],
+        stroke:"#d1d9e0", "stroke-width":0.6}, svg);
+      if(mode==="gray" && m){
+        el("rect",{x:X0+c*P-0.5, y:Y0+r*P-0.5, width:P, height:P, rx:2, fill:"#818b98", opacity:0.55}, svg);
+      }
+      if(mode==="dense" && m){
+        txt(X0+c*P+P/2, Y0+r*P+P/2+3, "0", {class:"svg-nota-b", fill:"#59636e"}, svg);
+      }
+      if(mode==="zero" && m){
+        el("rect",{x:X0+c*P-0.5, y:Y0+r*P-0.5, width:P, height:P, rx:2, fill:"none",
+          stroke:"#818b98", "stroke-width":1.4, "stroke-dasharray":"3 2"}, svg);
+      }
+    }
+    if(mode==="dense"){
+      el("path", {d:"M 144 46 L 144 46", stroke:"#818b98"}, svg);
+    }
+  }
+  const steps = [
+    ["切 patch","928×1600 图像在 1/32 处切成 29×50 个 patch（每个=32×32 像素；示意 10×6）", s=>drawGrid(s,"plain")],
+    ["抽签 30%","随机选 30%（示意 18 格）。比 LiDAR 的 80% 温和——3D→2D 渲染重建更难", s=>drawGrid(s,"gray")],
+    ["置零+稀疏算","被选 patch 像素乘 0（形状不变）；稀疏 ConvNeXt 只在白格上计算", s=>drawGrid(s,"zero")],
+    ["补零 dense","遮罩位=0 特征，完整形状交给 FPN→LSS；被遮区域同样由渲染器恢复", s=>drawGrid(s,"dense")],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ③ NeuS 体渲染流程（8 步，两行各 4 步） ============ */
+(function(){
+  const root = document.getElementById("render-flow");
+  const RAY = {x1:6, y1:96, x2:146, y2:14};        // 面板内统一射线
+  const SURF = 88;
+  const yAt = x => RAY.y1 + (RAY.y2-RAY.y1)*(x-RAY.x1)/(RAY.x2-RAY.x1);
+  function camera(svg){
+    el("rect",{x:2, y:RAY.y1-8, width:16, height:16, rx:3, fill:"#dafbe1", stroke:"#1a7f37", "stroke-width":1.5}, svg);
+    el("circle",{cx:10, cy:RAY.y1, r:4, fill:"#fff", stroke:"#1a7f37", "stroke-width":1.2}, svg);
+  }
+  function ray(svg, dash){
+    el("line",{x1:RAY.x1, y1:RAY.y1, x2:RAY.x2, y2:RAY.y2, stroke:"#bc8c37", "stroke-width":2,
+      "stroke-dasharray": dash ? "3 4" : "none"}, svg);
+  }
+  function surface(svg){
+    el("rect",{x:SURF-3, y:yAt(SURF)-22, width:6, height:44, rx:2, fill:"#54aeff"}, svg);
+    txt(SURF, yAt(SURF)+34, "表面 SDF=0", {class:"svg-nota", fill:"#0550ae"}, svg);
+  }
+  const steps = [
+    ["发射 ray","每相机采 512 条：从相机中心 o 穿过某像素，方向=归一化(反投影点−o)", s=>{ camera(s); ray(s,true); txt(80,110,"渲染目标：这条 ray 的颜色和终点距离",{class:"svg-cn",fill:"#59636e"},s); }],
+    ["AABB 求交","与场景包围盒（±54m，已归一化 ×1/54）求交得 near(≥1m)/far，盒外不渲染", s=>{
+        el("rect",{x:36, y:8, width:104, height:88, rx:6, fill:"#fff8c5", stroke:"#d4a72c", "stroke-dasharray":"5 4", "stroke-width":1.4}, s);
+        camera(s); ray(s,false);
+        el("circle",{cx:36, cy:yAt(36), r:4, fill:"#bc8c37"}, s);
+        el("circle",{cx:140, cy:yAt(140), r:4, fill:"#bc8c37"}, s);
+        txt(30, yAt(36)+22, "near", {class:"svg-nota", fill:"#9a6700"}, s);
+        txt(140, yAt(140)-10, "far", {class:"svg-nota", fill:"#9a6700"}, s); }],
+    ["均匀采样 72 点","near→far 均匀撒点，每格内随机抖动（stratified）；示意 11 点", s=>{
+        camera(s); ray(s,false);
+        for(let i=0;i<11;i++){ const x=40+i*9.4; el("circle",{cx:x, cy:yAt(x), r:3.4, fill:"#d4a72c", stroke:"#9a6700","stroke-width":0.8}, s); } }],
+    ["三线性取特征","每个采样点在 32 维特征场里插值：落在哪 8 个体素角之间，就按距离加权混合", s=>{
+        el("rect",{x:38, y:16, width:74, height:74, rx:6, fill:"#ddf4ff", stroke:"#0969da", "stroke-width":1.4}, s);
+        el("line",{x1:38,y1:53,x2:112,y2:53,stroke:"#a5d8ff","stroke-width":1}, s);
+        el("line",{x1:75,y1:16,x2:75,y2:90,stroke:"#a5d8ff","stroke-width":1}, s);
+        el("circle",{cx:92, cy:44, r:5, fill:"#cf222e"}, s);
+        txt(75,108,"fⱼ ∈ ℝ³²",{class:"svg-nota", fill:"#0550ae"}, s); }],
+    ["SDF 头","特征+坐标→SDF MLP(5层,跳连)→符号距离 sⱼ 和几何特征 hⱼ；表面前 s>0、穿过后 s<0", s=>{
+        camera(s); ray(s,false); surface(s);
+        txt(38, 24, "s>0 空气", {class:"svg-nota", fill:"#59636e"}, s);
+        txt(124, 100, "s<0 物内", {class:"svg-nota", fill:"#59636e"}, s); }],
+    ["RGB 头","法向 nⱼ=∇SDF（自动微分，白送）；cⱼ=MLP(d,fⱼ,nⱼ,hⱼ) 54维输入→sigmoid", s=>{
+        camera(s); ray(s,false); surface(s);
+        const nx=SURF+3, ny=yAt(SURF);
+        el("line",{x1:nx, y1:ny, x2:nx+22, y2:ny-20, stroke:"#8250df", "stroke-width":2, "marker-end":"url(#pn)"}, s);
+        txt(nx+16, ny+14, "nⱼ", {class:"svg-nota", fill:"#8250df"}, s); }],
+    ["权重 wⱼ=Tⱼαⱼ","遮挡感知，表面附近权重大；occupancy 加密补采 24 点（共 96）", s=>{
+        camera(s); ray(s,false);
+        const base=112;
+        el("line",{x1:30,y1:base,x2:146,y2:base,stroke:"#d1d9e0","stroke-width":1}, s);
+        for(let i=0;i<12;i++){ const x=42+i*8.6;
+          const h=Math.max(2, 30*Math.exp(-Math.pow((x-SURF)/14,2)));
+          el("rect",{x:x-3, y:base-h, width:6, height:h, rx:1.5, fill:"#d4a72c", opacity:0.9}, s); }
+        txt(88, 24, "表面附近权重最大", {class:"svg-cn", fill:"#9a6700"}, s); }],
+    ["积分输出 → L1","RGB=Σwⱼcⱼ，Depth=Σwⱼtⱼ/Σwⱼ；与 GT 算 L1，梯度穿过渲染链传回编码器", s=>{
+        el("rect",{x:12, y:30, width:58, height:26, rx:5, fill:"#ffebe9", stroke:"#cf222e","stroke-width":1.4}, s);
+        txt(41, 47, "渲染 Depth", {class:"svg-cn", fill:"#a40e26"}, s);
+        el("rect",{x:12, y:66, width:58, height:26, rx:5, fill:"#ffebe9", stroke:"#cf222e","stroke-width":1.4}, s);
+        txt(41, 83, "渲染 RGB", {class:"svg-cn", fill:"#a40e26"}, s);
+        el("line",{x1:72, y1:61, x2:96, y2:61, stroke:"#cf222e", "stroke-width":2, "stroke-dasharray":"4 3"}, s);
+        el("rect",{x:98, y:42, width:46, height:38, rx:5, fill:"#fff", stroke:"#cf222e", "stroke-width":1.6, "stroke-dasharray":"5 4"}, s);
+        txt(121, 65, "L1×10", {class:"svg-nota-b", fill:"#a40e26"}, s);
+        txt(75, 108, "反向传播 → 编码器", {class:"svg-cn", fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{
+    if(i>0) arrow(root);
+    addStep(root,"render",i,st[0],st[1],st[2]);
+  });
+  // 紫色法向箭头 marker（插到第 6 面板 svg 的 defs）
+  const defs = el("defs",{}, document.querySelector("#render-flow .stepcard:nth-of-type(9) svg"));
+  const mk = el("marker",{id:"pn", markerWidth:"8", markerHeight:"8", refX:"6", refY:"3", orient:"auto"}, defs);
+  el("path",{d:"M0,0 L6,3 L0,6 z", fill:"#8250df"}, mk);
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</main>
+</div>
+</body>
+</html>
