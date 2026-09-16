@@ -1,43 +1,56 @@
-# Mrwvisa.github.io — 面试名片站（GitHub Pages 用户站）
+# Mrwvisa.github.io — 论文解读作品集（GitHub Pages 用户站）
 
 ## 项目概述
 
-- **定位**：面试名片 + paper-explainer 论文解读作品集。简历上印的 URL：`https://mrwvisa.github.io/`
+- **定位**：面试名片 + paper-explainer 论文解读库。简历上印的 URL：`https://mrwvisa.github.io/`
 - **形态**：纯静态单文件 HTML，零依赖、零构建链（无 Jekyll/Hugo/Node），`git push` 即部署
 - **远端**：`github.com/Mrwvisa/Mrwvisa.github.io`（公开仓库，Pages 从 main 分支根目录发布）
 - **本地路径**：`/Users/wutao/work/github-pages/`
 
-## 结构
+## 页面结构（index.html）
+
+左侧领域菜单 + 右侧年份分组卡片（卡片布局词汇来自 `~/work/workbench` 的 ExperimentCard，主题沿用 paper-explainer 的 GitHub Primer 基因）：
 
 ```
-index.html     名片首页：PROFILE（个人信息）+ PAPERS（论文列表）两个 JS 对象驱动渲染
-papers/        论文解读产物（<slug>_paper_explained.html，来自 paper-explainer skill）
-CLAUDE.md      本文件
+.layout
+├── .toc        左侧领域菜单（178px sticky 侧栏，窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
+└── .content
+    ├── .site-head   页头：PROFILE.name + tagline + GitHub 链接
+    ├── .year × N    年份分组（降序）：year-title + card-grid
+    │   └── .card    卡片：简短论文名（蓝）+ venue（右，mono）+ 右上角星标圆钮 + 英文全称（2行占位）+ 一句话描述
+    └── footer
 ```
 
-## 设计约定
+交互：
+- 点卡片整卡 → 跳转论文解读页；星标 `★` 点击变黄（`--star:#e3b341`），状态存 localStorage（key `stars`，值为 file 路径数组）
+- 点左侧领域 → 过滤右侧（`selectDomain()`）
 
-- **视觉基因**与 paper-explainer 产物（`~/work/e2e/unipad_paper_explained.html`）同源：
-  GitHub (Primer) 主题，CSS 变量在 index.html `:root`（底 `#f6f8fa`、边 `#d1d9e0`、蓝 `#0969da`、绿 `#1a7f37`、橙 `#9a6700`、红 `#cf222e`），正文 14px，中文字体 PingFang SC 系
-- 标签语义色轮换顺序：blue → green → orange → gray
-- 改名片只动 `PROFILE`，加论文只动 `PAPERS`，不碰渲染代码
+## 数据模型（index.html 顶部 script）
+
+- `PROFILE`：name / tagline / github。占位符用【】标出，**待填真实信息**
+- `PAPERS` 数组，每条字段：`domain`（领域，新值自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（papers/ 下路径）、`desc`（一句话，可选）
 
 ## 加一篇新论文解读的流程
 
-1. 用 paper-explainer skill 生成 `<slug>_paper_explained.html`（产物在 `~/work/e2e/` 或其他工作目录）
-2. 拷入 `papers/`
-3. 在 index.html 的 `PAPERS` 数组加一个条目（file/title/meta/desc/tags/date）
-4. Chrome 打开本地 index.html 验证渲染无报错，commit + push
+1. 用 paper-explainer skill 生成 `<slug>_paper_explained.html`
+2. 拷入 `papers/`，并**插入返回按钮**：在 `</body>` 前插入一行（固定右上角浮动 pill，`href="../index.html"`，样式内联，参照 unipad 文件里现成的那行）
+3. index.html 的 `PAPERS` 数组加一个条目
+4. Chrome 本地验证（console 零报错、星标点击、领域切换），commit + push
+
+## 设计约定
+
+- GitHub (Primer) 主题，CSS 变量在 index.html 与各论文页 `:root`（底 `#f6f8fa`、边 `#d1d9e0`、蓝 `#0969da`、星标黄 `#e3b341`），正文 14px
+- 论文页保持 skill 原生产物不动，唯一允许的改动是插入返回按钮
+- index.html 的 desc 不编造数字（同 paper-explainer 契约）
 
 ## 注意事项
 
-- 解读页里的数字必须有出处（config 行号/论文表号），index.html 的 desc 同样不编造数字
-- 此仓库是**公开**的：不要放私密信息（真实邮箱视本人意愿、电话、内部分支名）
-- Pages 构建状态：`gh api repos/Mrwvisa/Mrwvisa.github.io/pages`（看 status 字段）
-- 本机 git 推送走 `gh` 的 https 凭据；若直连不稳走代理 `127.0.0.1:7897`
+- 此仓库是**公开**的：不放私密信息
+- Pages 状态：`gh api repos/Mrwvisa/Mrwvisa.github.io/pages`（看 status 字段）
+- 直连不稳走代理 `127.0.0.1:7897`
 
 ## TODO / 已知事项
 
-- [ ] PROFILE 占位符（【】标出）待填真实姓名、职位方向、tagline、联系方式
-- [ ] 更多论文解读陆续补充
-- [ ] 可选：自定义域名（Settings → Pages → Custom domain）
+- [ ] PROFILE 占位符待填：真实姓名、tagline
+- [ ] 4D重建等更多领域随解读补充（PAPERS 里有注释示例条目）
+- [ ] 可选：自定义域名
