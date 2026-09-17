@@ -17,10 +17,10 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
-.layout{display:flex;max-width:none;margin:0;gap:12px;padding:0 24px 0 60px}
+.layout{display:flex;max-width:none;margin:0;gap:clamp(8px,.8vw,16px);padding:0 clamp(12px,1.6vw,24px) 0 clamp(16px,4vw,96px)}
 
-/* ============ 左侧领域菜单（GitHub 侧栏风，贴最左） ============ */
-.toc{width:128px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:20px 2px 40px 0;border-right:1px solid var(--line)}
+/* ============ 左侧领域菜单（GitHub 侧栏风；宽度按屏宽比例，1512px 基准≈128px） ============ */
+.toc{width:clamp(96px,8.5vw,160px);flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:20px 2px 40px 0;border-right:1px solid var(--line)}
 .toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 6px;border-radius:6px;border-left:2px solid transparent;transition:background .12s;cursor:pointer}
 .toc a:hover{background:var(--bg);color:var(--ink)}
 .toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
@@ -35,7 +35,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1
 .year-count{font-size:12px;font-weight:400;color:var(--ink3)}
 
 /* ============ 卡片（workbench 布局词汇 + Primer 配色） ============ */
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(280px,24vw,520px),1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;cursor:pointer;position:relative;transition:border-color .12s,box-shadow .12s}
 .card:hover{border-color:var(--c-enc);box-shadow:0 1px 4px rgba(9,105,218,.15)}
 .card-head{display:flex;align-items:center;gap:8px;padding-right:26px}
@@ -50,7 +50,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1
 .star:hover{opacity:1}
 .star.on{opacity:1;color:var(--star)}
 
-footer{margin-top:40px;text-align:center;font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.5px;color:var(--ink3);font-family:var(--mono);background:var(--bg);border-top:1px solid var(--line);padding:6px 0}
 
 /* 窄屏：侧栏折叠为顶部横向条 */
 @media(max-width:900px){
