@@ -13,7 +13,7 @@
 
 ```
 .layout
-├── .toc        左侧领域菜单（128px sticky 侧栏，贴最左 0px；单级菜单比论文页 178px 窄——用户要求空白减半；窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
+├── .toc        左侧领域菜单（128px sticky 侧栏，layout 左留白 60px ≈ 原居中版的一半；单级菜单比论文页 178px 窄；窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
 └── .content
     ├── .year × N    年份分组（降序）：year-title + card-grid
     │   └── .card    卡片：简短论文名（蓝）+ venue（右，mono）+ 右上角星标圆钮 + 英文全称（2行占位）+ 一句话描述
