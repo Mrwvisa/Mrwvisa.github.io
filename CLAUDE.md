@@ -13,7 +13,7 @@
 
 ```
 .layout
-├── .toc        左侧领域菜单（178px sticky 侧栏，窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
+├── .toc        左侧领域菜单（128px sticky 侧栏，贴最左 0px；单级菜单比论文页 178px 窄——用户要求空白减半；窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
 └── .content
     ├── .year × N    年份分组（降序）：year-title + card-grid
     │   └── .card    卡片：简短论文名（蓝）+ venue（右，mono）+ 右上角星标圆钮 + 英文全称（2行占位）+ 一句话描述
@@ -42,6 +42,7 @@
 - GitHub (Primer) 主题，CSS 变量在 index.html 与各论文页 `:root`（底 `#f6f8fa`、边 `#d1d9e0`、蓝 `#0969da`、星标黄 `#e3b341`），正文 14px
 - 论文页保持 skill 原生产物不动，唯一允许的改动是插入返回按钮
 - index.html 的 desc 不编造数字（同 paper-explainer 契约）
+- **卡片 desc 的一句话总结必须与论文页 §1 引子的总结逐字一致**（用户要求两边对得上；引子段末尾「整套方法概括起来就是：…」）
 
 ## 注意事项
 
