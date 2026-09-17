@@ -28,13 +28,13 @@
 
 ## 数据模型（index.html 顶部 script）
 
-- `PAPERS` 数组，每条字段：`domain`（领域，新值自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（papers/ 下路径）、`desc`（一句话，可选）
+- `PAPERS` 数组，每条字段：`domain`（领域，新值自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（解读页相对路径，组织为 `<domain-en>/<year>-<slug>.html`，如 `4d-reconstruct/2024-unipad.html`）、`desc`（一句话，可选）
 
 ## 加一篇新论文解读的流程
 
-1. 用 paper-explainer skill 生成 `<slug>_paper_explained.html`
-2. 拷入 `papers/`，并**插入返回按钮**：在 `</body>` 前插入一行（固定右上角浮动 pill，`href="../index.html"`，样式内联，参照 unipad 文件里现成的那行）
-3. index.html 的 `PAPERS` 数组加一个条目
+1. 用 paper-explainer skill 生成解读 HTML，命名为 `<year>-<slug>.html`（如 `2024-omnire.html`）
+2. 放入对应领域英文目录（如 `4d-reconstruct/`，新领域就新建目录），并**插入返回按钮**：在 `</body>` 前插入一行（固定右上角浮动 pill，`href="../index.html"`，样式内联，参照 2024-unipad.html 里现成的那行）
+3. index.html 的 `PAPERS` 数组加一个条目（domain 中文领域名、file 填相对路径）
 4. Chrome 本地验证（console 零报错、星标点击、领域切换），commit + push
 
 ## 设计约定

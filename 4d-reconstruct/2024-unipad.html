@@ -115,10 +115,10 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
 .stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
 .stepcard.render .lab .n{background:var(--c-render)}
 .stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
-#render-flow .stepcard{width:127px}
-#render-flow .stepcard .lab{font-size:12px}
-#render-flow .stepcard .lab .n{font-size:10px}
-#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+#render-flow .stepcard,#head-flow .stepcard{width:127px}
+#render-flow .stepcard .lab,#head-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n,#head-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc,#head-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
 .flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
 .metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
 .metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
@@ -316,7 +316,7 @@ details.deep ul{margin:4px 0}
       <text x="1064" y="273" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#9a6700">⊕</text>
       <text x="1032" y="240" text-anchor="end" class="svg-cn" fill="#59636e">fusion 逐元素相加</text>
 
-      <line x1="1080" y1="267" x2="1116" y2="267" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+      <polyline points="1080,267 1100,267 1100,123 1116,123" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
 
       <text x="1128" y="42" class="svg-cn" style="font-weight:700" fill="#9a6700">③ 渲染解码器</text>
 
@@ -324,7 +324,6 @@ details.deep ul{margin:4px 0}
       <text x="1248" y="116" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">特征投影 Conv3d 3×3×3</text>
       <text x="1248" y="142" text-anchor="middle" class="svg-nota">[B,256,5,180,180]→[B,32,5,180,180]</text>
 
-      <polyline points="1128,267 1128,158" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
       <line x1="1248" y1="158" x2="1248" y2="182" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
 
       <rect x="1120" y="186" width="256" height="132" rx="8" fill="#fff8c5" stroke="#eac54f" stroke-width="1.4"/>
@@ -423,7 +422,11 @@ details.deep ul{margin:4px 0}
 <section id="s23">
   <h2><span class="no">§2.3</span>Volumetric Rendering</h2>
 
-  <p>渲染解码器只解决一个问题：给定一条光线，它的颜色是什么、终点在哪里。下面的流程图完整展示一条 ray 的处理过程。训练时每相机采 512 条 ray，6 个相机共 3072 条，每条都按这个流程处理。</p>
+  <p>渲染解码器只解决一个问题：给定一条光线，它的颜色是什么、终点在哪里。先看 head 的整体数据流（下图，shape 级），再逐条 ray 展开算法细节（下面的 8 张卡）。训练时每相机采 512 条 ray，6 个相机共 3072 条，每条都按这个流程处理。</p>
+
+  <div class="flowrow wrap" id="head-flow"></div>
+
+  <p>这条流水线的 shape 主线：<span class="mono">[B,256,5,180,180]</span> 经 render_conv 压到 <span class="mono">[B,32,5,180,180]</span>，3072×96 ≈ 29.5 万个采样点各插值出 32 维特征，过两个窄 MLP，最后积分回每 ray 两个输出。render_conv 把通道压到 32 是算出来的账：查询点数量（29.5 万）远大于体素数，通道窄 8 倍，插值和 MLP 的乘法就省 8 倍；SDF/RGB 头的隐层都只有 16 维，因为几何信息已经编码在特征场里，MLP 只负责"查到的特征 → SDF/颜色"这步映射，窄一点反而抗过拟合；全程可微，L1 的梯度沿积分 → MLP → 插值 → Conv3d 一路传回编码器，这是"渲染能当预训练代理任务"的前提。</p>
 
   <div class="flowrow wrap" id="render-flow"></div>
 
@@ -842,6 +845,80 @@ function arrow(container){
   const defs = el("defs",{}, document.querySelector("#render-flow .stepcard:nth-of-type(9) svg"));
   const mk = el("marker",{id:"pn", markerWidth:"8", markerHeight:"8", refX:"6", refY:"3", orient:"auto"}, defs);
   el("path",{d:"M0,0 L6,3 L0,6 z", fill:"#8250df"}, mk);
+})();
+
+/* ============ 渲染 head 数据流（7 步，shape 级） ============ */
+(function(){
+  const root = document.getElementById("head-flow");
+  const steps = [
+    ["融合特征场","多模态时 LiDAR ⊕ 相机特征逐元素相加的体素特征场（LiDAR-only 训练则无相机支线），B=4（每 GPU）", s=>{
+      el("rect",{x:38,y:30,width:58,height:38,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.5,opacity:.8}, s);
+      el("rect",{x:30,y:36,width:58,height:38,rx:5,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.5}, s);
+      txt(59,59,"256ch",{class:"svg-nota",fill:"#116329"}, s);
+      txt(75,96,"[B,256,5,180,180]",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+    ["render_conv","Conv3d 3×3×3 降通道：查询点多达 29.5 万，通道 256→32，插值和 MLP 的乘法省 8 倍", s=>{
+      el("rect",{x:24,y:24,width:20,height:54,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(34,18,"256",{class:"svg-nota",fill:"#0550ae"}, s);
+      el("line",{x1:52,y1:52,x2:76,y2:52,stroke:"#9a6700","stroke-width":2}, s);
+      el("path",{d:"M76,47 L84,52 L76,57 z",fill:"#9a6700"}, s);
+      el("rect",{x:88,y:38,width:20,height:30,rx:3,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.4}, s);
+      txt(98,32,"32",{class:"svg-nota",fill:"#9a6700"}, s);
+      txt(75,82,"Conv3d 3×3×3",{class:"svg-cn",fill:"#5c4400"}, s);
+      txt(75,100,"[B,32,5,180,180]",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+    ["采样点插值","3072 ray × 96 点 ≈ 29.5 万个点，SmoothSampler 三线性插值逐点取出 fⱼ ∈ ℝ³²", s=>{
+      el("line",{x1:12,y1:66,x2:132,y2:40,stroke:"#bc8c37","stroke-width":2}, s);
+      for(let i=0;i<8;i++){ const x=20+i*14.5; const y=66+(40-66)*(x-12)/120;
+        el("circle",{cx:x,cy:y,r:3.2,fill:"#d4a72c",stroke:"#9a6700","stroke-width":.8}, s); }
+      txt(75,20,"每点查一次特征场",{class:"svg-cn",fill:"#59636e"}, s);
+      txt(75,92,"fⱼ ∈ ℝ³²",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(75,108,"× 294912 点",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+    ["SDF 头","坐标 3 + 特征 32 进，5 块 × 隐宽 16、特征逐层注入；输出 17 维 = sⱼ(1) + hⱼ(16)", s=>{
+      txt(75,14,"in: pos(3) + fⱼ(32)",{class:"svg-nota",fill:"#59636e"}, s);
+      for(let i=0;i<5;i++){ el("rect",{x:34+i*15,y:26,width:11,height:11,rx:2,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.1}, s); }
+      el("line",{x1:24,y1:56,x2:104,y2:56,stroke:"#9a6700","stroke-width":2}, s);
+      el("path",{d:"M104,51 L112,56 L104,61 z",fill:"#9a6700"}, s);
+      el("rect",{x:114,y:40,width:18,height:32,rx:3,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.4}, s);
+      txt(123,60,"17",{class:"svg-nota",fill:"#9a6700"}, s);
+      txt(75,82,"5 块 × 隐宽 16",{class:"svg-cn",fill:"#5c4400"}, s);
+      txt(75,100,"→ sⱼ(1) + hⱼ(16)",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+    ["RGB 头","cat(d, fⱼ, nⱼ, hⱼ) = 54 维进，3 块 × 隐宽 16，sigmoid 出 cⱼ(3)；采样点坐标不进", s=>{
+      txt(75,16,"54 = 3 + 32 + 3 + 16",{class:"svg-nota",fill:"#59636e"}, s);
+      const segs=[[8,"#ddf4ff","#0969da"],[34,"#fff8c5","#9a6700"],[8,"#fff8c5","#9a6700"],[18,"#ffd3d0","#cf222e"]];
+      let x=16; segs.forEach(g=>{ el("rect",{x:x,y:24,width:g[0],height:14,rx:2,fill:g[1],stroke:g[2],"stroke-width":1}, s); x+=g[0]+1; });
+      for(let i=0;i<3;i++){ el("rect",{x:44+i*15,y:52,width:11,height:11,rx:2,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.1}, s); }
+      el("line",{x1:92,y1:58,x2:102,y2:58,stroke:"#9a6700","stroke-width":2}, s);
+      el("path",{d:"M102,53 L110,58 L102,63 z",fill:"#9a6700"}, s);
+      txt(122,62,"cⱼ(3)",{class:"svg-nota",fill:"#9a6700"}, s);
+      txt(75,84,"3 块 × 隐宽 16",{class:"svg-cn",fill:"#5c4400"}, s);
+      txt(75,102,"坐标不进，方向/法向管视角",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+    ["NeuS 权重","SDF 过 σ 与可学习偏差网得 αⱼ（含视线-法向夹角修正），wⱼ = Tⱼ·αⱼ 聚焦第一个表面", s=>{
+      txt(75,18,"wⱼ = Tⱼ·αⱼ",{class:"svg-cn",fill:"#9a6700"}, s);
+      const base=86;
+      el("line",{x1:14,y1:base,x2:136,y2:base,stroke:"#d1d9e0","stroke-width":1}, s);
+      for(let i=0;i<15;i++){ const x=22+i*8; const h=Math.max(2,36*Math.exp(-Math.pow((x-86)/17,2)));
+        el("rect",{x:x-3,y:base-h,width:6,height:h,rx:1.5,fill:"#d4a72c",opacity:.9}, s); }
+      txt(86,106,"表面附近权重最大",{class:"svg-nota",fill:"#9a6700"}, s);
+    }],
+    ["积分 → L1","Depth=Σwⱼtⱼ/Σwⱼ → [3072,1]，RGB=Σwⱼcⱼ → [3072,3]，与 GT 算 L1（λ=10）回传编码器", s=>{
+      txt(75,16,"Σ 沿 ray 加权求和",{class:"svg-cn",fill:"#59636e"}, s);
+      el("rect",{x:10,y:24,width:62,height:32,rx:5,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.4}, s);
+      txt(41,39,"Depth",{class:"svg-cn",fill:"#a40e26"}, s);
+      txt(41,51,"[3072,1]",{class:"svg-nota",fill:"#a40e26"}, s);
+      el("rect",{x:10,y:62,width:62,height:32,rx:5,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.4}, s);
+      txt(41,77,"RGB",{class:"svg-cn",fill:"#a40e26"}, s);
+      txt(41,89,"[3072,3]",{class:"svg-nota",fill:"#a40e26"}, s);
+      el("line",{x1:76,y1:59,x2:90,y2:59,stroke:"#cf222e","stroke-width":1.6,"stroke-dasharray":"4 3"}, s);
+      el("rect",{x:92,y:42,width:48,height:34,rx:5,fill:"#fff",stroke:"#cf222e","stroke-width":1.5,"stroke-dasharray":"5 4"}, s);
+      txt(116,56,"L1 ×10",{class:"svg-nota-b",fill:"#a40e26"}, s);
+      txt(116,70,"λ=10",{class:"svg-nota",fill:"#59636e"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
 })();
 
 /* ============ 目录 scrollspy ============ */
