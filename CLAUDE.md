@@ -15,19 +15,19 @@
 .layout
 ├── .toc        左侧领域菜单（178px sticky 侧栏，窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
 └── .content
-    ├── .site-head   页头：PROFILE.name + tagline + GitHub 链接
     ├── .year × N    年份分组（降序）：year-title + card-grid
     │   └── .card    卡片：简短论文名（蓝）+ venue（右，mono）+ 右上角星标圆钮 + 英文全称（2行占位）+ 一句话描述
     └── footer
 ```
 
 交互：
+- 打开页面**默认选中 `PAPERS[0].domain`**（当前是 4D重建）；想换默认就调 PAPERS 数组顺序
 - 点卡片整卡 → 跳转论文解读页；星标 `★` 点击变黄（`--star:#e3b341`），状态存 localStorage（key `stars`，值为 file 路径数组）
 - 点左侧领域 → 过滤右侧（`selectDomain()`）
+- 无页头无个人信息（用户明确要求）：只有菜单 + 卡片 + 一行页脚
 
 ## 数据模型（index.html 顶部 script）
 
-- `PROFILE`：name / tagline / github。占位符用【】标出，**待填真实信息**
 - `PAPERS` 数组，每条字段：`domain`（领域，新值自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（papers/ 下路径）、`desc`（一句话，可选）
 
 ## 加一篇新论文解读的流程
@@ -51,6 +51,5 @@
 
 ## TODO / 已知事项
 
-- [ ] PROFILE 占位符待填：真实姓名、tagline
-- [ ] 4D重建等更多领域随解读补充（PAPERS 里有注释示例条目）
+- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；当前仅 4D重建/UniPAD）
 - [ ] 可选：自定义域名

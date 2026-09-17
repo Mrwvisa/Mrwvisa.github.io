@@ -17,28 +17,20 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
-.layout{display:flex;max-width:1280px;margin:0 auto;gap:12px;padding:0 2px}
+.layout{display:flex;max-width:none;margin:0;gap:12px;padding:0 24px 0 2px}
 
-/* ============ 左侧领域菜单（GitHub 侧栏风，同 paper-explainer 目录） ============ */
-.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:26px 2px 40px 0;border-right:1px solid var(--line)}
-.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
-.toc a{display:flex;justify-content:space-between;align-items:center;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s;cursor:pointer}
+/* ============ 左侧领域菜单（GitHub 侧栏风，贴最左） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:20px 2px 40px 0;border-right:1px solid var(--line)}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s;cursor:pointer}
 .toc a:hover{background:var(--bg);color:var(--ink)}
 .toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
-.toc .cnt{font-family:var(--mono);font-size:11px;color:var(--ink3)}
 
 /* ============ 内容区 ============ */
 .content{flex:1;min-width:0;padding-bottom:120px}
 
-/* 页头（GitHub 仓库页头风，轻量） */
-.site-head{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:20px 26px;margin-top:24px}
-.site-head h1{font-size:21px;font-weight:700;line-height:1.4}
-.site-head .sub{font-size:13.5px;color:var(--ink2);margin-top:6px}
-.site-head .sub a{color:var(--c-enc);text-decoration:none}
-.site-head .sub a:hover{text-decoration:underline}
-
 /* 年份分组 */
 .year{margin-top:26px}
+.year:first-child{margin-top:24px}
 .year-title{font-size:15px;display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
 .year-count{font-size:12px;font-weight:400;color:var(--ink3)}
 
@@ -79,9 +71,8 @@ footer{margin-top:40px;text-align:center;font-size:12.5px;color:var(--ink3);font
 
   <!-- 右侧：页头 + 按年份分组的论文卡片 -->
   <main class="content">
-    <header class="site-head" id="siteHead"></header>
     <div id="groups"></div>
-    <footer>© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有 · 单文件零依赖 · GitHub Pages</footer>
+    <footer>© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
   </main>
 </div>
 
@@ -92,15 +83,10 @@ footer{margin-top:40px;text-align:center;font-size:12.5px;color:var(--ink3);font
  * 加一篇论文：papers/ 里放入解读 HTML，然后在 PAPERS 加一个条目；
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
-const PROFILE = {
-  name: "【你的名字】",           // 页头大标题，如 "吴涛 · 论文解读库"
-  tagline: "【一句话：研究方向 / 在找什么机会】",
-  github: "https://github.com/Mrwvisa",
-};
-
+/* 打开页面默认落在 PAPERS[0] 的领域；想换默认就调 PAPERS 顺序 */
 const PAPERS = [
   {
-    domain: "预训练",
+    domain: "4D重建",
     title: "UniPAD",
     full: "UniPAD: A Universal Pre-training Paradigm for Autonomous Driving",
     venue: "CVPR 2024",
@@ -109,34 +95,23 @@ const PAPERS = [
     desc: "用掩码重建做 3D 预训练的统一范式，检测、分割、占用共享一条预训练链路。",
   },
   // 新领域示例（放开即出现在左侧菜单）：
-  // { domain: "4D重建", title: " OmniRe", full: "OmniRe: Omni 3D Scene Reconstruction ...",
-  //   venue: "CVPR 2024", year: 2024, file: "papers/omnire_paper_explained.html",
+  // { domain: "预训练", title: "UniPAD", full: "UniPAD: A Universal Pre-training ...",
+  //   venue: "CVPR 2024", year: 2024, file: "papers/unipad_paper_explained.html",
   //   desc: "..." },
 ];
 
 /* ---------- 以下为渲染代码，无需改动 ---------- */
-let currentDomain = "全部";
+let currentDomain = PAPERS[0]?.domain ?? "全部";
 const starred = new Set(JSON.parse(localStorage.getItem("stars") || "[]"));
 
 function saveStars() {
   localStorage.setItem("stars", JSON.stringify([...starred]));
 }
 
-function renderHead() {
-  document.getElementById("siteHead").innerHTML = `
-    <h1>${PROFILE.name}</h1>
-    <div class="sub">${PROFILE.tagline} · <a href="${PROFILE.github}" target="_blank" rel="noopener">GitHub</a></div>`;
-}
-
 function renderToc() {
   const domains = [...new Set(PAPERS.map(p => p.domain))];
-  const items = ["全部", ...domains];
-  document.getElementById("toc").innerHTML =
-    `<h3>领域</h3>` + items.map(d => {
-      const n = d === "全部" ? PAPERS.length : PAPERS.filter(p => p.domain === d).length;
-      return `<a data-domain="${d}" class="${d === currentDomain ? "active" : ""}"
-                 onclick="selectDomain('${d}')">${d}<span class="cnt">${n}</span></a>`;
-    }).join("");
+  document.getElementById("toc").innerHTML = domains.map(d =>
+    `<a class="${d === currentDomain ? "active" : ""}" onclick="selectDomain('${d}')">${d}</a>`).join("");
 }
 
 function selectDomain(d) {
@@ -180,7 +155,6 @@ function toggleStar(e, file) {
   e.currentTarget.classList.toggle("on", starred.has(file));
 }
 
-renderHead();
 renderToc();
 renderGroups();
 </script>
