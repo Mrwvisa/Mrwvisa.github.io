@@ -33,7 +33,7 @@
 ## 加一篇新论文解读的流程
 
 1. 用 paper-explainer skill 生成解读 HTML，命名为 `<year>-<slug>.html`（如 `2024-omnire.html`）
-2. 放入对应领域英文目录（如 `4d-reconstruct/`，新领域就新建目录），并**插入返回按钮**：在 `</body>` 前插入一行（固定右上角浮动 pill，`href="../index.html"`，样式内联，参照 2024-unipad.html 里现成的那行）
+2. 放入对应领域英文目录（如 `4d-reconstruct/`，新领域就新建目录），并**插入返回按钮**：在 `<nav class="toc">` 内、`<h3>` 上方插一行「← 返回」（`href="../index.html"`，样式内联，参照 2024-unipad.html 目录顶部现成的那行）
 3. index.html 的 `PAPERS` 数组加一个条目（domain 中文领域名、file 填相对路径）
 4. Chrome 本地验证（console 零报错、星标点击、领域切换），commit + push
 
