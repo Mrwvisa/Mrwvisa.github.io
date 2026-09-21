@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIO 论文解读</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard,#world-flow .stepcard{width:127px}
+#render-flow .stepcard .lab,#world-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n,#world-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc,#world-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style></head>
+<body>
+<div class="layout">
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目录</h3>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 Implicit Occupancy-Flow Decoder</a>
+  <a href="#s23" class="lv2">2.3 Instance Decomposition</a>
+  <a href="#s24" class="lv2">2.4 Forecasting and Transfer</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<main class="content">
+<div class="hero" id="top">
+  <h1>DIO：可按实例分解的隐式占用-流世界模型</h1>
+  <div class="meta"><a href="https://arxiv.org/abs/2411.12250">DIO: Decomposable Implicit Occupancy-Flow World Model for Autonomous Driving</a> · arXiv 2411.12250 · Waabi · 无官方代码（纯论文解读） · Argoverse 2 · 2024</div>
+</div>
+
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、DIO 怎么解。</div>
+
+  <p>可解释的世界模型大致分两派：实例派先检测物体再预测轨迹，好解释但信息被压缩成有限个框和轨迹；BEV 占用派能表达运动不确定性，却没有实例概念，说不清"这块占用是谁的"。DIO 想两头都要：从稀疏 LiDAR 观测里学一个隐式的占用-流场，场本身是连续、无限分辨率的，同时又能被提示（prompt）分解到单个实例——既补全当前时刻的实例形状，也外推未来的占用-流演化，还能渲染出 LiDAR 点云做预测。概括一句话：从稀疏 LiDAR 学隐式占用-流场并按实例分解的自监督世界模型，可补全当前场景、外推未来、迁移到点云预测。监督只要求无标注点云和便宜的包围框标签。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>体素世界模型太贵</h4>
+      <p>把未来占用表达成 4D 体素栅格，显存和算力都吃紧，只能低分辨率——细粒度结构（路沿、杆件）全糊掉。</p>
+    </div>
+    <div class="card">
+      <h4>实例语义缺失</h4>
+      <p>规划要回答"这块未来占用是谁的、谁让谁"——纯占用场没有实例身份，安全决策无从谈起。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th>路线</th><th>代表工作</th><th>做法 & 麻烦</th></tr>
+    <tr><td>实例检测+轨迹</td><td class="mono">检测器 + motion forecast</td><td>可解释但信息瓶颈：场景被压缩成有限个框和轨迹，漏检即盲区。</td></tr>
+    <tr><td>BEV 语义占用</td><td class="mono">BEV occupancy 系列</td><td>表达运动不确定性好，但没有实例概念；依赖逐点语义标注。</td></tr>
+    <tr><td>无监督占用世界模型</td><td class="mono">UnO</td><td>自监督学 4D 几何占用，DIO 的直接前驱与最强基线；体素输出分辨率受限、无实例分解。</td></tr>
+  </table>
+
+  <h3><span class="no">1.3</span>DIO 是怎么解决的</h3>
+  <p>三个设计。其一，隐式表达：场景编码进一张 BEV 特征图后，占用和流由一个 MLP 场查询——给任意 3D 查询点就返回占用概率、流向量、语义，分辨率无限、只在感兴趣区域查询。其二，source point 提示分解：解码时额外给一个"源点"（实例在当前帧的假定位置，可直接来自现成 3D 检测器或规划器的兴趣点），场就只为这个实例回答占用与流——场景级与实例级共享同一套权重。其三，监督便宜：占用来自 LiDAR 扫描本身（点云处占据、射线沿途空闲），分解靠包围框标签，不需要逐点语义分割标注。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li><b>一个场两种粒度</b>：不提示源点就是场景级占用-流，提示源点就是实例级——不用训练两个模型。</li>
+    <li><b>无限分辨率</b>：隐式场查询哪里画哪里，绕开体素栅格的显存墙，细粒度结构保得住。</li>
+    <li><b>下游即插即用</b>：3D 检测器、规划器都能给提示；占用-流还能反渲染成 LiDAR 点云，直接做点云预测任务。</li>
+    <li>效果预告：Argoverse 2 的 4D 语义占用补全与预测任务 SOTA，Argoverse 4D 占用预测挑战赛排名第一，点云预测同样第一，细节见 §4。</li>
+  </ul>
+</section>
+
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（模块级）。无官方代码，图与描述以论文为准，未给出的张量维度不标注。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+        <marker id="aho" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#9a6700"/></marker>
+      </defs>
+
+      <!-- 上排：编码 -->
+      <text x="20" y="42" class="svg-cn" style="font-weight:700" fill="#1a7f37">① 场景编码</text>
+      <rect x="20" y="80" width="170" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="105" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">多扫 LiDAR</text>
+      <text x="105" y="134" text-anchor="middle" class="svg-nota">multi-sweep 点云</text>
+
+      <line x1="190" y1="119" x2="212" y2="119" class="arrow"/>
+
+      <rect x="214" y="80" width="230" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="329" y="104" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">3D 稀疏骨干（Scene Encoder）</text>
+      <text x="329" y="126" text-anchor="middle" class="svg-nota">逐级下采样 ×2/×4/×8</text>
+      <text x="329" y="148" text-anchor="middle" class="svg-nota">→ 单张 BEV 特征图</text>
+
+      <line x1="444" y1="119" x2="466" y2="119" class="arrow"/>
+
+      <!-- 中部：解码器 -->
+      <rect x="468" y="80" width="330" height="120" rx="10" fill="#fff8c5" stroke="#9a6700" stroke-width="1.8"/>
+      <text x="633" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Decomposable Occupancy-Flow Decoder</text>
+      <text x="633" y="132" text-anchor="middle" class="svg-cn" fill="#6e4f00">源点 s（实例提示）+ 查询点 q（正弦编码）</text>
+      <text x="633" y="156" text-anchor="middle" class="svg-nota">MLP 场：任意 (s, q) → 占用 / 流 / 语义</text>
+      <text x="633" y="182" text-anchor="middle" class="svg-nota">无限分辨率 · 只查感兴趣区域</text>
+
+      <polyline points="633,200 633,250" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <!-- 输出 -->
+      <rect x="430" y="254" width="160" height="60" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="510" y="280" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">场景占用 + 流</text>
+      <text x="510" y="302" text-anchor="middle" class="svg-nota">不给源点</text>
+      <rect x="612" y="254" width="160" height="60" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="692" y="280" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">实例占用 + 流</text>
+      <text x="692" y="302" text-anchor="middle" class="svg-nota">源点提示</text>
+      <rect x="794" y="254" width="160" height="60" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="874" y="280" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染 LiDAR</text>
+      <text x="874" y="302" text-anchor="middle" class="svg-nota">占用 + 射线深度</text>
+
+      <!-- 提示来源 -->
+      <rect x="1120" y="84" width="256" height="96" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="5 3"/>
+      <text x="1248" y="112" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">源点从哪来</text>
+      <text x="1248" y="136" text-anchor="middle" class="svg-nota">现成 3D 检测器 / 规划器兴趣点</text>
+      <text x="1248" y="160" text-anchor="middle" class="svg-nota">即插即用，不锁定检测器</text>
+      <line x1="1120" y1="132" x2="804" y2="140" stroke="#59636e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+
+      <!-- 未来外推 -->
+      <rect x="1120" y="254" width="256" height="96" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="1248" y="282" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">未来外推（世界模型）</text>
+      <text x="1248" y="306" text-anchor="middle" class="svg-nota">t₀+0.6s 起的时间视野</text>
+      <text x="1248" y="328" text-anchor="middle" class="svg-nota">占用-流随时间演化</text>
+      <line x1="954" y1="284" x2="1116" y2="284" stroke="#9a6700" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#aho)"/>
+
+      <!-- 监督 -->
+      <polyline points="105,158 105,560 700,560 700,318" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
+      <text x="420" y="586" text-anchor="middle" class="svg-cn" fill="#a40e26">GT：无标注点云自身（占据/射线空闲）+ 便宜包围框标签（分解用），无逐点语义分割</text>
+    </svg>
+    <div class="figcap">图 2-1 · DIO 总流程：稀疏编码 → 可分解的隐式占用-流场 → 场景/实例/渲染 LiDAR 三种输出 + 未来外推。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>编码器</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>隐式场解码</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw dash"></span>监督/提示/外推</span>
+    </div>
+  </div>
+  <ul class="dots">
+    <li><b>编码链路</b>：多扫 LiDAR → 3D 稀疏骨干逐级下采样（×2/×4/×8 多尺度特征体）→ 压到一张 BEV 特征图，隐式场的一切查询都以它为条件。</li>
+    <li><b>解码即查询</b>：源点 s 定实例、查询点 q 定位置，MLP 场返回占用/流/语义——场景级与实例级只是"给不给 s"的差别。</li>
+    <li><b>三种输出一条链</b>：场景占用-流、实例占用-流、渲染 LiDAR（占用场 + 传感器内外参沿射线取深度）全部来自同一个场。</li>
+    <li><b>未来外推</b>：场以未来时刻为条件预测占用-流演化，评估从 t₀+0.6s 开始的未来视野。</li>
+  </ul>
+</section>
+
+<section id="s22">
+  <h2><span class="no">§2.2</span>Implicit Occupancy-Flow Decoder</h2>
+  <div class="flowrow" id="memory-flow"></div>
+  <ul class="dots">
+    <li><b>隐式 = 查哪画哪</b>：不用预先物化整张 4D 体素栅格，只在需要的区域密集查询——细粒度结构（论文图里杆件、路沿）在体素法里被分辨率吃掉，这里不会。</li>
+    <li><b>查询点正弦编码</b>：3D 查询点经正弦位置编码进 MLP，与 BEV 特征图的条件信息一起决定占用与流。</li>
+    <li><b>流是场的一部分</b>：每个查询点同时得到占用概率和最可能的流向量，几何与运动在一个场里联合表达——这是"占用-流"命名的来源。</li>
+  </ul>
+</section>
+
+<section id="s23">
+  <h2><span class="no">§2.3</span>Instance Decomposition</h2>
+  <div class="flowrow" id="world-flow"></div>
+  <ul class="dots">
+    <li><b>源点提示机制</b>：源点 = 实例在当前帧的假定 3D 位置（如物体质心），查询点若落在该实例内则占用为 1——场景里其它实例（包括背景）对这个源点而言应输出零占用。</li>
+    <li><b>提示来源不锁定</b>：现成 3D 检测器、规划器关注的兴趣点都能当提示——检测器和世界模型解耦，检测器升级不用重训世界模型。</li>
+    <li><b>监督便宜</b>：分解监督用包围框标签（比逐点语义分割便宜得多），配合点云自监督（占据 + 射线空闲）完成训练。</li>
+  </ul>
+</section>
+
+<section id="s24">
+  <h2><span class="no">§2.4</span>Forecasting and Transfer</h2>
+  <div class="flowrow" id="render-flow"></div>
+  <ul class="dots">
+    <li><b>未来视野</b>：从 t₀+0.6s 起沿时间轴预测占用-流演化，评估协议在各未来时刻逐点考核。</li>
+    <li><b>渲染即迁移</b>：给定未来时刻的传感器内外参，沿射线在占用场里取深度、加流场偏移，直接"渲染"未来 LiDAR 点云——占用世界模型与点云预测任务就此打通，且能只渲染特定实例的点云。</li>
+    <li><b>评测两线</b>：Argoverse 2 的 4D 语义占用补全/预测（SOTA），以及 Argoverse 4D 占用预测挑战赛（排名第一）；点云预测线同样第一。</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="formula">
+    <div class="fx">L = L<sub>occ</sub> + L<sub>flow</sub> + L<sub>box</sub> (+ L<sub>flow-consistency</sub>)</div>
+    <div class="note">占用项由 LiDAR 自监督构成（扫描点处占据为正、射线沿途为空闲负样本），流项对未来时刻的对应点施加监督，包围框项约束实例分解（框内查询点归属对应实例），另引入流一致性正则保证时序连贯。无官方代码，具体权重以论文实验节为准。</div>
+  </div>
+  <ul class="dots">
+    <li>整个训练不需要逐点语义分割标注——点云是免费的监督，包围框是唯一的标注成本。</li>
+    <li>语义输出出现在评测（4D 语义占用任务）里，来自模型与语义评测协议的对接，训练主信号仍是几何与流。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="metrics">
+    <div class="metric"><div class="v">SOTA</div><div class="k">AV2 4D 语义占用<br>补全 + 预测双任务</div></div>
+    <div class="metric"><div class="v">No.1</div><div class="k">Argoverse 4D 占用预测<br>挑战赛排名</div></div>
+    <div class="metric"><div class="v">No.1</div><div class="k">LiDAR 点云预测<br>对所有基线第一</div></div>
+    <div class="metric"><div class="v">38k</div><div class="k">评测点数（场景/实例<br>平分的查询协议）</div></div>
+  </div>
+  <ul class="dots">
+    <li>与直接前驱 UnO（无监督占用 SOTA）相比，DIO 在细粒度结构上明显更完整——隐式场绕开了体素分辨率的墙。</li>
+    <li>定性图（论文 Fig.1/4）：同一模型输出的场景占用、实例占用、流场、渲染 LiDAR 四视图对齐一致，分解能力覆盖大小悬殊的各类实例。</li>
+    <li>评测协议要点：模型与基线在 t₀+Δt 各未来时刻评估；场景/实例查询点各 19,000（合计 38,000）保证公平。</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+  <h3><span class="no">5.1</span>这篇工作证明了什么</h3>
+  <ul class="dots">
+    <li>实例派与占用派可以统一：源点提示让一个隐式场同时输出场景级与实例级占用-流。</li>
+    <li>隐式表达是多分辨率利器：无限分辨率 + 按需查询，绕开 4D 体素的显存墙。</li>
+    <li>占用世界模型与点云预测任务是同一件事的两个视图：渲染即迁移。</li>
+  </ul>
+  <h3><span class="no">5.2</span>局限</h3>
+  <ul class="dots">
+    <li>纯 LiDAR 输入，没有相机语义——语义占用评测的成绩受限于几何场的语义对接。</li>
+    <li>无官方代码，复现门槛高；MLP 场的查询效率依赖工程实现。</li>
+    <li>包围框标签仍是标注成本（虽便宜），完全无标注版本未给出。</li>
+  </ul>
+  <h3><span class="no">5.3</span>后续方向</h3>
+  <ul class="dots">
+    <li>接入相机模态做语义增强（SelfOcc/UniPAD 的渲染监督可迁移到隐式场）。</li>
+    <li>实例提示与规划器闭环：规划器把关注的冲突点当源点，世界模型只回答"它未来怎样"。</li>
+    <li>与 Gaussian 显式表征对照（GaussianWorld 路线），隐式 vs 显式的效率-质量权衡值得系统消融。</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+
+/* ============ ① 隐式解码器（4 步） ============ */
+(function(){
+  const root = document.getElementById("memory-flow");
+  if(!root) return;
+  const steps = [
+    ["BEV 条件","场景编码压缩为一张 BEV 特征图", s=>{
+      el("rect",{x:26,y:34,width:98,height:40,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(75,58,"BEV feature",{class:"svg-nota",fill:"#0550ae"}, s); }],
+    ["查询点编码","3D 查询点 q 经正弦位置编码", s=>{
+      el("circle",{cx:75,cy:50,r:4,fill:"#0969da"}, s);
+      for(let i=1;i<=3;i++){ el("circle",{cx:75,cy:50,r:7*i,fill:"none",stroke:"#a5d8ff","stroke-width":1}, s); }
+      txt(75,92,"sinusoidal(q)",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["MLP 场","条件 + 编码一起进 MLP，任意点可查", s=>{
+      for(let i=0;i<3;i++){ el("rect",{x:34+i*28,y:36,width:22,height:32,rx:4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.3}, s); }
+      txt(75,88,"occupancy · flow · semantic",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["无限分辨率","查哪画哪，只在感兴趣区域密集查询", s=>{
+      for(let i=0;i<5;i++){ for(let j=0;j<5;j++){ const d=Math.hypot(i-2,j-2);
+        el("circle",{cx:35+i*20,cy:30+j*13,r:3,fill:d<1.5?"#9a6700":"#d1d9e0",opacity:d<1.5?.95:.5}, s); } }
+      txt(75,104,"中心密、外围疏",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② 实例分解（4 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("world-flow");
+  if(!root) return;
+  const steps = [
+    ["源点提示","s = 实例当前帧假定位置（如质心）", s=>{
+      el("circle",{cx:56,cy:48,r:5,fill:"#cf222e"}, s);
+      txt(56,70,"s",{class:"svg-nota-b",fill:"#a40e26"}, s);
+      txt(75,96,"来自检测器/规划器",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["查询归属","q 在该实例内 → 占用 1；其它实例 → 0", s=>{
+      el("rect",{x:22,y:30,width:50,height:40,rx:5,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      el("circle",{cx:44,cy:50,r:3,fill:"#cf222e"}, s);
+      el("rect",{x:82,y:30,width:44,height:40,rx:5,fill:"#eff2f5",stroke:"#59636e","stroke-width":1}, s);
+      txt(104,70,"其它",{class:"svg-nota",fill:"#59636e"}, s);
+      txt(47,86,"s 的实例 ✓",{class:"svg-nota",fill:"#a40e26"}, s); }],
+    ["包围框监督","分解只用便宜的框标签", s=>{
+      el("rect",{x:30,y:30,width:90,height:46,rx:5,fill:"none",stroke:"#1a7f37","stroke-width":1.6,"stroke-dasharray":"6 4"}, s);
+      el("rect",{x:48,y:40,width:36,height:26,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(75,96,"box label（低价）",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["场景/实例一体","不给 s 就是场景级，给 s 就是实例级", s=>{
+      el("rect",{x:18,y:32,width:50,height:38,rx:5,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(43,55,"场景",{class:"svg-cn",fill:"#a40e26"}, s);
+      el("rect",{x:82,y:32,width:50,height:38,rx:5,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.2}, s);
+      txt(107,55,"实例",{class:"svg-cn",fill:"#5c4400"}, s);
+      txt(75,94,"同一套权重",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ③ 外推与迁移（4 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("render-flow");
+  if(!root) return;
+  const steps = [
+    ["未来条件","场以未来时刻为条件，t₀+0.6s 起外推", s=>{
+      for(let i=0;i<4;i++){ el("rect",{x:18+i*29,y:38,width:22,height:22,rx:3,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.1}, s); }
+      el("line",{x1:40,y1:49,x2:46,y2:49,stroke:"#9a6700","stroke-width":1.6}, s);
+      el("line",{x1:69,y1:49,x2:75,y2:49,stroke:"#9a6700","stroke-width":1.6}, s);
+      txt(75,90,"占用-流随时间演化",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["射线渲染","内外参给定，沿射线在占用场取深度", s=>{
+      el("rect",{x:24,y:24,width:102,height:56,rx:5,fill:"#eff2f5",stroke:"#59636e","stroke-width":1.2}, s);
+      el("line",{x1:28,y1:74,x2:120,y2:32,stroke:"#9a6700","stroke-width":1.8}, s);
+      el("circle",{cx:98,cy:40,r:3.5,fill:"#9a6700"}, s);
+      txt(75,96,"ray marching",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["未来点云","渲染出的未来 LiDAR，可只渲染某实例", s=>{
+      const rnd=(function(){let a=13;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}})();
+      for(let i=0;i<50;i++){ el("circle",{cx:26+rnd()*98,cy:22+rnd()*60,r:1.6,fill:"#0969da",opacity:.7}, s); }
+      txt(75,98,"rendered LiDAR",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["两线评测","4D 语义占用 SOTA + 挑战赛第一", s=>{
+      el("rect",{x:22,y:30,width:106,height:40,rx:6,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.4}, s);
+      txt(75,55,"AV2 SOTA · 挑战赛 No.1",{class:"svg-nota-b",fill:"#116329"}, s);
+      txt(75,96,"点云预测同样第一",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>
