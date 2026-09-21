@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SparseWorld 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard,#world-flow .stepcard{width:127px}
+#render-flow .stepcard .lab,#world-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n,#world-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc,#world-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style></head>
+<body>
+<div class="layout">
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目录</h3>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 Range-Adaptive Perception</a>
+  <a href="#s23" class="lv2">2.3 State-Conditioned Forecasting</a>
+  <a href="#s24" class="lv2">2.4 Self-Scheduling Training</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<main class="content">
+<div class="hero" id="top">
+  <h1>SparseWorld：稀疏动态 query 驱动的 4D 占用世界模型</h1>
+  <div class="meta"><a href="https://arxiv.org/abs/2510.17482">SparseWorld: A Flexible, Adaptive, and Efficient 4D Occupancy World Model Powered by Sparse and Dynamic Queries</a> · arXiv 2510.17482 · <a href="https://github.com/MSunDYY/SparseWorld">github.com/MSunDYY/SparseWorld</a> · Occ3D-nuScenes · AAAI 2026</div>
+</div>
+
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、SparseWorld 怎么解。</div>
+
+  <p>占用世界模型大多建立在静态固定的嵌入或网格上：要么先把每帧占用编码成嵌入再解码预测（感知预测解耦，梯度断、细节丢），要么在网格特征上做"原地分类"式预测（end-to-end 通了，但网格是静态的，和真实场景的连续动态天然错位）。SparseWorld 的答案是换表征载体：概括一句话：用稀疏动态 query 替代静态网格的自适应 4D 占用世界模型，回归式预测对齐连续动态，感知/预测/规划三任务 SOTA。query 是稀疏的所以快，是动态的所以能跟着场景演化走，是可学习且被自车状态调制的所以感知范围能自适应伸缩。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>解耦范式的梯度断裂</h4>
+      <p>感知-预测解耦类方法（OccWorld 式）：先逐帧 tokenize 占用，再用未来向的解码器融合——梯度回不到感知，反复编解码还丢细粒度信息。</p>
+    </div>
+    <div class="card">
+      <h4>原地分类与连续动态错位</h4>
+      <p>网格方法在每个格子上做分类式预测——格子是静态的、离散的，物体运动却是连续的；预测质量受限于表征与世界的这种错位。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th>路线</th><th>代表工作</th><th>做法 & 麻烦</th></tr>
+    <tr><td>解耦式占用世界模型</td><td class="mono">OccWorld / OccLLaMA</td><td>占用 tokenize + 自回归预测；感知预测分离，端到端优化受阻。</td></tr>
+    <tr><td>网格特征端到端</td><td class="mono">PreWorld 等</td><td>感知特征直接做逐格预测，梯度通了；但静态网格 + 原地分类，FPS 只有 1.0，mIoU 9.06。</td></tr>
+    <tr><td>稠密 query 感知</td><td class="mono">DETR3D / StreamPETR 系</td><td>证明了 query 载体的效率；但没人把动态 query 用于 4D 占用世界模型。</td></tr>
+  </table>
+
+  <h3><span class="no">1.3</span>SparseWorld 是怎么解决的</h3>
+  <p>三个模块各对应一个卖点。Range-Adaptive Perception：一组可学习 query 被自车状态（速度、加速度等）调制，再与多视角时序特征做时空关联——感知范围随驾驶状态自适应伸缩（高速看得远、低速看得细），这是"灵活"。State-Conditioned Forecasting：未来预测不做逐格分类，而是让动态 query 直接回归未来状态，query 的连续运动与 4D 场景的连续性对齐，这是"自适应"。Temporal-Aware Self-Scheduling：按时间感知地调度各监督源的训练节奏，收敛平稳、训练省，这是"高效"。规划侧接 AD-MLP 头输出轨迹，全链路一套 query 表征。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li><b>又快又准</b>：4D 预测 mIoU 13.20（第二名 9.55），FPS 8.0（对手 1.0）——不是拿算力换精度，是拿表征换的。</li>
+    <li><b>长视野不塌</b>：预测 3s 时 mIoU 仍 11.51（PreWorld 7.15），动态 query 的连续回归在长视野优势放大。</li>
+    <li><b>规划同样能打</b>：带自车状态的 SparseWorld† L2 平均 0.27m、碰撞率 0.29%，全面好于 UniAD 与 PreWorld†。</li>
+    <li>效果预告见 §4：三张表的完整对比。</li>
+  </ul>
+</section>
+
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（模块级）。官方仓库含 configs/sparseworld 与 AD-MLP 规划头，具体维度以论文叙述为准。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+        <marker id="aho" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#9a6700"/></marker>
+      </defs>
+
+      <!-- 上排：感知 -->
+      <text x="20" y="42" class="svg-cn" style="font-weight:700" fill="#1a7f37">① Range-Adaptive Perception（灵活）</text>
+      <rect x="20" y="80" width="170" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="105" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">多视角图像序列</text>
+      <text x="105" y="134" text-anchor="middle" class="svg-nota">当前 + 历史帧</text>
+
+      <line x1="190" y1="119" x2="212" y2="119" class="arrow"/>
+
+      <rect x="214" y="80" width="250" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="339" y="104" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">可学习 query 集</text>
+      <text x="339" y="126" text-anchor="middle" class="svg-nota">ego 状态调制（速度/加速度）</text>
+      <text x="339" y="148" text-anchor="middle" class="svg-nota">感知范围自适应伸缩</text>
+
+      <line x1="464" y1="119" x2="486" y2="119" class="arrow"/>
+
+      <rect x="488" y="80" width="230" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="603" y="104" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">时空关联聚合</text>
+      <text x="603" y="126" text-anchor="middle" class="svg-nota">query ↔ 多视角时序特征</text>
+      <text x="603" y="148" text-anchor="middle" class="svg-nota">→ 动态 query 状态</text>
+
+      <line x1="718" y1="119" x2="740" y2="119" class="arrow"/>
+
+      <!-- 中部：预测 -->
+      <rect x="742" y="80" width="320" height="120" rx="10" fill="#fff8c5" stroke="#9a6700" stroke-width="1.8"/>
+      <text x="902" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">State-Conditioned Forecasting（自适应）</text>
+      <text x="902" y="132" text-anchor="middle" class="svg-cn" fill="#6e4f00">动态 query 回归未来状态</text>
+      <text x="902" y="156" text-anchor="middle" class="svg-nota">替代逐格原地分类</text>
+      <text x="902" y="182" text-anchor="middle" class="svg-nota">条件：自车状态 + 时序演化</text>
+
+      <!-- 输出 -->
+      <polyline points="870,200 700,246" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+      <polyline points="934,200 1050,246" fill="none" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <rect x="540" y="250" width="200" height="64" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="640" y="276" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">未来占用（1s/2s/3s）</text>
+      <text x="640" y="298" text-anchor="middle" class="svg-nota">mIoU 13.20 · FPS 8.0</text>
+      <rect x="940" y="250" width="200" height="64" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1040" y="276" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">规划轨迹（AD-MLP）</text>
+      <text x="1040" y="298" text-anchor="middle" class="svg-nota">L2 0.27m† · 碰撞 0.29%†</text>
+
+      <!-- 训练策略 -->
+      <rect x="1120" y="84" width="256" height="96" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="1248" y="112" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Temporal-Aware Self-Scheduling</text>
+      <text x="1248" y="136" text-anchor="middle" class="svg-nota">按时间感知调度各监督源（高效）</text>
+      <text x="1248" y="160" text-anchor="middle" class="svg-nota">训练平稳 · 4×A100 batch 8</text>
+      <line x1="1120" y1="132" x2="1068" y2="140" stroke="#9a6700" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#aho)"/>
+
+      <!-- 监督 -->
+      <polyline points="105,158 105,470 830,470 830,318" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
+      <text x="480" y="494" text-anchor="middle" class="svg-cn" fill="#a40e26">GT：Occ3D-nuScenes 语义占用（感知/预测）+ 规划轨迹；4×A100、batch 8、训练与推理同架构</text>
+    </svg>
+    <div class="figcap">图 2-1 · SparseWorld 总流程：动态 query 感知 → 回归式 4D 预测 → 占用输出与 AD-MLP 规划；自调度训练策略贯穿。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>感知</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>预测/训练策略</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw dash"></span>监督流</span>
+    </div>
+  </div>
+  <ul class="dots">
+    <li><b>感知链路</b>：多视角图像序列 → 可学习 query 被 ego 状态调制后，与图像时序特征做时空关联，得到携带场景状态的动态 query——感知输出不是网格，是一组会动的锚。</li>
+    <li><b>预测链路</b>：State-Conditioned Forecasting 让 query 直接回归未来时刻的状态，1s/2s/3s 逐视野输出占用；分类式"这个格子是什么"变成回归式"这个 query 到哪了"。</li>
+    <li><b>规划链路</b>：动态 query 状态接 AD-MLP 头出轨迹，感知、预测、规划共享同一套表征——端到端梯度无阻。</li>
+    <li><b>训练链路</b>：Temporal-Aware Self-Scheduling 按时间维度调度监督源的介入节奏，多任务训练平稳收敛。</li>
+  </ul>
+</section>
+
+<section id="s22">
+  <h2><span class="no">§2.2</span>Range-Adaptive Perception</h2>
+  <div class="flowrow" id="memory-flow"></div>
+  <ul class="dots">
+    <li><b>ego 状态调制是"灵活"的来源</b>：query 集合不是固定的感知预算——自车开得快，query 关注的感知范围向外扩；低速拥堵时收缩加密近场。状态条件让一套 query 适配不同驾驶情境。</li>
+    <li><b>时空关联</b>：query 与多视角、多帧特征做关联聚合，历史信息在 query 载体上延续（不回炉编解码），细粒度信息保得住。</li>
+  </ul>
+</section>
+
+<section id="s23">
+  <h2><span class="no">§2.3</span>State-Conditioned Forecasting</h2>
+  <div class="flowrow" id="world-flow"></div>
+  <ul class="dots">
+    <li><b>回归替代原地分类</b>：网格法在固定格子上做分类，物体连续运动和离散格子天然错位；动态 query 直接回归未来位置/状态——表征跟着世界动，这是"自适应"的来源。</li>
+    <li><b>长视野收益放大</b>：预测 1s 时 mIoU 领先 2.66，3s 时领先 4.36（vs PreWorld+预训练）——视野越长，连续回归的优势越大。</li>
+    <li><b>条件即动作接口</b>：自车状态作为预测条件，天然支持"换状态看不同未来"的可控生成。</li>
+  </ul>
+</section>
+
+<section id="s24">
+  <h2><span class="no">§2.4</span>Self-Scheduling Training</h2>
+  <div class="flowrow" id="render-flow"></div>
+  <ul class="dots">
+    <li><b>按时间感知调度</b>：感知、预测、规划多个监督源不是同时全开，而是按时间维度的调度策略渐进介入——避免多任务互相拖拽，训练平稳。</li>
+    <li><b>效率是结构性的</b>：稀疏 query 让推理 FPS 达 8.0（基线 1.0）——8 倍速度不是剪枝剪出来的，是表征载体本身便宜。</li>
+    <li><b>训练足迹</b>：4×A100、总 batch 8，训练与推理同架构（无 teacher/多阶段）。</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="formula">
+    <div class="fx">L = L<sub>perc</sub>(占用感知) + L<sub>fcst</sub>(未来 query 回归) + L<sub>plan</sub>(轨迹)</div>
+    <div class="note">三路监督分别落在感知占用、未来时刻的 query 回归目标与规划轨迹上，由 Temporal-Aware Self-Scheduling 调度介入节奏；GT 来自 Occ3D-nuScenes 语义占用与轨迹。具体权重以论文实验节与官方 config 为准。</div>
+  </div>
+  <ul class="dots">
+    <li>监督需要 3D 占用标注（Aux. Sup. = 3D Occ）——与 GaussianWorld 类似的监督设定，非免标注路线。</li>
+    <li>预测损失作用在 query 的回归目标上而不是逐格分类——损失形式与表征载体一致，这是它能拿到长视野收益的结构原因。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="metrics">
+    <div class="metric"><div class="v">13.20 <small>mIoU</small></div><div class="k">4D 预测平均（1s/2s/3s）<br>第二名 9.55（Table 1）</div></div>
+    <div class="metric"><div class="v">8.0 <small>FPS</small></div><div class="k">推理速度<br>基线 1.0（Table 1）</div></div>
+    <div class="metric"><div class="v">0.27 <small>m L2†</small></div><div class="k">规划平均误差<br>UniAD 1.03（Table 2）</div></div>
+    <div class="metric"><div class="v">0.29 <small>% 碰撞†</small></div><div class="k">规划碰撞率<br>UniAD 0.31（Table 2）</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>4D 占用预测（Occ3D-nuScenes，Table 1）</h3>
+  <table>
+    <tr><th>方法</th><th>辅助监督</th><th>mIoU 1s/2s/3s</th><th>mIoU 均值</th><th>IoU 均值</th><th>FPS</th></tr>
+    <tr><td>OccWorld-D</td><td class="mono">3D Occ</td><td class="mono">11.55/8.66/6.98</td><td class="mono">8.66</td><td class="mono">16.53</td><td class="mono">—</td></tr>
+    <tr><td>OccLLaMA-F</td><td class="mono">3D Occ</td><td class="mono">10.34/8.66/6.98</td><td class="mono">8.66</td><td class="mono">22.99</td><td class="mono">—</td></tr>
+    <tr><td>PreWorld</td><td class="mono">3D Occ</td><td class="mono">11.69/8.72/6.77</td><td class="mono">9.06</td><td class="mono">20.88</td><td class="mono">1.0</td></tr>
+    <tr><td>PreWorld+预训练</td><td class="mono">2D&3D Occ</td><td class="mono">12.27/9.24/7.15</td><td class="mono">9.55</td><td class="mono">21.62</td><td class="mono">1.0</td></tr>
+    <tr><td>SparseWorld</td><td class="mono">3D Occ</td><td class="mono">14.93/13.15/11.51</td><td class="mono up">13.20</td><td class="mono up">22.03</td><td class="mono up">8.0</td></tr>
+  </table>
+
+  <h3><span class="no">4.2</span>运动规划（Occ3D-nuScenes，Table 2）</h3>
+  <table>
+    <tr><th>方法</th><th>L2 1s/2s/3s</th><th>L2 均值</th><th>碰撞 1s/3s</th><th>碰撞均值</th></tr>
+    <tr><td>UniAD</td><td class="mono">0.48/0.96/1.65</td><td class="mono">1.03</td><td class="mono">0.05/0.71</td><td class="mono">0.31</td></tr>
+    <tr><td>OccWorld-D</td><td class="mono">0.52/1.27/2.41</td><td class="mono">1.40</td><td class="mono">0.12/2.08</td><td class="mono">0.87</td></tr>
+    <tr><td>PreWorld†</td><td class="mono">0.22/0.30/0.40</td><td class="mono">0.31</td><td class="mono">0.21/0.71</td><td class="mono">0.53</td></tr>
+    <tr><td>SparseWorld†</td><td class="mono">0.19/0.25/0.36</td><td class="mono up">0.27</td><td class="mono">0.11/0.46</td><td class="mono up">0.29</td></tr>
+  </table>
+  <ul class="dots">
+    <li>不用 2D 预训练辅助（对手用了）仍然 mIoU 高出 38%、速度快 8 倍——纯架构收益。</li>
+    <li>规划侧不带 ego 状态时 L2 0.97（与 UniAD 相当），带状态后 0.27——自车状态与 query 载体的配合是规划增益的来源。</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+  <h3><span class="no">5.1</span>这篇工作证明了什么</h3>
+  <ul class="dots">
+    <li>query 载体可以从检测任务搬进 4D 占用世界模型，且三任务（感知/预测/规划）一把抓。</li>
+    <li>回归式预测与连续动态的对齐，比分类式原地预测更适合 4D 世界，视野越长越明显。</li>
+    <li>表征选对了，效率与精度可以同时拿（8 FPS + SOTA）。</li>
+  </ul>
+  <h3><span class="no">5.2</span>局限</h3>
+  <ul class="dots">
+    <li>依赖 3D 占用标注训练（非自监督），规模化受标注成本约束。</li>
+    <li>动态 query 的数量与初始化如何影响远场感知，论文消融有限。</li>
+    <li>官方代码仓在论文发表时仍在补充中，复现需盯仓库更新。</li>
+  </ul>
+  <h3><span class="no">5.3</span>后续方向</h3>
+  <ul class="dots">
+    <li>把 ego 状态条件扩展为完整动作条件（速度/转角/轨迹），对齐 Drive-OccWorld 的可控生成接口。</li>
+    <li>query 载体 + 自监督监督源（渲染式预训练）组合——表征便宜与监督便宜叠加。</li>
+    <li>与 Gaussian 载体（GaussianWorld）、隐式场（DIO）做系统性同台对比——三种稀疏表征的家族内战。</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+
+/* ============ ① 自适应感知（4 步） ============ */
+(function(){
+  const root = document.getElementById("memory-flow");
+  if(!root) return;
+  const steps = [
+    ["可学习 query","一组稀疏锚点，感知预算不绑定网格", s=>{
+      const rnd=(function(){let a=17;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}})();
+      for(let i=0;i<36;i++){ el("circle",{cx:22+rnd()*106,cy:22+rnd()*60,r:2.2,fill:"#0969da",opacity:.6}, s); }
+      txt(75,98,"sparse queries",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["ego 状态调制","速度/加速度进来，感知范围伸缩", s=>{
+      el("rect",{x:22,y:30,width:106,height:44,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.3}, s);
+      el("line",{x1:30,y1:52,x2:120,y2:52,stroke:"#0550ae","stroke-width":1.4}, s);
+      el("path",{d:"M120,48 L128,52 L120,56 z",fill:"#0550ae"}, s);
+      txt(75,92,"高速 → 范围外扩",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["时空关联","query 与多视角时序特征聚合", s=>{
+      for(let i=0;i<3;i++){ el("rect",{x:16+i*18,y:34,width:14,height:34,rx:3,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s); }
+      for(let i=0;i<4;i++){ el("line",{x1:70,y1:50,x2:94,y2:34+i*12,stroke:"#a5d8ff","stroke-width":1}, s); }
+      el("circle",{cx:104,cy:50,r:6,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.6}, s);
+      txt(75,94,"多帧 × 多目 → query",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["动态 query 状态","携带场景当前状态的锚点集合", s=>{
+      for(let i=0;i<7;i++){ const x=26+i*16; el("circle",{cx:x,cy:50+Math.sin(i)*8,r:3.5,fill:"#0969da"}, s); }
+      txt(75,92,"会动的状态载体",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② 回归式预测（4 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("world-flow");
+  if(!root) return;
+  const steps = [
+    ["状态条件","自车状态作为预测条件注入", s=>{
+      el("rect",{x:22,y:34,width:106,height:30,rx:5,fill:"#eff2f5",stroke:"#59636e","stroke-width":1}, s);
+      txt(75,53,"ego state 条件",{class:"svg-nota",fill:"#3f444d"}, s);
+      txt(75,88,"换状态看不同未来",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["query 回归","锚点直接回归未来位置/状态", s=>{
+      el("circle",{cx:36,cy:64,r:4,fill:"#9a6700"}, s);
+      el("line",{x1:40,y1:62,x2:100,y2:44,stroke:"#9a6700","stroke-width":1.8}, s);
+      el("path",{d:"M100,39 L110,43 L101,49 z",fill:"#9a6700"}, s);
+      el("circle",{cx:104,cy:44,r:4,fill:"#cf222e"}, s);
+      txt(75,92,"分类 → 回归",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["连续对齐","query 运动与 4D 连续性对齐", s=>{
+      el("path",{d:"M20,64 Q60,28 130,44",fill:"none",stroke:"#0969da","stroke-width":1.8}, s);
+      [30,58,86,114].forEach(x=>{ el("circle",{cx:x,cy:64-(x-20)*0.36-((x-60)*(x-60))/2600*30,r:3,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1}, s); });
+      txt(75,96,"无格子错位",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["长视野优势","3s 时 mIoU 仍 11.51（对手 ≤7.15）", s=>{
+      el("rect",{x:22,y:32,width:106,height:42,rx:6,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.4}, s);
+      txt(75,52,"3s: 11.51 vs 7.15",{class:"svg-nota-b",fill:"#116329"}, s);
+      txt(75,66,"视野越长优势越大",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ③ 自调度训练（4 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("render-flow");
+  if(!root) return;
+  const steps = [
+    ["多监督源","感知 / 预测 / 规划三路损失", s=>{
+      ["感知","预测","规划"].forEach((k,i)=>{ el("rect",{x:14+i*42,y:36,width:36,height:26,rx:4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.1}, s);
+        txt(32+i*42,53,k,{class:"svg-nota",fill:"#5c4400"}, s); });
+      txt(75,90,"L = L_perc + L_fcst + L_plan",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["时间感知调度","按时间维度渐进介入，不互拽", s=>{
+      for(let i=0;i<3;i++){ el("path",{d:"M18,"+(44+i*14)+" Q70,"+(26+i*14)+" 132,"+(40+i*12),fill:"none",stroke:["#0969da","#9a6700","#1a7f37"][i],"stroke-width":1.6,opacity:.55+i*0.2}, s); }
+      txt(75,96,"分阶段开启",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["平稳收敛","多任务不再互相拖拽", s=>{
+      el("path",{d:"M20,70 Q50,68 132,36",fill:"none",stroke:"#1a7f37","stroke-width":2}, s);
+      el("path",{d:"M20,74 Q60,80 132,66",fill:"none",stroke:"#cf222e","stroke-width":1.4,"stroke-dasharray":"4 3"}, s);
+      txt(75,96,"绿：调度 / 红：全开",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["训练足迹","4×A100 · batch 8 · 单阶段", s=>{
+      el("rect",{x:22,y:34,width:106,height:38,rx:6,fill:"#eff2f5",stroke:"#59636e","stroke-width":1.2}, s);
+      txt(75,58,"4×A100 · b8",{class:"svg-nota-b",fill:"#3f444d"}, s);
+      txt(75,96,"无 teacher 多阶段",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>

@@ -52,5 +52,13 @@
 
 ## TODO / 已知事项
 
-- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；当前仅 4D重建/UniPAD）
+- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；当前 4D重建 域 7 篇：UniPAD/MIM4D/GaussianWorld/Drive-OccWorld/DIO/CascadeOcc/SparseWorld）
 - [ ] 可选：自定义域名
+
+## 2026-09 批次备注（paper-explainer 批量产出）
+
+- 6 篇解读由主会话直接生成（2026-09-21）：MIM4D/GaussianWorld（代码核对版）、Drive-OccWorld/DIO/CascadeOcc（纯论文模式，无代码或仓库仅 README）、SparseWorld（论文为主）
+- 材料存 ~/work/e2e/explainers-202609/（各论文 PDF/txt + 代码仓），规格书 SPEC.md 同目录
+- 教训：后台 agent 批量生成会被 600s 流看门狗反复掐死（本环境网络流不稳），一夜零产出；改为主会话亲自分段生成后单日完成 6 篇。再跑批量时直接用主会话 + 分段落盘（Write 首段 → bash heredoc 追加 ≤12KB/段）
+- push 直连不稳时走代理：git -c http.proxy=http://127.0.0.1:7897 push；Pages 构建状态轮询 gh api repos/Mrwvisa/Mrwvisa.github.io/pages --jq .status（注意 built 可能是上一次构建的旧状态，push 后 sleep 20 再轮询）
+- 每篇验证流程：chrome-devtools 打开本地文件 → console 零报错（file:// 的 unique origin 报错是 MCP 工具噪声可忽略）→ flowrow 卡片数/无溢出 → 无【】占位 → 目录顶部「← 返回」存在 → push 后 curl 线上 200
