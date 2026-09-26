@@ -83,12 +83,12 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
  * 加一篇论文：papers/ 里放入解读 HTML，然后在 PAPERS 加一个条目；
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
-/* 三条路线：渲染式预训练 / 占用世界模型 / Gaussian 世界模型
-   打开页面默认落在 PAPERS[0] 的路线；star: true 的论文默认带星标 */
+/* domain = 领域（左侧菜单）；route = 技术路线（右侧分组，替换原年份分组）；
+   路线内按年份从近到远排；star: true 的论文默认带星标 */
 const PAPERS = [
   // ── 路线一：渲染式预训练（掩码 + 神经渲染当解码器，训 backbone）──
   {
-    domain: "渲染式预训练",
+    domain: "4D重建", route: "渲染式预训练",
     title: "MIM4D",
     full: "MIM4D: Masked Modeling with Multi-View Video for Autonomous Driving Representation Learning",
     venue: "IJCV 2025",
@@ -98,7 +98,7 @@ const PAPERS = [
     star: true,
   },
   {
-    domain: "渲染式预训练",
+    domain: "4D重建", route: "渲染式预训练",
     title: "UniPAD",
     full: "UniPAD: A Universal Pre-training Paradigm for Autonomous Driving",
     venue: "CVPR 2024",
@@ -109,7 +109,7 @@ const PAPERS = [
   },
   // ── 路线二：占用世界模型（显式/隐式占用，预测未来，接规划）──
   {
-    domain: "占用世界模型",
+    domain: "4D重建", route: "占用世界模型",
     title: "SparseWorld",
     full: "SparseWorld: A Flexible, Adaptive, and Efficient 4D Occupancy World Model Powered by Sparse and Dynamic Queries",
     venue: "AAAI 2026",
@@ -118,7 +118,7 @@ const PAPERS = [
     desc: "用稀疏动态 query 替代静态网格的自适应 4D 占用世界模型，回归式预测对齐连续动态，感知/预测/规划三任务 SOTA",
   },
   {
-    domain: "占用世界模型",
+    domain: "4D重建", route: "占用世界模型",
     title: "CascadeOcc",
     full: "CascadeOcc: Rethinking 3D Occupancy World Models with Cascaded VQ Representations",
     venue: "IEEE SPL 2026",
@@ -127,7 +127,7 @@ const PAPERS = [
     desc: "用粗到细的级联 VQ 表征替代外部知识，让自回归占用世界模型的表征力自己说话",
   },
   {
-    domain: "占用世界模型",
+    domain: "4D重建", route: "占用世界模型",
     title: "Drive-OccWorld",
     full: "Driving in the Occupancy World: Vision-Centric 4D Occupancy Forecasting and Planning via World Models",
     venue: "AAAI 2025",
@@ -136,7 +136,7 @@ const PAPERS = [
     desc: "把视觉中心的 4D 占用预测世界模型适配成端到端规划器，用占用代价函数在预演的未来里选轨迹",
   },
   {
-    domain: "占用世界模型",
+    domain: "4D重建", route: "占用世界模型",
     title: "DIO",
     full: "DIO: Decomposable Implicit Occupancy-Flow World Model for Autonomous Driving",
     venue: "arXiv 2024",
@@ -146,7 +146,7 @@ const PAPERS = [
   },
   // ── 路线三：Gaussian 世界模型（参数化基元当场景状态）──
   {
-    domain: "Gaussian 世界模型",
+    domain: "4D重建", route: "Gaussian 世界模型",
     title: "GaussianWorld",
     full: "Gaussian World Model for Streaming 3D Occupancy Prediction",
     venue: "CVPR 2025",
@@ -155,7 +155,7 @@ const PAPERS = [
     desc: "把 3D 占用预测重构为以当前观测为条件的 4D 占用预测，用 Gaussian 世界模型按静态对齐/动态运动/新场景补全三个因子演化场景流",
     star: true,
   },
-  // 新条目：domain 填上面三条路线之一（或新路线名，自动出现在菜单）；star: true 默认星标
+  // 新条目：domain 填领域（左侧菜单），route 填上面三条路线或新路线名（右侧分组）；star: true 默认星标
 ];
 
 /* ---------- 以下为渲染代码，无需改动 ---------- */
@@ -178,12 +178,12 @@ function selectDomain(d) {
 
 function renderGroups() {
   const list = PAPERS.filter(p => currentDomain === "全部" || p.domain === currentDomain);
-  const years = [...new Set(list.map(p => p.year))].sort((a, b) => b - a);
-  document.getElementById("groups").innerHTML = years.map(y => {
-    const ps = list.filter(p => p.year === y);
+  const routes = [...new Set(list.map(p => p.route))];
+  document.getElementById("groups").innerHTML = routes.map(rt => {
+    const ps = list.filter(p => p.route === rt).sort((a, b) => b.year - a.year);
     return `
       <section class="year">
-        <h2 class="year-title">${y}<span class="year-count">${ps.length} 篇</span></h2>
+        <h2 class="year-title">${rt}<span class="year-count">${ps.length} 篇</span></h2>
         <div class="card-grid">${ps.map(cardHTML).join("")}</div>
       </section>`;
   }).join("") || `<p style="color:var(--ink3);margin-top:30px">该领域还没有解读。</p>`;
