@@ -13,22 +13,27 @@
 
 ```
 .layout
-├── .toc        左侧领域菜单（128px sticky 侧栏，layout 左留白 60px ≈ 原居中版的一半；单级菜单比论文页 178px 窄；窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
+├── .toc        左侧技术路线菜单（128px sticky 侧栏，窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
 └── .content
-    ├── .year × N    年份分组（降序）：year-title + card-grid
+    ├── .year × N    年份分组（降序，最近在上）：year-title + card-grid
     │   └── .card    卡片：简短论文名（蓝）+ venue（右，mono）+ 右上角星标圆钮 + 英文全称（2行占位）+ 一句话描述
     └── footer
 ```
 
+三条路线（2026-09 定，按监督空间/表征形态划分）：
+1. **渲染式预训练**——掩码 + 神经渲染当解码器，训 backbone：MIM4D、UniPAD
+2. **占用世界模型**——显式/隐式占用，预测未来，接规划：SparseWorld、CascadeOcc、Drive-OccWorld、DIO
+3. **Gaussian 世界模型**——参数化基元当场景状态：GaussianWorld
+
 交互：
-- 打开页面**默认选中 `PAPERS[0].domain`**（当前是 4D重建）；想换默认就调 PAPERS 数组顺序
-- 点卡片整卡 → 跳转论文解读页；星标 `★` 点击变黄（`--star:#e3b341`），状态存 localStorage（key `stars`，值为 file 路径数组）
-- 点左侧领域 → 过滤右侧（`selectDomain()`）
+- 打开页面**默认选中 `PAPERS[0].domain`**（当前是 渲染式预训练）；想换默认就调 PAPERS 数组顺序
+- 点卡片整卡 → 跳转论文解读页；星标 `★`：数据里 `star:true` 的默认变黄（`--star:#e3b341`），点击切换并存 localStorage 覆盖值（key `starOv`，`{file: bool}`）
+- 点左侧路线 → 过滤右侧（`selectDomain()`）
 - 无页头无个人信息（用户明确要求）：只有菜单 + 卡片 + 一行页脚
 
 ## 数据模型（index.html 顶部 script）
 
-- `PAPERS` 数组，每条字段：`domain`（领域，新值自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（解读页相对路径，组织为 `<domain-en>/<year>-<slug>.html`，如 `4d-reconstruct/2024-unipad.html`）、`desc`（一句话，可选）
+- `PAPERS` 数组，每条字段：`domain`（路线名，上面三条之一或新路线，自动出现在左侧菜单）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等）、`year`（发表年份，分组依据）、`file`（解读页相对路径，组织为 `<domain-en>/<year>-<slug>.html`，如 `4d-reconstruct/2024-unipad.html`）、`desc`（一句话，可选）、`star`（true = 默认星标，可选）
 
 ## 加一篇新论文解读的流程
 

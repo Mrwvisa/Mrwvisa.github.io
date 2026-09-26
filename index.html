@@ -83,10 +83,33 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
  * 加一篇论文：papers/ 里放入解读 HTML，然后在 PAPERS 加一个条目；
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
-/* 打开页面默认落在 PAPERS[0] 的领域；想换默认就调 PAPERS 顺序 */
+/* 三条路线：渲染式预训练 / 占用世界模型 / Gaussian 世界模型
+   打开页面默认落在 PAPERS[0] 的路线；star: true 的论文默认带星标 */
 const PAPERS = [
+  // ── 路线一：渲染式预训练（掩码 + 神经渲染当解码器，训 backbone）──
   {
-    domain: "4D重建",
+    domain: "渲染式预训练",
+    title: "MIM4D",
+    full: "MIM4D: Masked Modeling with Multi-View Video for Autonomous Driving Representation Learning",
+    venue: "IJCV 2025",
+    year: 2025,
+    file: "4d-reconstruct/2025-mim4d.html",
+    desc: "在多视角视频上做空间+时间双重掩码重建的预训练范式，用 3D 渲染补几何、用时序重建补动态场景流",
+    star: true,
+  },
+  {
+    domain: "渲染式预训练",
+    title: "UniPAD",
+    full: "UniPAD: A Universal Pre-training Paradigm for Autonomous Driving",
+    venue: "CVPR 2024",
+    year: 2024,
+    file: "4d-reconstruct/2024-unipad.html",
+    desc: "用掩码重建做 3D 预训练的统一范式，检测、分割、占用共享一条预训练链路",
+    star: true,
+  },
+  // ── 路线二：占用世界模型（显式/隐式占用，预测未来，接规划）──
+  {
+    domain: "占用世界模型",
     title: "SparseWorld",
     full: "SparseWorld: A Flexible, Adaptive, and Efficient 4D Occupancy World Model Powered by Sparse and Dynamic Queries",
     venue: "AAAI 2026",
@@ -95,7 +118,7 @@ const PAPERS = [
     desc: "用稀疏动态 query 替代静态网格的自适应 4D 占用世界模型，回归式预测对齐连续动态，感知/预测/规划三任务 SOTA",
   },
   {
-    domain: "4D重建",
+    domain: "占用世界模型",
     title: "CascadeOcc",
     full: "CascadeOcc: Rethinking 3D Occupancy World Models with Cascaded VQ Representations",
     venue: "IEEE SPL 2026",
@@ -104,16 +127,7 @@ const PAPERS = [
     desc: "用粗到细的级联 VQ 表征替代外部知识，让自回归占用世界模型的表征力自己说话",
   },
   {
-    domain: "4D重建",
-    title: "DIO",
-    full: "DIO: Decomposable Implicit Occupancy-Flow World Model for Autonomous Driving",
-    venue: "arXiv 2024",
-    year: 2024,
-    file: "4d-reconstruct/2024-dio.html",
-    desc: "从稀疏 LiDAR 学隐式占用-流场并按实例分解的自监督世界模型，可补全当前场景、外推未来、迁移到点云预测",
-  },
-  {
-    domain: "4D重建",
+    domain: "占用世界模型",
     title: "Drive-OccWorld",
     full: "Driving in the Occupancy World: Vision-Centric 4D Occupancy Forecasting and Planning via World Models",
     venue: "AAAI 2025",
@@ -122,45 +136,33 @@ const PAPERS = [
     desc: "把视觉中心的 4D 占用预测世界模型适配成端到端规划器，用占用代价函数在预演的未来里选轨迹",
   },
   {
-    domain: "4D重建",
+    domain: "占用世界模型",
+    title: "DIO",
+    full: "DIO: Decomposable Implicit Occupancy-Flow World Model for Autonomous Driving",
+    venue: "arXiv 2024",
+    year: 2024,
+    file: "4d-reconstruct/2024-dio.html",
+    desc: "从稀疏 LiDAR 学隐式占用-流场并按实例分解的自监督世界模型，可补全当前场景、外推未来、迁移到点云预测",
+  },
+  // ── 路线三：Gaussian 世界模型（参数化基元当场景状态）──
+  {
+    domain: "Gaussian 世界模型",
     title: "GaussianWorld",
     full: "Gaussian World Model for Streaming 3D Occupancy Prediction",
     venue: "CVPR 2025",
     year: 2025,
     file: "4d-reconstruct/2025-gaussianworld.html",
     desc: "把 3D 占用预测重构为以当前观测为条件的 4D 占用预测，用 Gaussian 世界模型按静态对齐/动态运动/新场景补全三个因子演化场景流",
+    star: true,
   },
-  {
-    domain: "4D重建",
-    title: "MIM4D",
-    full: "MIM4D: Masked Modeling with Multi-View Video for Autonomous Driving Representation Learning",
-    venue: "IJCV 2025",
-    year: 2025,
-    file: "4d-reconstruct/2025-mim4d.html",
-    desc: "在多视角视频上做空间+时间双重掩码重建的预训练范式，用 3D 渲染补几何、用时序重建补动态场景流",
-  },
-  {
-    domain: "4D重建",
-    title: "UniPAD",
-    full: "UniPAD: A Universal Pre-training Paradigm for Autonomous Driving",
-    venue: "CVPR 2024",
-    year: 2024,
-    file: "4d-reconstruct/2024-unipad.html",
-    desc: "用掩码重建做 3D 预训练的统一范式，检测、分割、占用共享一条预训练链路",
-  },
-  // 新条目示例：HTML 放 4d-reconstruct/2024-omnire.html，加一条即出现在左侧菜单
-  // { domain: "4D重建", title: "OmniRe", full: "OmniRe: Omni 3D Scene Reconstruction ...",
-  //   venue: "CVPR 2024", year: 2024, file: "4d-reconstruct/2024-omnire.html",
-  //   desc: "..." },
+  // 新条目：domain 填上面三条路线之一（或新路线名，自动出现在菜单）；star: true 默认星标
 ];
 
 /* ---------- 以下为渲染代码，无需改动 ---------- */
 let currentDomain = PAPERS[0]?.domain ?? "全部";
-const starred = new Set(JSON.parse(localStorage.getItem("stars") || "[]"));
-
-function saveStars() {
-  localStorage.setItem("stars", JSON.stringify([...starred]));
-}
+// 星标：数据里 star:true 为默认；用户点击后存覆盖值（key starOv，{file: bool}）
+const starOv = JSON.parse(localStorage.getItem("starOv") || "{}");
+const isStarred = p => starOv[p.file] !== undefined ? starOv[p.file] : !!p.star;
 
 function renderToc() {
   const domains = [...new Set(PAPERS.map(p => p.domain))];
@@ -188,7 +190,7 @@ function renderGroups() {
 }
 
 function cardHTML(p) {
-  const on = starred.has(p.file) ? "on" : "";
+  const on = isStarred(p) ? "on" : "";
   return `
     <div class="card" onclick="location.href='${p.file}'">
       <button class="star ${on}" title="星标"
@@ -204,9 +206,11 @@ function cardHTML(p) {
 
 function toggleStar(e, file) {
   e.stopPropagation();
-  starred.has(file) ? starred.delete(file) : starred.add(file);
-  saveStars();
-  e.currentTarget.classList.toggle("on", starred.has(file));
+  const p = PAPERS.find(x => x.file === file);
+  const now = !isStarred(p);
+  starOv[file] = now;
+  localStorage.setItem("starOv", JSON.stringify(starOv));
+  e.currentTarget.classList.toggle("on", now);
 }
 
 renderToc();
