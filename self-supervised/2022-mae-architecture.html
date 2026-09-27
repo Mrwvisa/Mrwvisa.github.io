@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAE ViT-B/16 结构图</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #F5F7F9; --surface: #FFFFFF; --ink: #1C2530; --muted: #5D6B7A;
+    --line: #D9DFE7; --code-bg: #EDF1F5;
+    --enc: #364FC7; --enc-soft: #EDF0FC; --dec: #0B7285; --dec-soft: #E6F4F6;
+    --mask: #97A1AD;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14181F; --surface: #1B212B; --ink: #E9EEF4; --muted: #9AA7B5;
+      --line: #2C3644; --code-bg: #20262F;
+      --enc: #748FFC; --enc-soft: #1C2334; --dec: #56C2D6; --dec-soft: #10262C;
+      --mask: #67727F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14181F; --surface: #1B212B; --ink: #E9EEF4; --muted: #9AA7B5;
+    --line: #2C3644; --code-bg: #20262F;
+    --enc: #748FFC; --enc-soft: #1C2334; --dec: #56C2D6; --dec-soft: #10262C;
+    --mask: #67727F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.65;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 40px 24px 56px; }
+  .mono, code { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: .2px; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; padding: 3px 10px;
+    border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+    background: var(--surface); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  figure { margin: 0 0 34px; }
+  figcaption { color: var(--muted); font-size: 12.5px; margin-top: 10px; max-width: 960px; }
+  figcaption .no { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--ink); margin-right: 6px; }
+  svg { max-width: 100%; height: auto; display: block; }
+  .fig-frame { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 16px 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin: 0 0 34px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 18px 18px 10px; }
+  .card h3 { margin: 0 0 2px; font-size: 14.5px; }
+  .card .dim { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  h2 { font-size: 17px; margin: 0 0 14px; }
+  .tablewrap { overflow-x: auto; margin: 0 0 34px; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); }
+  th { text-align: left; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.mono { font-family: "IBM Plex Mono", monospace; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td .fn { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+  .bp { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 20px 22px; }
+  .bp ol { margin: 0; padding-left: 20px; }
+  .bp li { margin: 6px 0; }
+  .bp code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="2022-mae.html" style="display:inline-block;margin-bottom:18px;font-size:13.5px;text-decoration:none;color:var(--enc);font-weight:600">&#8592; 返回 MAE 解读</a>
+
+  <h1>MAE ViT-B/16 结构图</h1>
+  <p class="sub">MaskedAutoencoderViT 前向数据流 —— 与 <span class="mono">models_mae.py</span> 逐段对应，张量形状取自当前调试会话（batch N=8）。</p>
+  <div class="chips">
+    <span class="chip">model <b>mae_vit_base_patch16</b></span>
+    <span class="chip">img <b>320²</b></span>
+    <span class="chip">patch <b>16</b> → <b>400</b> tokens</span>
+    <span class="chip">mask <b>75%</b></span>
+    <span class="chip">norm_pix_loss <b>True</b></span>
+    <span class="chip">params <b>enc 86M · dec 26M</b></span>
+  </div>
+
+  <figure class="fig-frame">
+    <svg viewBox="0 0 1360 560" role="img" aria-label="MAE 前向数据流：图像切成 400 个 patch 并随机遮蔽 75%，编码器只处理 100 个可见 token 加 cls，解码器用 mask token 补回全部 401 个 token 后逐 patch 预测像素，损失只算被遮 patch 的归一化 MSE。">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+        <marker id="arEnc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--enc)"/>
+        </marker>
+        <marker id="arDec" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--dec)"/>
+        </marker>
+        <marker id="arMask" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--mask)"/>
+        </marker>
+      </defs>
+
+      <!-- 图例 -->
+      <g font-family="IBM Plex Mono, monospace" font-size="11">
+        <rect x="700" y="16" width="11" height="11" rx="2" fill="var(--enc)"/><text x="717" y="26" fill="currentColor">可见 token · 25%</text>
+        <rect x="872" y="16" width="11" height="11" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/><text x="889" y="26" fill="currentColor">被遮 · 75%</text>
+        <rect x="1000" y="16" width="11" height="11" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/><text x="1017" y="26" fill="currentColor">mask token（学习嵌入）</text>
+      </g>
+
+      <!-- ══ 第一段：编码 ══ -->
+      <!-- 输入 -->
+      <g>
+        <rect x="24" y="86" width="52" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <g fill="var(--muted)">
+          <rect x="32" y="94" width="8" height="8" rx="1"/><rect x="44" y="94" width="8" height="8" rx="1" opacity=".5"/><rect x="56" y="94" width="8" height="8" rx="1"/>
+          <rect x="32" y="106" width="8" height="8" rx="1" opacity=".5"/><rect x="44" y="106" width="8" height="8" rx="1"/><rect x="56" y="106" width="8" height="8" rx="1" opacity=".5"/>
+          <rect x="32" y="118" width="8" height="8" rx="1"/><rect x="44" y="118" width="8" height="8" rx="1" opacity=".5"/><rect x="56" y="118" width="8" height="8" rx="1"/>
+        </g>
+        <text x="50" y="162" text-anchor="middle" font-size="12" fill="currentColor">input x</text>
+        <text x="50" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">[8,3,320,320]</text>
+      </g>
+
+      <line x1="82" y1="112" x2="114" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- PatchEmbed -->
+      <g>
+        <rect x="120" y="88" width="138" height="48" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        <text x="189" y="108" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">PatchEmbed</text>
+        <text x="189" y="126" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">Conv2d 3→768 · k16 s16</text>
+        <text x="189" y="162" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">patchify :95 → [8,400,768]</text>
+      </g>
+
+      <line x1="262" y1="112" x2="294" y2="112" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- token strip 1：cls + 400 patch -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+        <text x="444" y="76" text-anchor="middle" fill="var(--muted)">400 patch (20×20) + cls = 401 · 加 pos_embed [1,401,768]</text>
+        <rect x="300" y="90" width="10" height="16" rx="2.5" fill="currentColor"/>
+        <text x="305" y="86" text-anchor="middle" font-size="9.5" fill="var(--muted)">cls</text>
+        <!-- 20 格，可见 idx = 2,7,11,15,18 -->
+        <rect x="318" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="330" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="342" y="90" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="354" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="366" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="378" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="390" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="402" y="90" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="414" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="426" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="438" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="450" y="90" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="462" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="474" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="486" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="498" y="90" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="510" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="522" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="534" y="90" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="546" y="90" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <text x="444" y="126" text-anchor="middle" fill="var(--muted)">[8,401,768]</text>
+      </g>
+
+      <!-- 遮蔽：虚线格下坠 -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+        <path d="M 470 110 C 470 148, 440 158, 428 196" fill="none" stroke="var(--mask)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arMask)"/>
+        <rect x="384" y="204" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="398" y="204" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <rect x="412" y="204" width="10" height="16" rx="2" fill="none" stroke="var(--mask)" stroke-dasharray="3 2.5"/>
+        <text x="436" y="215" fill="var(--muted)">300 masked · 75% 丢弃，不进 encoder</text>
+        <text x="436" y="231" fill="var(--muted)" font-size="9.5">random_masking :123 · mask [8,400]</text>
+      </g>
+
+      <!-- 可见 token 进入 encoder -->
+      <line x1="560" y1="112" x2="596" y2="112" stroke="var(--enc)" stroke-width="1.8" marker-end="url(#arEnc)"/>
+      <text x="578" y="98" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">100+cls</text>
+      <text x="578" y="84" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">[8,101,768]</text>
+
+      <!-- Encoder -->
+      <g>
+        <rect x="602" y="52" width="130" height="124" rx="12" fill="var(--enc-soft)" stroke="var(--enc)" stroke-width="1.6"/>
+        <path d="M 602 76 h 130 a 12 12 0 0 0 -12 -12 h -106 a 12 12 0 0 0 -12 12 z" fill="var(--enc)"/>
+        <text x="667" y="69" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--surface)">Encoder ×12</text>
+        <g stroke="var(--enc)" stroke-width="1" opacity=".4">
+          <line x1="614" y1="94" x2="720" y2="94"/><line x1="614" y1="108" x2="720" y2="108"/>
+          <line x1="614" y1="122" x2="720" y2="122"/><line x1="614" y1="136" x2="720" y2="136"/>
+          <line x1="614" y1="150" x2="720" y2="150"/><line x1="614" y1="164" x2="720" y2="164"/>
+        </g>
+        <text x="667" y="186" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--enc)">768d · 12 heads · MLP 3072</text>
+      </g>
+
+      <!-- encoder 出口 → 折线到第二段 -->
+      <path d="M 732 114 h 60 q 10 0 10 10 v 44 q 0 10 -10 10 h -640 q -10 0 -10 10 v 22" fill="none" stroke="var(--enc)" stroke-width="1.6" marker-end="url(#arEnc)"/>
+      <text x="778" y="112" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">norm → [8,101,768]</text>
+      <text x="120" y="236" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--muted)">forward_encoder :150 返回 (x, mask, ids_restore)</text>
+
+      <!-- ══ 第二段：解码 ══ -->
+      <!-- decoder_embed -->
+      <g>
+        <rect x="96" y="286" width="124" height="48" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        <text x="158" y="306" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">decoder_embed</text>
+        <text x="158" y="324" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">Linear 768→512</text>
+        <text x="158" y="358" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">[8,101,512]</text>
+      </g>
+
+      <line x1="228" y1="310" x2="260" y2="310" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- strip 2：可见(实心) + mask token(青色空心) -->
+      <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+        <rect x="300" y="288" width="10" height="16" rx="2.5" fill="currentColor"/>
+        <text x="305" y="284" text-anchor="middle" font-size="9.5" fill="var(--muted)">cls</text>
+        <rect x="318" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="330" y="288" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="342" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="354" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="366" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="378" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="390" y="288" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="402" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="414" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="426" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="438" y="288" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="450" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="462" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="474" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="486" y="288" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="498" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="510" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <rect x="522" y="288" width="10" height="16" rx="2" fill="var(--enc)"/>
+        <rect x="534" y="288" width="10" height="16" rx="2" fill="none" stroke="var(--dec)" stroke-width="1.6"/>
+        <text x="424" y="330" text-anchor="middle" fill="var(--muted)">unshuffle 还原位置 → 401 + decoder_pos_embed</text>
+        <text x="424" y="346" text-anchor="middle" fill="var(--muted)">[8,401,512]</text>
+        <!-- mask_token 注入 -->
+        <rect x="286" y="372" width="150" height="26" rx="6" fill="none" stroke="var(--dec)" stroke-width="1.4" stroke-dasharray="4 2.5"/>
+        <text x="361" y="389" text-anchor="middle" font-size="10" fill="var(--dec)">mask_token [1,1,512] 广播 ×300</text>
+        <line x1="361" y1="372" x2="380" y2="308" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arDec)"/>
+      </g>
+
+      <line x1="548" y1="296" x2="580" y2="296" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- Decoder -->
+      <g>
+        <rect x="586" y="246" width="120" height="104" rx="12" fill="var(--dec-soft)" stroke="var(--dec)" stroke-width="1.6"/>
+        <path d="M 586 270 h 120 a 12 12 0 0 0 -12 -12 h -96 a 12 12 0 0 0 -12 12 z" fill="var(--dec)"/>
+        <text x="646" y="263" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--surface)">Decoder ×8</text>
+        <g stroke="var(--dec)" stroke-width="1" opacity=".4">
+          <line x1="598" y1="286" x2="694" y2="286"/><line x1="598" y1="302" x2="694" y2="302"/>
+          <line x1="598" y1="318" x2="694" y2="318"/><line x1="598" y1="334" x2="694" y2="334"/>
+        </g>
+        <text x="646" y="366" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--dec)">512d · 8 heads · MLP 2048</text>
+      </g>
+
+      <line x1="712" y1="298" x2="744" y2="298" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <!-- norm + pred -->
+      <g>
+        <rect x="750" y="274" width="120" height="48" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        <text x="810" y="294" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">norm → pred</text>
+        <text x="810" y="312" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">Linear 512→768</text>
+        <text x="810" y="346" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">[8,401,768] = 400×(16·16·3)</text>
+      </g>
+
+      <line x1="876" y1="298" x2="908" y2="298" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="892" y="286" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--muted)">unpatchify</text>
+      <text x="892" y="322" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--muted)">:109</text>
+
+      <!-- 输出 -->
+      <g>
+        <rect x="914" y="272" width="52" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <g>
+          <rect x="922" y="280" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="934" y="280" width="8" height="8" rx="1" fill="var(--dec)"/>
+          <rect x="946" y="280" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="958" y="280" width="8" height="8" rx="1" fill="var(--dec)"/>
+          <rect x="922" y="292" width="8" height="8" rx="1" fill="var(--dec)"/>
+          <rect x="934" y="292" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="946" y="292" width="8" height="8" rx="1" fill="var(--dec)"/>
+          <rect x="958" y="292" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="922" y="304" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="934" y="304" width="8" height="8" rx="1" fill="var(--dec)"/>
+          <rect x="946" y="304" width="8" height="8" rx="1" fill="var(--muted)" opacity=".45"/>
+          <rect x="958" y="304" width="8" height="8" rx="1" fill="var(--dec)"/>
+        </g>
+        <text x="940" y="348" text-anchor="middle" font-size="12" fill="currentColor">重建 pred</text>
+        <text x="940" y="364" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">[8,3,320,320]</text>
+      </g>
+
+      <!-- ══ 损失 ══ -->
+      <path d="M 968 288 h 84" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <g>
+        <rect x="1058" y="246" width="282" height="104" rx="10" fill="var(--code-bg)" stroke="var(--line)" stroke-width="1.2"/>
+        <text x="1199" y="272" text-anchor="middle" font-size="12.5" font-weight="700" fill="currentColor">forward_loss :198</text>
+        <text x="1199" y="294" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">z = (patch − μ) / σ  逐 patch 归一化</text>
+        <text x="1199" y="312" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">MSE(z_pred, z_gt) · 只算 300 个被遮 patch</text>
+        <text x="1199" y="334" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--mask)">→ 即 norm-pix「显示税」的来源</text>
+      </g>
+      <!-- 原图作为 target 的虚线 -->
+      <path d="M 50 142 V 480 H 1140 V 356" fill="none" stroke="var(--mask)" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#arMask)"/>
+      <text x="64" y="470" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--mask)">target = 原图 imgs</text>
+
+      <!-- 参数注脚 -->
+      <text x="24" y="540" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">参数量：encoder ≈ 86M（迁移时保留） · decoder ≈ 26M（768→512 降维 + 8 层浅栈，任务完成后丢弃） · N=8 为调试 batch</text>
+    </svg>
+    <figcaption><span class="no">图 1</span>MAE 前向数据流。一条样本的完整路径：400 patch 中随机 75% 在进 encoder 前被丢弃，decoder 靠共享的 mask token 占位补全序列，最后只对被遮 patch 计归一化 MSE——"重建"是被监督的任务，"跳过可见 patch"是效率与表征的来源。</figcaption>
+  </figure>
+
+  <h2>Block 解剖：encoder 与 decoder 同构，仅维度不同</h2>
+  <div class="cards">
+    <figure class="card">
+      <h3>Encoder Block ×12</h3>
+      <p class="dim">d=768 · 12 heads · MLP 3072 · 每块 ≈7.1M 参数</p>
+      <svg viewBox="0 0 470 130" role="img" aria-label="编码器块：pre-norm 残差结构，先 LayerNorm 加多头自注意力加残差，再 LayerNorm 加 MLP 加残差。">
+        <defs>
+          <marker id="arE2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--enc)"/>
+          </marker>
+        </defs>
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+          <rect x="14" y="58" width="14" height="22" rx="3" fill="var(--enc)"/>
+          <text x="21" y="96" text-anchor="middle" fill="var(--muted)">x</text>
+          <line x1="32" y1="69" x2="50" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <rect x="54" y="52" width="40" height="34" rx="6" fill="var(--enc-soft)" stroke="var(--enc)" stroke-width="1.2"/>
+          <text x="74" y="73" text-anchor="middle" fill="var(--enc)">LN</text>
+          <line x1="98" y1="69" x2="114" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <rect x="118" y="50" width="98" height="38" rx="6" fill="var(--enc-soft)" stroke="var(--enc)" stroke-width="1.2"/>
+          <text x="167" y="73" text-anchor="middle" fill="var(--enc)">MHSA · 12 h</text>
+          <line x1="220" y1="69" x2="234" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <circle cx="246" cy="69" r="11" fill="none" stroke="var(--enc)" stroke-width="1.4"/>
+          <text x="246" y="73" text-anchor="middle" fill="var(--enc)">+</text>
+          <line x1="260" y1="69" x2="276" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <rect x="280" y="52" width="40" height="34" rx="6" fill="var(--enc-soft)" stroke="var(--enc)" stroke-width="1.2"/>
+          <text x="300" y="73" text-anchor="middle" fill="var(--enc)">LN</text>
+          <line x1="324" y1="69" x2="340" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <rect x="344" y="50" width="80" height="38" rx="6" fill="var(--enc-soft)" stroke="var(--enc)" stroke-width="1.2"/>
+          <text x="384" y="73" text-anchor="middle" fill="var(--enc)">MLP 3072</text>
+          <line x1="430" y1="69" x2="444" y2="69" stroke="var(--enc)" stroke-width="1.4" marker-end="url(#arE2)"/>
+          <circle cx="455" cy="69" r="11" fill="none" stroke="var(--enc)" stroke-width="1.4"/>
+          <text x="455" y="73" text-anchor="middle" fill="var(--enc)">+</text>
+          <path d="M 21 56 C 21 24, 246 24, 246 56" fill="none" stroke="var(--enc)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <path d="M 262 56 C 262 24, 455 24, 455 56" fill="none" stroke="var(--enc)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="468" y="96" text-anchor="end" fill="var(--muted)" font-size="9.5">qkv 768→2304</text>
+        </g>
+      </svg>
+      <figcaption><span class="no">上</span>pre-norm 残差：LN 在子层前，残差绕过子层。</figcaption>
+    </figure>
+    <figure class="card">
+      <h3>Decoder Block ×8</h3>
+      <p class="dim">d=512 · 8 heads · MLP 2048 · 每块 ≈3.2M 参数</p>
+      <svg viewBox="0 0 470 130" role="img" aria-label="解码器块：与编码器块相同的 pre-norm 残差结构，维度 512，8 头，MLP 2048。">
+        <defs>
+          <marker id="arD2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--dec)"/>
+          </marker>
+        </defs>
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+          <rect x="14" y="58" width="14" height="22" rx="3" fill="var(--dec)"/>
+          <text x="21" y="96" text-anchor="middle" fill="var(--muted)">x</text>
+          <line x1="32" y1="69" x2="50" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <rect x="54" y="52" width="40" height="34" rx="6" fill="var(--dec-soft)" stroke="var(--dec)" stroke-width="1.2"/>
+          <text x="74" y="73" text-anchor="middle" fill="var(--dec)">LN</text>
+          <line x1="98" y1="69" x2="114" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <rect x="118" y="50" width="98" height="38" rx="6" fill="var(--dec-soft)" stroke="var(--dec)" stroke-width="1.2"/>
+          <text x="167" y="73" text-anchor="middle" fill="var(--dec)">MHSA · 8 h</text>
+          <line x1="220" y1="69" x2="234" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <circle cx="246" cy="69" r="11" fill="none" stroke="var(--dec)" stroke-width="1.4"/>
+          <text x="246" y="73" text-anchor="middle" fill="var(--dec)">+</text>
+          <line x1="260" y1="69" x2="276" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <rect x="280" y="52" width="40" height="34" rx="6" fill="var(--dec-soft)" stroke="var(--dec)" stroke-width="1.2"/>
+          <text x="300" y="73" text-anchor="middle" fill="var(--dec)">LN</text>
+          <line x1="324" y1="69" x2="340" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <rect x="344" y="50" width="80" height="38" rx="6" fill="var(--dec-soft)" stroke="var(--dec)" stroke-width="1.2"/>
+          <text x="384" y="73" text-anchor="middle" fill="var(--dec)">MLP 2048</text>
+          <line x1="430" y1="69" x2="444" y2="69" stroke="var(--dec)" stroke-width="1.4" marker-end="url(#arD2)"/>
+          <circle cx="455" cy="69" r="11" fill="none" stroke="var(--dec)" stroke-width="1.4"/>
+          <text x="455" y="73" text-anchor="middle" fill="var(--dec)">+</text>
+          <path d="M 21 56 C 21 24, 246 24, 246 56" fill="none" stroke="var(--dec)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <path d="M 262 56 C 262 24, 455 24, 455 56" fill="none" stroke="var(--dec)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="468" y="96" text-anchor="end" fill="var(--muted)" font-size="9.5">qkv 512→1536</text>
+        </g>
+      </svg>
+      <figcaption><span class="no">下</span>同一种结构，维度砍到 512——轻量 decoder 是 MAE 效率设计的一半。</figcaption>
+    </figure>
+  </div>
+
+  <h2>形状台账：每一步的张量</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>阶段</th><th>函数 · 行号</th><th>输出形状</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>切 patch</td><td class="mono">patchify :95</td><td class="mono">[8, 400, 768]</td><td>每 patch 16×16×3 = 768 摊平</td></tr>
+        <tr><td>加位置编码</td><td class="mono">forward_encoder :150</td><td class="mono">[8, 401, 768]</td><td>+cls token、+pos_embed</td></tr>
+        <tr><td>随机遮蔽</td><td class="mono">random_masking :123</td><td class="mono">mask [8, 400]</td><td>300 个 1；ids_restore 记录如何还原顺序</td></tr>
+        <tr><td>编码</td><td class="mono">forward_encoder :150</td><td class="mono">[8, 101, 768]</td><td>只处理 100 可见 + cls，最后过 norm</td></tr>
+        <tr><td>降维</td><td class="mono">forward_decoder :172</td><td class="mono">[8, 101, 512]</td><td>decoder_embed</td></tr>
+        <tr><td>插 mask token</td><td class="mono">forward_decoder :172</td><td class="mono">[8, 401, 512]</td><td>mask_token 广播 + unshuffle + decoder_pos_embed</td></tr>
+        <tr><td>解码</td><td class="mono">forward_decoder :172</td><td class="mono">[8, 401, 512]</td><td>8 层 Block + decoder_norm</td></tr>
+        <tr><td>预测头</td><td class="mono">decoder_pred</td><td class="mono">[8, 401, 768]</td><td>Linear 512→768，即逐 patch 像素</td></tr>
+        <tr><td>还原图像</td><td class="mono">unpatchify :109</td><td class="mono">[8, 3, 320, 320]</td><td>reshape 回 patch 网格</td></tr>
+        <tr><td>损失</td><td class="mono">forward_loss :198</td><td class="mono">标量</td><td>逐 patch 归一化 MSE，仅被遮 patch</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bp">
+    <h2>调试断点地图（对应你的 F5 会话）</h2>
+    <ol>
+      <li><code>random_masking :123</code> — 看 <code>ids_keep</code>（保留哪些 patch）与 <code>ids_restore</code>（如何把顺序拼回去），遮蔽逻辑的核心。</li>
+      <li><code>forward_encoder :150</code> 返回值 — 三件套 <code>(x, mask, ids_restore)</code>，形状 [8,101,768] / [8,400] / [8,100]。</li>
+      <li><code>forward_decoder :172</code> — <code>mask_token</code> 广播与 <code>torch.gather</code>(unshuffle) 是位置还原的两个关键操作。</li>
+      <li><code>forward_loss :198</code> — <code>mean/var</code> 两行就是 patch 归一化（显示税的源头）；<code>mask == 1</code> 筛出 300 个被遮 patch。</li>
+      <li><code>unpatchify :109</code> — [8,401,768] → [8,3,320,320] 的纯 reshape，可视化前必经。</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

@@ -155,7 +155,18 @@ const PAPERS = [
     desc: "把 3D 占用预测重构为以当前观测为条件的 4D 占用预测，用 Gaussian 世界模型按静态对齐/动态运动/新场景补全三个因子演化场景流",
     star: true,
   },
-  // 新条目：domain 填领域（左侧菜单），route 填上面三条路线或新路线名（右侧分组）；star: true 默认星标
+  // ── 新领域：自监督预训练（掩码建模路线，MAE 是本站渲染式预训练一脉的源头）──
+  {
+    domain: "自监督预训练", route: "掩码建模预训练",
+    title: "MAE",
+    full: "Masked Autoencoders Are Scalable Vision Learners",
+    venue: "CVPR 2022",
+    year: 2022,
+    file: "self-supervised/2022-mae.html",
+    desc: "非对称掩码自编码器——编码器只看 25% 可见 patch，轻量解码器在补全 mask token 的完整序列上重建像素，75% 高掩码率既逼出整体语义理解又把预训练算力省到四分之一",
+    star: true,
+  },
+  // 新条目：domain 填领域（左侧菜单），route 填上面路线或新路线名（右侧分组）；star: true 默认星标
 ];
 
 /* ---------- 以下为渲染代码，无需改动 ---------- */
