@@ -86,6 +86,17 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
 /* domain = 领域（左侧菜单）；route = 技术路线（右侧分组，替换原年份分组）；
    路线内按年份从近到远排；star: true 的论文默认带星标 */
 const PAPERS = [
+  // ── 场景级重建（2026-09 新增域）──
+  {
+    domain: "场景级重建", route: "前馈泛化重建",
+    title: "DrivingRecon",
+    full: "DrivingRecon: Large 4D Gaussian Reconstruction Model for Autonomous Driving",
+    venue: "NeurIPS 2025",
+    year: 2025,
+    file: "scene-reconstruct/2025-driverecon.html",
+    desc: "在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划",
+    star: true,
+  },
   // ── 路线一：渲染式预训练（掩码 + 神经渲染当解码器，训 backbone）──
   {
     domain: "4D重建", route: "渲染式预训练",

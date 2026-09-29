@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrivingRecon 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard,#fine-flow .stepcard{width:127px}
+#render-flow .stepcard .lab,#fine-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n,#fine-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc,#fine-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style></head>
+<body>
+<div class="layout">
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目录</h3>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 Camera-Conditioned UNet</a>
+  <a href="#s23" class="lv2">2.3 Gaussian Adaptor</a>
+  <a href="#s24" class="lv2">2.4 Coarse-to-Fine</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<main class="content">
+<div class="hero" id="top">
+  <h1>DrivingRecon：环视视频直接预测 4D Gaussians 的大重建模型</h1>
+  <div class="meta"><a href="https://arxiv.org/abs/2412.09043">DrivingRecon: Large 4D Gaussian Reconstruction Model for Autonomous Driving</a> · arXiv 2412.09043 · <a href="https://github.com/EnVision-Research/DriveRecon">github.com/EnVision-Research/DriveRecon</a> · Waymo NOTA-DS64 + nuScenes · NeurIPS 2025</div>
+</div>
+
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、DrivingRecon 怎么解。</div>
+
+  <p>街道场景的逼真 4D 重建是自动驾驶真实仿真器的地基，但主流做法是离线的：每个场景单独跑几十分钟迭代优化，参数属于那一个 clip，换一段就要重来。这条路做离线数据资产可以，做不了规模化，更上不了车。DrivingRecon 把它换成学习问题：在 Waymo/nuScenes 上训一个前馈模型，环视视频进来，一次网络前向直接吐出整段场景的 4D Gaussians——没见过的场景也一样重建。整套方法概括起来就是：在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划。除了重建和新视角合成，同一个预训练模型还能做场景编辑（删物体、加物体、挪物体）和不同相机构型的车辆适配。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>逐场景优化不可扩展</h4>
+      <p>3DGS/NeRF 系方法每个 clip 要优化几分钟到几十分钟，参数不可迁移——"重建"是拟合过程不是模型能力。一百万段 clip 就是一百万次从头拟合。</p>
+    </div>
+    <div class="card">
+      <h4>通用前馈方法不懂驾驶场景</h4>
+      <p>pixelSplat/MVSplat 这类前馈重建为稀疏视角近距离物体设计，吃不下驾驶的大尺度、多帧时序、动态物体和天空；直接搬来动态区域塌掉（表 1 里它们 Dynamic PSNR 掉 2~3 个点）。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th>路线</th><th>代表工作</th><th>做法 & 麻烦</th></tr>
+    <tr><td>逐场景优化</td><td class="mono">Street Gaussians / OmniRe / NeuRAD</td><td>每 clip 迭代拟合，质量高但慢、参数不可迁移、不能上车。</td></tr>
+    <tr><td>通用前馈重建</td><td class="mono">pixelSplat / MVSplat / LGM / L4GM</td><td>网络直接出 Gaussians，秒级重建；但不吃时序、不懂驾驶域的尺度与动态。</td></tr>
+    <tr><td>借 3D 基础模型</td><td class="mono">ReconDrive（后续工作）</td><td>VGGT 当骨干加驾驶头；骨干强但外挂 SAM/DINO 组件多。</td></tr>
+  </table>
+
+  <h3><span class="no">1.3</span>DrivingRecon 是怎么解决的</h3>
+  <p>一个端到端网络，粗细两段式。粗段全前馈：每个时刻取 3 个环视视角（stride=10 抽帧），过一个相机条件的 UNet 骨干（内参、外参、深度都作为条件注入），得到逐像素特征；一个轻量 Adaptor 头从特征里解出每个像素的 Gaussian 参数——深度用 200 档分布加回归精修表达（0.1~400m 的驾驶级量程），位置由深度反投影加可学习偏移得到，另带 3 类静态/动态/天空分割头。细段可选：对当前 clip 再做最多 500 步的带形变场的微调，把前馈结果磨到逐场景优化的质量。训练只有图像、LiDAR 深度和 3 类分割伪标签，不需要重建真值。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li><b>真·前馈</b>：模型里没有任何冻结的第三方组件——DINOv2 只出现在数据预处理脚本里提取特征，网络前向不经过它；这点和后续借 VGGT 外挂 SAM/DINO 的 ReconDrive 形成对照。</li>
+    <li><b>一套表征多种用途</b>：重建出的 4D Gaussians 直接服务新视角合成、场景编辑、车辆适配，论文还展示了对感知/跟踪/规划的预训练增益。</li>
+    <li><b>有 scaling 曲线</b>：训练场景数从少到多，性能持续上升——"大重建模型"的名字有数据支撑（表 4）。</li>
+    <li>效果预告：Waymo NOTA-DS64 重建 PSNR 23.70（MVSplat 21.33），动态区域 21.50（领先 1.7+）；新视角合成 20.63；跨场景与 Waymo→nuScenes 域迁移同样领先，细节见 §4。</li>
+  </ul>
+</section>
+
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">网络结构逐模块按官方代码核对（scene/GS_LRM.py、scene/unet.py、train.py），张量维度以 forward 实参为准。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 640" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+        <marker id="aho" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#9a6700"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <text x="20" y="42" class="svg-cn" style="font-weight:700" fill="#1a7f37">① 输入（粗段，全前馈）</text>
+      <rect x="20" y="80" width="190" height="96" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="115" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">环视视频帧</text>
+      <text x="115" y="132" text-anchor="middle" class="svg-nota">[N,T,V,3,H,W]，V=3 视角</text>
+      <text x="115" y="152" text-anchor="middle" class="svg-nota">stride=10 抽帧</text>
+
+      <rect x="20" y="200" width="190" height="80" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="5 3"/>
+      <text x="115" y="226" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">条件注入</text>
+      <text x="115" y="248" text-anchor="middle" class="svg-nota">内参 K + 外参 c2w + LiDAR 深度</text>
+      <text x="115" y="266" text-anchor="middle" class="svg-nota">随图像一起进 UNet</text>
+      <line x1="115" y1="200" y2="180" stroke="#59636e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+
+      <line x1="210" y1="128" x2="252" y2="128" class="arrow-b"/>
+
+      <!-- UNet 骨干 -->
+      <rect x="254" y="80" width="330" height="120" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+      <text x="419" y="106" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">Camera-Conditioned UNet（骨干）</text>
+      <rect x="272" y="118" width="88" height="34" rx="6" fill="#fff" stroke="#0969da" stroke-width="1"/>
+      <text x="316" y="140" text-anchor="middle" class="svg-nota">Down ×3</text>
+      <rect x="372" y="118" width="74" height="34" rx="6" fill="#fff" stroke="#0969da" stroke-width="1.4"/>
+      <text x="409" y="140" text-anchor="middle" class="svg-nota">Mid</text>
+      <rect x="458" y="118" width="106" height="34" rx="6" fill="#fff" stroke="#0969da" stroke-width="1"/>
+      <text x="511" y="140" text-anchor="middle" class="svg-nota">Up ×3 + conv_out</text>
+      <text x="419" y="180" text-anchor="middle" class="svg-nota">注意力只在最深层 Down 与第一层 Up（跳连同扩散 UNet）</text>
+
+      <line x1="584" y1="128" x2="626" y2="128" class="arrow-b"/>
+
+      <!-- Adaptor -->
+      <rect x="628" y="72" width="300" height="136" rx="10" fill="#fff8c5" stroke="#9a6700" stroke-width="1.8"/>
+      <text x="778" y="98" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Gaussian Adaptor（逐像素头）</text>
+      <text x="778" y="122" text-anchor="middle" class="svg-nota">输入 [B·T·V, 128, H, W] 特征图</text>
+      <text x="778" y="144" text-anchor="middle" class="svg-nota">并行头：RGB 3 · 属性 7 · 深度分布 200 档</text>
+      <text x="778" y="164" text-anchor="middle" class="svg-nota">深度精修 1 · 偏移 5（uv+3D）· 分割 3</text>
+      <text x="778" y="188" text-anchor="middle" class="svg-nota">尺度 softplus 截断 · 偏移限幅 ±5</text>
+
+      <line x1="928" y1="140" x2="970" y2="140" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <!-- Gaussians -->
+      <rect x="972" y="80" width="240" height="120" rx="10" fill="#fff8c5" stroke="#9a6700" stroke-width="1.8"/>
+      <text x="1092" y="106" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">depth2xyz → 4D Gaussians</text>
+      <text x="1092" y="130" text-anchor="middle" class="svg-nota">深度期望+精修 → 反投影</text>
+      <text x="1092" y="150" text-anchor="middle" class="svg-nota">+ uv/means 偏移</text>
+      <text x="1092" y="172" text-anchor="middle" class="svg-nota">每像素一个 Gaussian（可选 SH）</text>
+
+      <line x1="1092" y1="200" x2="1092" y2="240" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+
+      <!-- 渲染 -->
+      <rect x="972" y="244" width="240" height="76" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="1092" y="272" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">可微光栅化</text>
+      <text x="1092" y="296" text-anchor="middle" class="svg-nota">61 个插值视角（−12°~+12°）渲染</text>
+
+      <line x1="972" y1="282" x2="930" y2="282" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
+      <rect x="660" y="244" width="268" height="76" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="794" y="272" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">输出：重建 / 新视角 / 编辑</text>
+      <text x="794" y="296" text-anchor="middle" class="svg-nota">删物体 · 加物体 · 挪物体 · 车辆适配</text>
+
+      <!-- fine 阶段 -->
+      <rect x="254" y="300" width="330" height="86" rx="10" fill="#fff8c5" stroke="#eac54f" stroke-width="1.4" stroke-dasharray="7 5"/>
+      <text x="419" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">② 细段（可选，逐 clip）</text>
+      <text x="419" y="350" text-anchor="middle" class="svg-nota">前馈结果 + 形变场 _deformation</text>
+      <text x="419" y="370" text-anchor="middle" class="svg-nota">每 clip 最多 500 步微调（train.py per_scence_num）</text>
+      <line x1="584" y1="343" x2="970" y2="343" stroke="#9a6700" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#aho)"/>
+      <text x="778" y="334" text-anchor="middle" class="svg-cn" fill="#818b98">把 Gaussians 磨到逐场景优化的质量</text>
+
+      <!-- 监督 -->
+      <rect x="254" y="440" width="380" height="66" rx="8" fill="#fff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="444" y="466" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督（免重建真值）</text>
+      <text x="444" y="490" text-anchor="middle" class="svg-nota">渲染 RGB + LiDAR 深度（分布 CE + L2）+ 3 类分割（静态/动态/天空）</text>
+      <polyline points="419,440 419,420" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
+      <polyline points="1092,440 1092,326" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
+      <text x="1092" y="462" text-anchor="middle" class="svg-cn" fill="#a40e26">渲染损失（静态/动态加权 0.1/0.1）</text>
+    </svg>
+    <div class="figcap">图 2-1 · DrivingRecon 总流程（按代码核对）：相机条件 UNet → 逐像素 Adaptor → depth2xyz → 4D Gaussians → 光栅化；细段可选用形变场对每 clip 再微调 500 步。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入/条件</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>UNet 骨干</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>Gaussian 头/输出</span>
+      <span><span class="sw dash"></span>监督/可选细段</span>
+    </div>
+  </div>
+
+  <h3><span class="no">2.1.1</span>全链路 shape 清单（逐模块，代码核对）</h3>
+  <table>
+    <tr><th>#</th><th>模块</th><th>输入</th><th>关键超参（出处：代码）</th><th>输出</th></tr>
+    <tr><td class="mono">1</td><td>输入</td><td class="mono">—</td><td>V=3 环视视角 · stride=10 抽帧 · View_Num=3（train.py）</td><td class="mono">images [N,T,V,3,H,W]</td></tr>
+    <tr><td class="mono">2</td><td>条件</td><td class="mono">K, c2w, LiDAR 深度</td><td>内参 [·,3,3] · 外参 [·,4,4] · 深度图（>0.1 处有效）</td><td class="mono">与图像同进 UNet</td></tr>
+    <tr><td class="mono">3</td><td>UNet 骨干</td><td class="mono">[B·T·V, C, H, W]</td><td>conv_in → Down×3 → Mid → Up×3 → conv_out · 注意力在最深 Down + 第一 Up · out_num=128 · GroupNorm</td><td class="mono">特征 [B·T·V, 128, H, W]</td></tr>
+    <tr><td class="mono">4</td><td>rgb 头</td><td class="mono">[·,128,H,W]</td><td>ResnetBlock → 64ch → Conv1×1</td><td class="mono">RGB（或 SH 3 阶）</td></tr>
+    <tr><td class="mono">5</td><td>属性头</td><td class="mono">[·,128,H,W]</td><td>7 通道：scale×3（softplus 截断 [min,max]）· rotation×4 · opacity×1</td><td class="mono">[B·T, px, 8]</td></tr>
+    <tr><td class="mono">6</td><td>深度分布头</td><td class="mono">[·,128,H,W]</td><td>200 档假设 · 量程 0.1~400m · softmax 期望</td><td class="mono">[B·T, px, 200]</td></tr>
+    <tr><td class="mono">7</td><td>深度精修 + 偏移头</td><td class="mono">[·,128,H,W]</td><td>回归残差 1 通道（乘量程/档数）· uv 偏移 2 + 3D 偏移 3，限幅 ±5</td><td class="mono">[B·T, px, 6]</td></tr>
+    <tr><td class="mono">8</td><td>分割头</td><td class="mono">[·,128,H,W]</td><td>3 类：静态 / 动态 / 天空（seg_num=3，GT 为伪标签）</td><td class="mono">[B·T, px, 3]</td></tr>
+    <tr><td class="mono">9</td><td>depth2xyz + 光栅化</td><td class="mono">全量 Gaussian 参数</td><td>反投影得 means3D · diff-gaussian-rasterization · 评测渲染 61 视角</td><td class="mono">任意视角 RGB</td></tr>
+  </table>
+  <ul class="dots">
+    <li>训练配置：accelerate · bf16 混合精度 · 8 卡（acc.yaml num_processes=8）· 数据 Waymo NOTA2_64，另有 nuScenes 协议。</li>
+    <li>DINOv2 的位置：<span class="mono">utils/feature_extractor.py</span> 只被 <span class="mono">dataset_readers.py</span> 的离线预处理调用（提特征存盘），<b>网络前向不经过它</b>——判断"组装程度"时这是关键事实。</li>
+  </ul>
+</section>
+
+<section id="s22">
+  <h2><span class="no">§2.2</span>Camera-Conditioned UNet</h2>
+  <div class="flowrow" id="unet-flow"></div>
+  <ul class="dots">
+    <li><b>扩散式骨架，不是纯 transformer</b>：Down/Mid/Up 三段 + 跳连（scene/unet.py），与 pixelSplat/EVolSplat 一脉的相机条件 UNet；注意力只开在最深层 Down 和第一层 Up（down_attention=(F,F,F,T)、up_attention=(T,F,F)），省算力又保跨视角通信。</li>
+    <li><b>条件是"喂进去"不是"外挂"</b>：内参、外参、LiDAR 深度与图像一起进网络——模型必须学会"在已知相机几何下解释像素"，这也是它能适配不同相机构型车辆的原因。</li>
+    <li><b>LiDAR 的角色是条件与监督，不是输入模态</b>：推理时深度条件可替换为估计值，主干仍是纯视觉路径。</li>
+  </ul>
+</section>
+
+<section id="s23">
+  <h2><span class="no">§2.3</span>Gaussian Adaptor</h2>
+  <div class="flowrow" id="adaptor-flow"></div>
+  <ul class="dots">
+    <li><b>像素对齐，一像素一 Gaussian</b>：位置不靠回归 xyz，靠"深度分布期望 + 回归残差"反投影——几何由相机模型保证，网络只学深度，这是驾驶大尺度下比直接回归 xyz 稳定的关键。</li>
+    <li><b>深度用分布不用单值</b>：200 档（0.1~400m）覆盖驾驶量程；分布的 softmax 期望承担粗定位，1 通道回归头承担亚档精修，两段相加成最终深度。</li>
+    <li><b>尺度与偏移都限幅</b>：scale 经 softplus 截断在 [gaussian_scale_min, max]，偏移限幅 ±5——前馈预测 Gaussian 最怕参数飞掉，处处夹紧是能训稳的工程底线。</li>
+    <li><b>3 类分割头自带</b>：静态/动态/天空的粗分割由模型自己出（监督用伪标签），渲染损失里静态/动态分别加权——动静态分解是内置能力，不依赖 SAM。</li>
+  </ul>
+</section>
+
+<section id="s24">
+  <h2><span class="no">§2.4</span>Coarse-to-Fine</h2>
+  <div class="flowrow" id="fine-flow"></div>
+  <ul class="dots">
+    <li><b>粗段是卖点</b>：全前馈、跨场景泛化、免优化——表 1/2 的对比都在前馈条件下做，公平。</li>
+    <li><b>细段是保险</b>：对当前 clip 最多 500 步微调（train.py per_scence_num=500），加形变场 _deformation 建模时序形变，把质量磨到逐场景优化档——离线数据资产生产时用得上。</li>
+    <li><b>评测渲染 61 视角</b>：在 −12°~+12° 内插 61 个位姿渲染（gs_render_mul），重建与 NVS 指标分开报，静态/动态分开报——动态区域单独暴露前馈方法的短板，也是本文领先最明显的地方。</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+
+  <div class="formula">
+    <div class="fx">L = λ<sub>d</sub>·CE(深度分布) + λ<sub>d</sub>·L2(深度精修) + λ<sub>s</sub>·CE(分割) + L<sub>render</sub>(RGB)</div>
+    <div class="note">权重逐项取自 forward（GS_LRM.py）：depth_weight=2（分布 CE 与 L2 各计一次）、seg_weight=1、depth_back_weight=2；天空深度损失权重 0（关闭）、法向损失 0（关闭）；渲染损失中静态/动态分量各加权 0.1。监督不需要任何重建真值——RGB 来自渲染比对、深度来自 LiDAR、分割来自伪标签。</div>
+  </div>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 940 134" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+      <rect x="10" y="36" width="160" height="62" rx="7" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="90" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">光栅化渲染值</text>
+      <text x="90" y="82" text-anchor="middle" class="svg-nota">RGB + 分割 + 深度</text>
+      <line x1="170" y1="67" x2="210" y2="67" stroke="#818b98" stroke-width="2" marker-end="url(#ah3)"/>
+      <rect x="212" y="36" width="200" height="62" rx="7" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="312" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">多任务损失（权重代码核对）</text>
+      <text x="312" y="82" text-anchor="middle" class="svg-nota">深度 2·2 / 分割 1 / 渲染 0.1+0.1</text>
+      <line x1="412" y1="67" x2="452" y2="67" stroke="#cf222e" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah3)"/>
+      <rect x="454" y="36" width="180" height="62" rx="7" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="544" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">GT（免标注）</text>
+      <text x="544" y="82" text-anchor="middle" class="svg-nota">像素 · LiDAR 深度 · 3 类伪标签</text>
+      <line x1="634" y1="67" x2="674" y2="67" stroke="#818b98" stroke-width="2" marker-end="url(#ah3)"/>
+      <rect x="676" y="36" width="254" height="62" rx="7" fill="#fff" stroke="#cf222e" stroke-width="1.6" stroke-dasharray="6 4"/>
+      <text x="803" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">反向传播 → UNet + Adaptor 全参</text>
+      <text x="803" y="82" text-anchor="middle" class="svg-nota">bf16 · 8 卡 · 无冻结组件</text>
+    </svg>
+    <div class="figcap">图 3-1 · 损失流：深度双路（分布 + 回归）、分割、渲染三项，全部可自动生成监督。</div>
+  </div>
+
+  <ul class="dots">
+    <li><b>深度双路监督</b>：分布 CE（200 档分类）管全局量程，L2 管精修残差——和 Adaptor 的两段深度输出一一对应。</li>
+    <li><b>渲染损失的静动态加权都是 0.1</b>：直接作用在像素上的光度项反而是"辅助"角色，几何项（深度 ×2）才是主力——先几何后外观的次序符合驾驶场景的优先级。</li>
+    <li><b>NaN 防御是常态</b>：每项损失前都有 isnan 检查丢弃——前馈出 Gaussian 的训练稳定性要靠这些补丁，Adaptor 的限幅设计同理。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="metrics">
+    <div class="metric"><div class="v">23.70 <small>PSNR</small></div><div class="k">重建 · Waymo DS64<br>MVSplat 21.33 → 本文</div></div>
+    <div class="metric"><div class="v">21.50 <small>PSNR</small></div><div class="k">动态区域重建<br>领先第二名 1.70</div></div>
+    <div class="metric"><div class="v">20.63 <small>PSNR</small></div><div class="k">新视角合成<br>MVSplat 19.00 → 本文</div></div>
+    <div class="metric"><div class="v">0.17 <small>LPIPS</small></div><div class="k">感知质量 · 重建<br>MVSplat 0.24 → 本文</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>重建与 NVS（Waymo NOTA-DS64，前馈条件）</h3>
+  <table>
+    <tr><th>方法</th><th>PSNR</th><th>SSIM</th><th>LPIPS</th><th>静态 PSNR</th><th>动态 PSNR</th></tr>
+    <tr><td>LGM</td><td class="mono">19.52</td><td class="mono">0.52</td><td class="mono">0.32</td><td class="mono">19.60</td><td class="mono">17.71</td></tr>
+    <tr><td>pixelSplat</td><td class="mono">20.54</td><td class="mono">0.58</td><td class="mono">0.28</td><td class="mono">20.76</td><td class="mono">18.11</td></tr>
+    <tr><td>MVSplat</td><td class="mono">21.33</td><td class="mono">0.64</td><td class="mono">0.24</td><td class="mono">21.64</td><td class="mono">19.80</td></tr>
+    <tr><td>L4GM</td><td class="mono">20.01</td><td class="mono">0.54</td><td class="mono">0.30</td><td class="mono">20.69</td><td class="mono">17.35</td></tr>
+    <tr><td>DrivingRecon</td><td class="mono up">23.70</td><td class="mono up">0.68</td><td class="mono up">0.17</td><td class="mono up">24.09</td><td class="mono up">21.50</td></tr>
+  </table>
+  <table>
+    <tr><th>NVS（同一数据集）</th><th>PSNR</th><th>SSIM</th><th>LPIPS</th><th>静态 PSNR</th><th>动态 PSNR</th></tr>
+    <tr><td>MVSplat（最强基线）</td><td class="mono">19.00</td><td class="mono">0.57</td><td class="mono">0.28</td><td class="mono">19.29</td><td class="mono">17.35</td></tr>
+    <tr><td>DrivingRecon</td><td class="mono up">20.63</td><td class="mono up">0.61</td><td class="mono up">0.21</td><td class="mono up">20.97</td><td class="mono up">19.70</td></tr>
+  </table>
+  <ul class="dots">
+    <li>动态区域的领先（21.50 vs 19.80）比静态（24.09 vs 21.64）更能说明问题——前馈方法难的就是动的东西，本文的时序输入 + 内置动静态分解在这里兑现。</li>
+    <li>跨场景评测（表 3）：训练与测试场景完全不重叠时仍领先——这是"大重建模型"区别于逐场景拟合的定义性证据。</li>
+    <li>Scaling（表 4）：训练场景数逐步加码，PSNR 持续上升——名字里的 "Large" 有曲线背书。</li>
+    <li>域泛化（表 5）：Waymo→nuScenes 迁移协议下同样领先，验证跨数据集的泛化。</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+  <h3><span class="no">5.1</span>这篇工作证明了什么</h3>
+  <ul class="dots">
+    <li>驾驶场景的 4D 重建可以从"逐 clip 拟合"变成"模型能力"：环视视频一次前馈出 Gaussians，跨场景有效。</li>
+    <li>相机条件 UNet + 像素对齐 Adaptor + 限幅，是让前馈 Gaussian 在驾驶域训稳的一套够用组合。</li>
+    <li>重建出来的表征能反哺感知/跟踪/规划、支撑编辑与车辆适配——重建不是终点是资产。</li>
+  </ul>
+  <h3><span class="no">5.2</span>局限</h3>
+  <ul class="dots">
+    <li>骨干是 UNet 不是基础模型：预训练红利只来自本任务数据，"Large" 的天花板受训练集规模限制（表 4 曲线未饱和即是机会也是短板）。</li>
+    <li>细段每 clip 500 步仍是逐场景优化——宣称"免优化"的是粗段，读论文时要分清两个口径。</li>
+    <li>3 类分割粒度粗，动静态分解依赖伪标签质量；深度监督依赖 LiDAR。</li>
+  </ul>
+  <h3><span class="no">5.3</span>后续方向</h3>
+  <ul class="dots">
+    <li>换更强骨干：后续 ReconDrive 用 VGGT 基础模型替换 UNet 即此路线（代价是外挂组件变多）。</li>
+    <li>把前馈重建头接到检测/规划骨干上当预训练监督——本文"反哺感知"的实验已给出雏形，系统化就是一条独立研究线。</li>
+    <li>更高维的编辑与仿真闭环：删改物体后的再渲染一致性、与驾驶策略的交互。</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+
+/* ============ ① 相机条件 UNet（4 步） ============ */
+(function(){
+  const root = document.getElementById("unet-flow");
+  if(!root) return;
+  const steps = [
+    ["输入打包","图像+内参+外参+深度一起进网络", s=>{
+      el("rect",{x:16,y:34,width:52,height:40,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(42,86,"图像",{class:"svg-nota",fill:"#116329"}, s);
+      el("rect",{x:82,y:34,width:52,height:40,rx:4,fill:"#eff2f5",stroke:"#59636e","stroke-width":1}, s);
+      txt(108,86,"K/c2w/深度",{class:"svg-nota",fill:"#3f444d"}, s);
+      txt(75,98,"条件不是外挂",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["Down ×3","最深层才开注意力（F,F,F,T）", s=>{
+      [22,46,70].forEach((x,i)=>{ el("rect",{x:x,y:40,width:36,height:26,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.1}, s); });
+      el("rect",{x:70,y:40,width:36,height:26,rx:4,fill:"none",stroke:"#0969da","stroke-width":1.6,"stroke-dasharray":"3 2"}, s);
+      txt(75,90,"深层跨视角通信",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["Mid + Up ×3","第一层 Up 开注意力，跳连回 Down", s=>{
+      el("rect",{x:16,y:44,width:26,height:20,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      el("rect",{x:48,y:40,width:26,height:26,rx:4,fill:"#fff",stroke:"#0969da","stroke-width":1.4}, s);
+      el("rect",{x:82,y:44,width:26,height:20,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      el("line",{x1:42,y1:54,x2:46,y2:54,stroke:"#a5d8ff","stroke-width":1.6}, s);
+      el("line",{x1:76,y1:54,x2:80,y2:54,stroke:"#a5d8ff","stroke-width":1.6}, s);
+      el("path",{d:"M30,44 Q75,20 95,44",fill:"none",stroke:"#a5d8ff","stroke-width":1.2,"stroke-dasharray":"3 2"}, s);
+      txt(75,92,"扩散式跳连",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["逐像素特征","conv_out 出 [·,128,H,W]", s=>{
+      el("rect",{x:22,y:36,width:106,height:40,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.3}, s);
+      for(let i=0;i<5;i++){ el("line",{x1:22,y1:44+i*7,x2:128,y2:44+i*7,stroke:"#a5d8ff","stroke-width":1}, s); }
+      txt(75,94,"128 通道特征图",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② Gaussian Adaptor（5 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("adaptor-flow");
+  if(!root) return;
+  const steps = [
+    ["并行头","128ch 特征图同时进 6 个头", s=>{
+      for(let i=0;i<6;i++){ el("rect",{x:16+(i%3)*40,y:30+Math.floor(i/3)*26,width:34,height:20,rx:3,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1}, s); }
+      txt(75,98,"rgb/属性/深度/偏移/分割",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["深度分布","200 档 · 0.1~400m · softmax 期望", s=>{
+      for(let i=0;i<9;i++){ const h=6+((i*29)%26); el("rect",{x:18+i*13,y:64-h,width:10,height:h,rx:1.5,fill:"#fff8c5",stroke:"#9a6700","stroke-width":0.8}, s); }
+      txt(75,84,"分布期望 = 粗深度",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["精修 + 反投影","回归残差 + uv/3D 偏移（限幅±5）→ depth2xyz", s=>{
+      el("rect",{x:20,y:38,width:110,height:16,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      txt(75,50,"期望+残差 → 深度",{class:"svg-nota",fill:"#0550ae"}, s);
+      el("line",{x1:75,y1:56,x2:75,y2:72,stroke:"#9a6700","stroke-width":1.6}, s);
+      el("path",{d:"M71,68 L75,76 L79,68 z",fill:"#9a6700"}, s);
+      txt(75,92,"相机模型反投影",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["一像素一 Gaussian","位置由相机几何保证，网络只学深度", s=>{
+      for(let r=0;r<4;r++) for(let c=0;c<7;c++){ el("ellipse",{cx:28+c*16,cy:34+r*14,rx:5,ry:3.4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":0.7,opacity:.9}, s); }
+      txt(75,100,"每像素 1 个",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["尺度限幅","softplus 截断 [min,max]，参数飞不掉", s=>{
+      el("rect",{x:22,y:36,width:106,height:40,rx:5,fill:"#fff",stroke:"#9a6700","stroke-width":1.2}, s);
+      el("line",{x1:30,y1:56,x2:120,y2:56,stroke:"#d1d9e0","stroke-width":1}, s);
+      el("path",{d:"M35,56 Q60,26 85,54 Q105,72 118,44",fill:"none",stroke:"#9a6700","stroke-width":1.6}, s);
+      txt(75,94,"处处夹紧才训得稳",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ③ 粗细两段（4 步，窄卡） ============ */
+(function(){
+  const root = document.getElementById("fine-flow");
+  if(!root) return;
+  const steps = [
+    ["粗段（主）","全前馈，跨场景，表 1/2 的口径", s=>{
+      el("rect",{x:22,y:34,width:106,height:38,rx:6,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.4}, s);
+      txt(75,58,"feed-forward",{class:"svg-nota-b",fill:"#5c4400"}, s);
+      txt(75,94,"免优化 · 泛化",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["细段（保险）","形变场 + 每 clip 500 步微调", s=>{
+      el("rect",{x:22,y:34,width:106,height:38,rx:6,fill:"#fff8c5",stroke:"#eac54f","stroke-width":1.2,"stroke-dasharray":"4 3"}, s);
+      txt(75,58,"per-scene ×500",{class:"svg-nota-b",fill:"#5c4400"}, s);
+      txt(75,94,"磨到逐场景质量",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["61 视角渲染","−12°~+12° 插值，重建/NVS 分开报", s=>{
+      for(let i=0;i<7;i++){ const a=-12+i*4; const x=75+Math.sin(a*3.14/180)*44; el("line",{x1:x,y1:34,x2:x,y2:60,stroke:"#9a6700","stroke-width":1.1,opacity:.5+i*0.07}, s); }
+      el("rect",{x:30,y:64,width:90,height:14,rx:3,fill:"#eff2f5",stroke:"#59636e","stroke-width":1}, s);
+      txt(75,92,"静/动态分开评",{class:"svg-nota",fill:"#59636e"}, s); }],
+    ["编辑与适配","删/加/挪物体；换相机构型车辆", s=>{
+      el("rect",{x:24,y:34,width:44,height:34,rx:4,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(46,86,"场景",{class:"svg-nota",fill:"#a40e26"}, s);
+      el("rect",{x:84,y:34,width:44,height:34,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(106,86,"编辑后",{class:"svg-nota",fill:"#116329"}, s);
+      el("line",{x1:68,y1:51,x2:82,y2:51,stroke:"#9a6700","stroke-width":1.8}, s);
+      txt(75,100,"再渲染一致",{class:"svg-nota",fill:"#59636e"}, s); }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"render",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>
