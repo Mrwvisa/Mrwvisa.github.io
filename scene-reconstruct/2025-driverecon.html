@@ -198,7 +198,8 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
       <rect x="20" y="80" width="190" height="96" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
       <text x="115" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">环视视频帧</text>
       <text x="115" y="132" text-anchor="middle" class="svg-nota">[N,T,V,3,H,W]，V=3 视角</text>
-      <text x="115" y="152" text-anchor="middle" class="svg-nota">stride=10 抽帧</text>
+      <text x="115" y="152" text-anchor="middle" class="svg-nota">每第 10 帧留作 NVS 评测</text>
+      <text x="115" y="170" text-anchor="middle" class="svg-nota">（stride=10 是划分，非抽帧）</text>
 
       <rect x="20" y="200" width="190" height="80" rx="8" class="box" fill="#eff2f5" stroke="#59636e" stroke-dasharray="5 3"/>
       <text x="115" y="226" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#3f444d">条件注入</text>
@@ -241,9 +242,11 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
       <line x1="1092" y1="200" x2="1092" y2="240" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
 
       <!-- 渲染 -->
-      <rect x="972" y="244" width="240" height="76" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
-      <text x="1092" y="272" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">可微光栅化</text>
-      <text x="1092" y="296" text-anchor="middle" class="svg-nota">61 个插值视角（−12°~+12°）渲染</text>
+      <rect x="972" y="244" width="240" height="96" rx="8" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="1092" y="268" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">可微光栅化（按观测相机）</text>
+      <text x="1092" y="290" text-anchor="middle" class="svg-nota">逐帧渲染输入视角（gs_render）</text>
+      <text x="1092" y="308" text-anchor="middle" class="svg-nota">动/静分解各出一图</text>
+      <text x="1092" y="328" text-anchor="middle" class="svg-nota">评测另有 ±12°×61 环绕模式</text>
 
       <line x1="972" y1="282" x2="930" y2="282" stroke="#9a6700" stroke-width="2" marker-end="url(#aho)"/>
       <rect x="660" y="244" width="268" height="76" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
@@ -251,22 +254,23 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
       <text x="794" y="296" text-anchor="middle" class="svg-nota">删物体 · 加物体 · 挪物体 · 车辆适配</text>
 
       <!-- fine 阶段 -->
-      <rect x="254" y="300" width="330" height="86" rx="10" fill="#fff8c5" stroke="#eac54f" stroke-width="1.4" stroke-dasharray="7 5"/>
-      <text x="419" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">② 细段（可选，逐 clip）</text>
-      <text x="419" y="350" text-anchor="middle" class="svg-nota">前馈结果 + 形变场 _deformation</text>
-      <text x="419" y="370" text-anchor="middle" class="svg-nota">每 clip 最多 500 步微调（train.py per_scence_num）</text>
+      <rect x="254" y="300" width="330" height="96" rx="10" fill="#fff8c5" stroke="#eac54f" stroke-width="1.4" stroke-dasharray="7 5"/>
+      <text x="419" y="324" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">② 逐场景拟合（发布代码仅 coarse 段）</text>
+      <text x="419" y="346" text-anchor="middle" class="svg-nota">stage='coarse' 硬编码于 train.py</text>
+      <text x="419" y="366" text-anchor="middle" class="svg-nota">每窗口 500 步优化网络权重</text>
+      <text x="419" y="386" text-anchor="middle" class="svg-nota">（per_scence_num；形变场仅论文设定）</text>
       <line x1="584" y1="343" x2="970" y2="343" stroke="#9a6700" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#aho)"/>
       <text x="778" y="334" text-anchor="middle" class="svg-cn" fill="#818b98">把 Gaussians 磨到逐场景优化的质量</text>
 
       <!-- 监督 -->
       <rect x="254" y="440" width="380" height="66" rx="8" fill="#fff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
       <text x="444" y="466" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督（免重建真值）</text>
-      <text x="444" y="490" text-anchor="middle" class="svg-nota">渲染 RGB + LiDAR 深度（分布 CE + L2）+ 3 类分割（静态/动态/天空）</text>
+      <text x="444" y="490" text-anchor="middle" class="svg-nota">渲染 RGB + 3 类分割（静态/动态/天空）+ LiDAR 深度 CE×2/L2×2（官方导出下近乎空转†）</text>
       <polyline points="419,440 419,420" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
       <polyline points="1092,440 1092,326" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ahr)"/>
       <text x="1092" y="462" text-anchor="middle" class="svg-cn" fill="#a40e26">渲染损失（静态/动态加权 0.1/0.1）</text>
     </svg>
-    <div class="figcap">图 2-1 · DrivingRecon 总流程（按代码核对）：相机条件 UNet → 逐像素 Adaptor → depth2xyz → 4D Gaussians → 光栅化；细段可选用形变场对每 clip 再微调 500 步。</div>
+    <div class="figcap">图 2-1 · DrivingRecon 总流程（按代码核对）：相机条件 UNet → 逐像素 Adaptor → depth2xyz → 4D Gaussians → 按观测相机光栅化；逐场景拟合以 500 步/窗口优化网络权重（发布代码仅 coarse 段）。†见下方代码发现。</div>
     <div class="legend">
       <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入/条件</span>
       <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>UNet 骨干</span>
@@ -278,7 +282,7 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
   <h3><span class="no">2.1.1</span>全链路 shape 清单（逐模块，代码核对）</h3>
   <table>
     <tr><th>#</th><th>模块</th><th>输入</th><th>关键超参（出处：代码）</th><th>输出</th></tr>
-    <tr><td class="mono">1</td><td>输入</td><td class="mono">—</td><td>V=3 环视视角 · stride=10 抽帧 · View_Num=3（train.py）</td><td class="mono">images [N,T,V,3,H,W]</td></tr>
+    <tr><td class="mono">1</td><td>输入</td><td class="mono">—</td><td>V=3 环视视角 · stride=10 划分训练/评测帧（t%10==0 留作 NVS，非抽帧）· View_Num=3（train.py）</td><td class="mono">images [N,T,V,3,H,W]</td></tr>
     <tr><td class="mono">2</td><td>条件</td><td class="mono">K, c2w, LiDAR 深度</td><td>内参 [·,3,3] · 外参 [·,4,4] · 深度图（>0.1 处有效）</td><td class="mono">与图像同进 UNet</td></tr>
     <tr><td class="mono">3</td><td>UNet 骨干</td><td class="mono">[B·T·V, C, H, W]</td><td>conv_in → Down×3 → Mid → Up×3 → conv_out · 注意力在最深 Down + 第一 Up · out_num=128 · GroupNorm</td><td class="mono">特征 [B·T·V, 128, H, W]</td></tr>
     <tr><td class="mono">4</td><td>rgb 头</td><td class="mono">[·,128,H,W]</td><td>ResnetBlock → 64ch → Conv1×1</td><td class="mono">RGB（或 SH 3 阶）</td></tr>
@@ -286,12 +290,15 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
     <tr><td class="mono">6</td><td>深度分布头</td><td class="mono">[·,128,H,W]</td><td>200 档假设 · 量程 0.1~400m · softmax 期望</td><td class="mono">[B·T, px, 200]</td></tr>
     <tr><td class="mono">7</td><td>深度精修 + 偏移头</td><td class="mono">[·,128,H,W]</td><td>回归残差 1 通道（乘量程/档数）· uv 偏移 2 + 3D 偏移 3，限幅 ±5</td><td class="mono">[B·T, px, 6]</td></tr>
     <tr><td class="mono">8</td><td>分割头</td><td class="mono">[·,128,H,W]</td><td>3 类：静态 / 动态 / 天空（seg_num=3，GT 为伪标签）</td><td class="mono">[B·T, px, 3]</td></tr>
-    <tr><td class="mono">9</td><td>depth2xyz + 光栅化</td><td class="mono">全量 Gaussian 参数</td><td>反投影得 means3D · diff-gaussian-rasterization · 评测渲染 61 视角</td><td class="mono">任意视角 RGB</td></tr>
+    <tr><td class="mono">9</td><td>depth2xyz + 光栅化</td><td class="mono">全量 Gaussian 参数</td><td>反投影得 means3D · <b>diff-surfel-rasterization</b>（2DGS 深度 surfel 变体；README 里的 depth-diff-gaussian-rasterization 是过时文档，以 import 为准）· 训练按观测相机渲染，评测另有 ±12°×61 环绕模式（gs_render_mul）</td><td class="mono">任意视角 RGB</td></tr>
   </table>
   <ul class="dots">
-    <li>训练配置：accelerate · bf16 混合精度 · 8 卡（acc.yaml num_processes=8）· 数据 Waymo NOTA2_64，另有 nuScenes 协议。</li>
-    <li>DINOv2 的位置：<span class="mono">utils/feature_extractor.py</span> 只被 <span class="mono">dataset_readers.py</span> 的离线预处理调用（提特征存盘），<b>网络前向不经过它</b>——判断"组装程度"时这是关键事实。</li>
+    <li>训练配置：accelerate · bf16 混合精度 · <b>2 卡</b>（acc.yaml num_processes=2；另有被注释的 16 卡 DeepSpeed 多机配置）· 数据 Waymo NOTA2_64（64 场景联合 = 论文的"大模型"；单场景也能训，对应逐场景重建设定）。仓库不含 nuScenes 协议——environment.yml 里的 nuscenes-devkit 是作者环境残留。</li>
+    <li>DINOv2 的位置：<span class="mono">utils/feature_extractor.py</span> 只被 <span class="mono">dataset_readers.py</span> 的离线预处理调用（提特征存盘），且默认 <span class="mono">load_feat_map=False</span> 连离线提取都不触发，<b>网络前向更不经过它</b>——判断"组装程度"时这是关键事实：复现不需要任何 DINOv2 权重。</li>
+    <li>窗口采样约束：起点避开 t%10∈{8,9,0}，保证长度 3 的训练窗口永不跨过留出帧——这也解释了默认 T=3 的来历（换更长窗口需同步改起点约束）。</li>
   </ul>
+
+  <div class="callout warn"><b>†跑通管线才发现：官方导出下 LiDAR 深度监督近乎空转。</b>深度图由 lidar bin 前 3 列（"origins"≈雷达安装点，近似常量）投影到像素生成——投影只落在一个点上，深度图实际近乎全零；真正含 xyz 的第 4–6 列只进了 xyz_map，而训练前向不使用它。于是权重为 2 的深度 CE/L2 在官方数据管线下基本空转，几何主要靠多视角光度一致性学出。复现验证时"投影激光点回图像"的数值自检可以一眼确认这一点；想让深度监督生效需改导出格式，但那就偏离官方设定了。</div>
 </section>
 
 <section id="s22">
@@ -350,7 +357,7 @@ td.mono,th.mono{font-family:var(--mono);font-size:12px}
       <line x1="634" y1="67" x2="674" y2="67" stroke="#818b98" stroke-width="2" marker-end="url(#ah3)"/>
       <rect x="676" y="36" width="254" height="62" rx="7" fill="#fff" stroke="#cf222e" stroke-width="1.6" stroke-dasharray="6 4"/>
       <text x="803" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">反向传播 → UNet + Adaptor 全参</text>
-      <text x="803" y="82" text-anchor="middle" class="svg-nota">bf16 · 8 卡 · 无冻结组件</text>
+      <text x="803" y="82" text-anchor="middle" class="svg-nota">bf16 · 2 卡 · 无冻结组件</text>
     </svg>
     <div class="figcap">图 3-1 · 损失流：深度双路（分布 + 回归）、分割、渲染三项，全部可自动生成监督。</div>
   </div>
