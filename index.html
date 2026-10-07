@@ -97,6 +97,16 @@ const PAPERS = [
     desc: "在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划",
     star: true,
   },
+  // ── 研究构想（2026-10 新增域）──
+  {
+    domain: "研究构想", route: "Gaussian 世界模型",
+    title: "高斯脚手架",
+    full: "Gaussian Scaffold: Reconstruction-Pretrained Encoder for Driving Scene Understanding",
+    venue: "研究构想 · 2026",
+    year: 2026,
+    file: "vision/2026-gaussian-scaffold.html",
+    desc: "两阶段构想：先在感知 encoder 上挂一个重建高斯头，用渲染损失把 4D 物理世界压进特征；训成后拆掉高斯头、冻结 encoder，再训理解与轨迹的 decoder",
+  },
   // ── 路线一：渲染式预训练（掩码 + 神经渲染当解码器，训 backbone）──
   {
     domain: "4D重建", route: "渲染式预训练",

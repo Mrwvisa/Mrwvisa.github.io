@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高斯脚手架 · 研究构想</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+a{color:var(--c-enc)}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"◆";position:absolute;left:2px;top:0;font-size:10px;color:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+table.tbl{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+table.tbl th{background:var(--bg);border:1px solid var(--line);padding:7px 10px;text-align:left;font-weight:600;white-space:nowrap}
+table.tbl td{border:1px solid var(--line);padding:7px 10px;vertical-align:top;color:var(--ink2)}
+table.tbl td b{color:var(--ink)}
+table.tbl tr td:first-child{color:var(--ink);white-space:nowrap}
+/* ===== 两阶段流程图 ===== */
+.flow{display:grid;gap:14px;margin:16px 0}
+.stage{border:1px solid var(--line);border-radius:6px;padding:16px 18px 14px;background:var(--card)}
+.stage.s2{border-style:dashed}
+.stage h4{font-size:14.5px;margin-bottom:12px;color:var(--ink)}
+.flowrow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.fbox{border:1.6px solid;border-radius:6px;padding:7px 11px;font-size:13px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-width:96px;line-height:1.45}
+.fbox small{color:var(--ink2);font-size:11.5px;font-family:var(--mono)}
+.fb-in{border-color:var(--c-input-line);background:var(--c-input-bg);color:var(--c-input)}
+.fb-enc{border-color:var(--c-enc-line);background:var(--c-enc-bg);color:var(--c-enc)}
+.fb-gs{border-color:var(--c-render-line);background:var(--c-render-bg);color:var(--c-render)}
+.fb-loss{border-color:var(--c-out-line);background:var(--c-out-bg);color:var(--c-out)}
+.fb-gray{border-color:var(--line);background:var(--c-mask-bg);color:var(--ink2)}
+.farr{align-self:center;color:var(--ink3);font-size:16px;font-weight:700;flex-shrink:0}
+.fdrop{border:1.6px dashed var(--c-out);border-radius:6px;padding:7px 11px;font-size:13px;color:var(--ink3);background:transparent;text-align:center;align-self:center;text-decoration:line-through}
+.fnote{font-size:12.5px;color:var(--ink3);margin-top:10px}
+.footer{max-width:1460px;margin:40px auto 0;padding:14px 8px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目录</h3>
+  <a href="#s1">§1 引子：两个问题</a>
+  <a href="#s2">§2 构想总览</a>
+  <a href="#s21" class="lv2">2.1 阶段一：重建练 encoder</a>
+  <a href="#s22" class="lv2">2.2 阶段二：拆头、锁定、训 decoder</a>
+  <a href="#s23" class="lv2">2.3 三条设计原则</a>
+  <a href="#s3">§3 为什么用重建当考官</a>
+  <a href="#s4">§4 为什么考官是 4D 高斯</a>
+  <a href="#s41" class="lv2">4.1 表示形式的取舍</a>
+  <a href="#s42" class="lv2">4.2 对 Sparse4D 类 encoder 的审计</a>
+  <a href="#s43" class="lv2">4.3 重建头怎么挂</a>
+  <a href="#s44" class="lv2">4.4 三个对照组</a>
+  <a href="#s5">§5 阶段二的设计理由</a>
+  <a href="#s6">§6 与相邻路线的差异</a>
+  <a href="#s7">§7 开放问题与验证实验</a>
+</nav>
+
+<main class="content">
+<div class="hero" id="top">
+  <h1>高斯脚手架：用重建头把 4D 世界压进 encoder，训成即拆</h1>
+  <div class="meta">Gaussian Scaffold · 研究构想 · 2026 · <a href="../index.html">Mrwvisa.github.io</a> / 研究构想</div>
+  <div class="desc">这不是一篇论文解读，是一个研究构想：让前馈感知 encoder 借一个「重建高斯头」学会保存完整的 4D 物理世界，然后把头拆掉，让 decoder 在冻结的表征上学会理解与决策。</div>
+</div>
+
+<section id="s1">
+  <h2><span class="no">§1</span>引子：两个问题</h2>
+  <div class="sec-sub">感知 encoder 的特征里保存了多少世界；语义与因果又该从哪里来。</div>
+
+  <p>当下的自动驾驶感知模型（以 <a href="https://arxiv.org/abs/2111.06377">Sparse4D</a> 为代表的稀疏 query 一系）已经把检测、跟踪做得很好，但一个根本问题很少被正面回答：<b>encoder 的特征里，到底保存了多少物理世界？</b>检测损失只在乎框和属性——路面颗粒、墙砖纹理、背景几何，这些「检测不考」的信息会在特征里逐渐衰减。特征是一张被考纲裁剪过的世界地图：考纲内的语义密度很高，考纲外的物理世界近乎空白。</p>
+
+  <p>第二个问题更隐蔽：<b>语义与因果从哪里来？</b>一个被反复验证的事实是——重建逼出的是<b>舞台</b>（几何 + 外观 + 运动），不是<b>意义</b>。你可以把路口渲染到照片级，仍然不知道谁有路权、看不出滚过来的球意味着车后可能跟着小孩、读不懂停止线。这些是语义和因果常识，光度监督学不出来。</p>
+
+  <p>这两个问题合起来，指向一个自然的分工：<b>重建负责让 encoder「保真地搬演世界」，理解与决策交给后续的 decoder 去学</b>。整个构想概括起来就是：两阶段构想：先在感知 encoder 上挂一个重建高斯头，用渲染损失把 4D 物理世界压进特征；训成后拆掉高斯头、冻结 encoder，再训理解与轨迹的 decoder。</p>
+
+  <h3><span class="no">1.1</span>相邻做法与本构想的位置</h3>
+  <div class="grid g3">
+    <div class="card">
+      <h4><span class="tag blue">渲染式预训练</span>UniPAD / MIM4D</h4>
+      <p>已经证明「渲染当考官」有效：掩码 + 可微渲染预训练 backbone，下游检测/分割/占用全面受益。<a href="https://arxiv.org/abs/2403.08760">MIM4D</a> 进一步补上时序。但它们预训练的是通用 backbone，与产线感知架构是两套东西，迁移要靠微调。</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag orange">高斯当状态</span>GaussianWorld / MindVLA-o1 式</h4>
+      <p>把 3D/4D 高斯当作<b>推理时</b>的场景状态，围绕它做预测与规划（<a href="https://arxiv.org/abs/2412.10373">GaussianWorld</a> 用高斯做 BEV 预测的多帧建模）。表达力强，但推理管线里永远背着一个重建组件。</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag red">端到端 VLA / 世界模型</span></h4>
+      <p>端到端从像素到轨迹，或自回归滚动预测未来。表征在隐式 latent 里流动，效率高，但事故难以归因——说不清「模型当时看到了什么、哪块状态错了」。</p>
+    </div>
+  </div>
+
+  <p>本构想取三者的交集而避开各自的软肋：像渲染式预训练一样<b>用重建当监督</b>，像高斯路线一样<b>用高斯当表示</b>，但高斯只存在于<b>训练期</b>——推理管线与普通感知模型完全一致，零渲染开销。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="no">§2</span>构想总览</h2>
+  <div class="sec-sub">两阶段课程：先用重建高斯头当考官练 encoder，再拆头锁定、训 decoder。</div>
+
+  <div class="flow">
+    <div class="stage">
+      <h4><span class="tag orange">阶段一</span>重建式预训练——高斯头是脚手架</h4>
+      <div class="flowrow">
+        <div class="fbox fb-in">环视视频<br><small>多相机 · 多帧</small></div>
+        <div class="farr">＋</div>
+        <div class="fbox fb-in">LiDAR<br><small>深度监督</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-enc" style="min-width:150px">Encoder<br><small>Sparse4D 类 · 前馈</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-gray">检测 / 跟踪头<br><small>原有监督 · 保留</small></div>
+      </div>
+      <div class="flowrow" style="margin-top:8px">
+        <div class="fbox fb-enc" style="visibility:hidden;min-width:0"></div>
+        <div class="farr">↘</div>
+        <div class="fbox fb-gs" style="min-width:150px">重建高斯头<br><small>新增 · 预测 4D 高斯</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-gs">4D 高斯<br><small>几何 · 外观 · 运动</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-gs">可微渲染<br><small>任意视角</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-loss">光度损失<br>＋ 深度损失</div>
+      </div>
+      <div class="fnote">两个考官同时考一个 encoder：检测头管「语义与目标」，高斯头管「完整的物理世界」。梯度同时回传，特征被逼成既懂目标、又懂世界。</div>
+    </div>
+    <div class="stage s2">
+      <h4><span class="tag blue">阶段二</span>理解式下游——高斯头功成身退</h4>
+      <div class="flowrow">
+        <div class="fdrop">重建高斯头 · 已拆除</div>
+        <div class="farr">✂</div>
+        <div class="fbox fb-enc" style="min-width:150px;border-style:solid;border-width:2.2px">Encoder<br><small>🔒 冻结锁定</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-in">时序特征 / query<br><small>唯一接口</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-gray" style="min-width:170px">Decoder<br><small>理解（语义 · 因果 · 问答）</small></div>
+        <div class="farr">→</div>
+        <div class="fbox fb-loss">轨迹输出</div>
+      </div>
+      <div class="fnote">重建训好之后，高斯头的使命结束：它是训练期的脚手架，不是部署期的组件。encoder 冻结，decoder 在稳定的世界表征上专心学长「意义」。</div>
+    </div>
+  </div>
+
+  <h3 id="s21"><span class="no">2.1</span>阶段一：重建练 encoder</h3>
+  <p>在 Sparse4D 类前馈感知 encoder 上新增一个轻量<b>重建高斯头</b>：从 encoder 的稠密多尺度特征直接回归 4D 高斯参数，渲染成任意视角的图像，用光度一致性 + LiDAR 深度做监督。原有的检测/跟踪监督全部保留——不是「先检测后重建」的两段式，而是<b>双考官共训</b>：一份特征，两个考官，一个考语义目标，一个考物理世界。</p>
+  <p>这一步的文献依据充分：渲染式预训练（UniPAD、<a href="https://arxiv.org/abs/2403.08760">MIM4D</a>）证明渲染监督能抬升下游感知；前馈高斯（<a href="https://arxiv.org/abs/2412.09043">DrivingRecon</a>、ReconDrive）证明「特征 → 高斯参数」一次前向可行，不需要逐场景优化。</p>
+
+  <h3 id="s22"><span class="no">2.2</span>阶段二：拆头、锁定、训 decoder</h3>
+  <p>重建质量收敛后，做三件事：<b>拆掉</b>重建高斯头（脚手架完成使命）、<b>冻结</b> encoder（世界表征从此稳定）、<b>训练</b>decoder。decoder 的输入是冻结 encoder 输出的时序特征/实例 query，任务从理解逐步走向轨迹：先接语义/因果类监督（问答、可解释性目标），再接轨迹监督。理解在先，轨迹在后——能在理解的基础上出轨迹，才算真的学会了决策，而不是条件反射。</p>
+
+  <h3 id="s23"><span class="no">2.3</span>三条设计原则</h3>
+  <ul class="dots">
+    <li><b>高斯是脚手架，不是产品。</b>重建高斯头存在的唯一意义是提供训练期监督；推理期模型里没有渲染、没有高斯，部署形态与普通感知模型一致，车端零额外开销。</li>
+    <li><b>接口是 embedding，不是高斯。</b>留给 decoder 的是冻结 encoder 的特征本身——高斯只是把物理世界「压」进特征的手段。这与「高斯当推理时状态」的路线（§6）形成本质区分。</li>
+    <li><b>重建是必要条件，不是充分条件。</b>舞台（几何+外观+运动）由阶段一保证；意义（路权、因果、意图）必须由阶段二的 decoder 显式去学——两个阶段各管一段，谁也替代不了谁。</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="no">§3</span>为什么用重建当考官</h2>
+  <div class="sec-sub">光度一致性逼出因果结构；这是其他监督给不了的。</div>
+
+  <p>要每个像素从每个角度、每个时刻都预测对，几何、运动、遮挡关系就<b>藏不住</b>：一辆车被卡车挡住一半，只有正确推断遮挡关系才能把被挡侧的外观渲染对；一个物体在动，只有正确估计它的运动场才能在相邻时刻渲染对。光度监督以「渲染对」为名，行「逼出物理结构」之实——这是重建相对于其他预训练目标最根本的优势。</p>
+
+  <p>对照组是隐式 latent 式预训练（V-JEPA 一脉）：在 latent 空间预测特征，模型可以走捷径——拟合统计规律而不必还原物理结构。latent 预测损失降得很低，不代表世界里几何与运动的因果链被学进来了。重建的损失是<b>对物理世界本身的偏差</b>，不作弊。</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h4>证据一：渲染预训练 → 感知提升</h4>
+      <p>UniPAD（CVPR 2024）与 MIM4D（IJCV 2025）系统性地证明：以可微渲染为预训练目标，下游检测、分割、占用一致受益。渲染监督与语义监督不是竞争关系，是互补关系。</p>
+    </div>
+    <div class="card">
+      <h4>证据二：重建质量 → 理解质量正相关</h4>
+      <p>ReconDrive 的实验里，渲染质量高的路段，下游检测指标也高——重建与理解正相关。但传递不是自动的：必须像本构想这样把两个考官焊在同一个 encoder 上，才把「相关性」变成「因果性」。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="no">§4</span>为什么考官是 4D 高斯</h2>
+  <div class="sec-sub">表示形式决定监督能传多深的物理结构；挂头方案落在 Sparse4D 类 encoder 的真实缺口上。</div>
+
+  <h3 id="s41"><span class="no">4.1</span>表示形式的取舍</h3>
+  <table class="tbl">
+    <tr><th>考官用的表示</th><th>渲染保真</th><th>能否前馈</th><th>时间维</th><th>结论</th></tr>
+    <tr><td><b>4D 高斯</b></td><td>照片级（可微光栅化）</td><td>✅ 一次前向直接回归参数（DrivingRecon / ReconDrive 已验证）</td><td>原生（每高斯带运动场）</td><td><b>本构想采用</b></td></tr>
+    <tr><td>体素占据 / occ</td><td>差（语义网格，渲染粗糙）</td><td>✅</td><td>需逐帧堆叠，内存膨胀</td><td>监督传不动外观纹理</td></tr>
+    <tr><td>NeRF / 隐式场</td><td>照片级</td><td>❌ 逐场景优化，每次渲染都要查询网络</td><td>可支持但更慢</td><td>当不了批量考官</td></tr>
+    <tr><td>latent token（D4RT 式）</td><td>不可直接渲染</td><td>✅</td><td>✅（motion token）</td><td>适合做基座，但监督不落在像素上，物理结构约束弱一档</td></tr>
+  </table>
+  <p>高斯是唯一同时满足「照片级可微渲染 + 一次前馈 + 原生 4D」三项的表示——既当得了严格的考官（渲染损失精细到像素），又进得了批量训练管线（无需逐场景优化）。</p>
+
+  <h3 id="s42"><span class="no">4.2</span>对 Sparse4D 类 encoder 的审计：三有、三缺</h3>
+  <p>为什么 Sparse4D 类 encoder 特别值得挂这个头？拆开看它的特征里有什么、缺什么：</p>
+  <div class="grid g2">
+    <div class="card">
+      <h4><span class="tag green">有的</span></h4>
+      <p>① 每相机每帧的<b>稠密多尺度特征</b>（FPN，最细 stride 可到 4）——重建头有地方挂；② 强<b>语义</b>——实例 query 被检测监督喂得很饱；③ <b>度量几何锚</b>——框回归提供 3D 位置监督，被检测到的物体附近几何是准的。</p>
+    </div>
+    <div class="card">
+      <h4><span class="tag red">缺的</span></h4>
+      <p>① <b>外观纹理没被训过</b>——检测损失不在乎路面颗粒与墙砖纹理；② <b>背景/远处无度量监督</b>——框外世界的几何是隐式的；③ 最致命：<b>时序融合只发生在 query 空间</b>（数百个实例 token），稠密特征路径逐帧独立——稠密的逐点运动场没有信息来源。</p>
+    </div>
+  </div>
+  <p>三缺恰好是重建高斯头能补的：渲染损失管纹理与外观，LiDAR 深度管背景度量，逐点的高斯运动场管稠密时序。<b>检测监督与重建监督的缺口几乎正交——这就是双考官共训的结构性理由。</b></p>
+
+  <h3 id="s43"><span class="no">4.3</span>重建头怎么挂</h3>
+  <p>最小侵入式的挂法：冻结或微调 encoder 主干，在 FPN 的 stride-4/8 特征上<b>按锚点回归高斯参数</b>。每个高斯的参数量约 60 维：位置 3、尺度 3、旋转 4、不透明度 1、SH 颜色 ~48、速度 3。静态/动态可以分流（静态共享 3D 高斯、动态按物体分 4D 高斯，ReconDrive 的混合策略），监督两端：渲染图的光度损失 + 高斯深度对 LiDAR 的深度损失。</p>
+
+  <h3 id="s44"><span class="no">4.4</span>三个对照组</h3>
+  <table class="tbl">
+    <tr><th>配置</th><th>做法</th><th>结果 → 含义</th></tr>
+    <tr><td><b>A. frozen</b></td><td>冻结 encoder，只训重建头</td><td>frozen 就能到不错的 NVS 质量 → 检测监督意外地保存了世界，省一步预训练</td></tr>
+    <tr><td><b>B. LoRA</b></td><td>冻结主干 + LoRA 微调</td><td>B 追上 C → 特征没坏只是没训够，LoRA 即可（<b>预期最可能的结局</b>）</td></tr>
+    <tr><td><b>C. 共训</b></td><td>检测 + 渲染双损失从头共训</td><td>性能上限；也是本构想阶段一的最终形态</td></tr>
+  </table>
+</section>
+
+<section id="s5">
+  <h2><span class="no">§5</span>阶段二的设计理由</h2>
+  <div class="sec-sub">为什么冻结；decoder 学什么；接口之辨。</div>
+
+  <h3><span class="no">5.1</span>为什么冻结 encoder</h3>
+  <p>阶段一结束时，encoder 的特征已经「装下」了一个保真的物理世界。若下游任务的梯度继续流过主干，语义目标的短期收益会慢慢冲掉物理保真——特征重新被考纲裁剪。冻结是一种<b>课程式解耦</b>：物理世界表征在阶段一定型，意义在阶段二学习，互不干扰。这也让阶段二的实验极其便宜：encoder 只需前向缓存特征，decoder 的训练可以反复迭代而不必重跑主干。</p>
+
+  <h3><span class="no">5.2</span>decoder 学什么</h3>
+  <p>从易到难三层：① <b>语义读出</b>——在冻结特征上接检测/分割/属性头，验证表征的可读性；② <b>理解</b>——因果与常识类目标（谁有路权、遮挡后可能出现什么），可以借多模态模型的问答式监督；③ <b>轨迹</b>——在理解的基础上输出自车轨迹。「预测是理解的期末考」：能把几秒后的场景预测对（包括从遮挡后走出来的行人），才算真的理解了，而不只是重建了。</p>
+
+  <h3><span class="no">5.3</span>接口之辨：embedding vs 显式高斯</h3>
+  <p>本构想选 embedding 接口，但诚实地说这不是唯一解。显式高斯接口（decoder 直接读 4D 高斯状态）胜在可归因——每个感知错误能指到「哪块高斯错了」；反事实也好做——改场景重渲染即可测试。embedding 接口胜在简单与效率——decoder 不必管理数十万高斯的记忆。一个折中的可能：embedding 为主接口，高斯状态作为可解释性的「检查视图」保留在日志链路里，供事后归因。这题没有免费答案，是本构想最重要的开放问题之一（§7）。</p>
+</section>
+
+<section id="s6">
+  <h2><span class="no">§6</span>与相邻路线的差异</h2>
+  <div class="sec-sub">高斯在训练期，不在推理期——这一条划清了所有边界。</div>
+  <table class="tbl">
+    <tr><th>路线</th><th>代表</th><th>高斯/重建在哪</th><th>推理开销</th><th>可归因性</th></tr>
+    <tr><td><b>本构想</b></td><td>—</td><td><b>只在训练期</b>（重建头是脚手架，训成即拆）</td><td>与普通感知模型相同，零渲染</td><td>中：特征接口 + 可选高斯检查视图</td></tr>
+    <tr><td>高斯当状态</td><td>GaussianWorld、MindVLA-o1 式</td><td>推理期的场景状态，预测/规划围绕它展开</td><td>持续维护高斯世界，需增量管理</td><td>高：错误可定位到具体高斯</td></tr>
+    <tr><td>渲染式预训练</td><td>UniPAD、MIM4D</td><td>预训练期（掩码渲染），但表示多为 NeRF/占据，且与产线感知架构分离</td><td>低</td><td>低</td></tr>
+    <tr><td>端到端 VLA</td><td>各类 VLA</td><td>无显式重建，隐式 latent</td><td>低</td><td>低：黑盒</td></tr>
+    <tr><td>occ 世界模型</td><td>Drive-OccWorld 等</td><td>无（占据网格滚动预测未来）</td><td>逐帧全量张量</td><td>中：体素粒度</td></tr>
+  </table>
+  <p>一句话定位：<b>把「高斯当表示」的好处留在训练期，把「普通感知模型的部署形态」留在车端。</b>它不需要为渲染质量在推理期付出任何代价，却让 encoder 的特征在出厂时就装着完整的 4D 物理世界。</p>
+</section>
+
+<section id="s7">
+  <h2><span class="no">§7</span>开放问题与验证实验</h2>
+  <div class="sec-sub">构想对不对，用实验说话；三个便宜的验证，每个都回答一个前提。</div>
+  <ul class="dots">
+    <li><b>传递函数实验</b>：用现成前馈重建权重重建公开数据，把渲染结果喂现成检测器，画「重建质量 → 下游检测指标」的散点。斜率显著为正，则「重建考官有益理解」的第一层前提成立（ReconDrive 给过一个点，这里补一条线）。</li>
+    <li><b>接口消融</b>：同一个 decoder，分别吃「冻结 encoder 的 embedding」「显式 4D 高斯状态」「同尺寸隐式 latent」，比下游指标与长尾表现（夜间、雨天、遮挡重现）。这直接裁决 §5.3 的开放问题。</li>
+    <li><b>冻结必要性检验</b>：阶段二里「冻结 encoder」对照组设为「放开微调」，看物理保真（渲染探针指标）是否随下游训练退化——退化了，课程式解耦就立住了。</li>
+    <li><b>长尾压力测试</b>：专挑遮挡-重现场景，看阶段一表征支撑的 decoder 在目标重现时的表现——这是「舞台保真 → 意义学习」传递链最脆弱的一环。</li>
+  </ul>
+  <p>这个构想不赌任何单一模型或数据集，它赌的是一个结构性判断：<b>物理世界的保真表征与语义因果的理解能力，应该在不同阶段、用不同考官分开训练，而高斯是性价比最高的那个考官。</b>如果传递函数与接口消融支持这个判断，两阶段课程就是一条可以从今天的产品级感知模型直接走过去的路。</p>
+</section>
+
+<div class="footer">Mrwvisa.github.io · 研究构想 · 高斯脚手架 · 2026</div>
+</main>
+</div>
+
+<script>
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>
