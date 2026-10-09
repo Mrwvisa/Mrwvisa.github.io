@@ -176,6 +176,17 @@ const PAPERS = [
     desc: "把 3D 占用预测重构为以当前观测为条件的 4D 占用预测，用 Gaussian 世界模型按静态对齐/动态运动/新场景补全三个因子演化场景流",
     star: true,
   },
+  // ── 路线四：点图回归（每像素回归 3D 点，公共坐标系，对应关系免费得到）──
+  {
+    domain: "4D重建", route: "点图回归",
+    title: "DUSt3R",
+    full: "DUSt3R: Geometric 3D Vision Made Easy",
+    venue: "CVPR 2024",
+    year: 2024,
+    file: "4d-reconstruct/2024-dust3r.html",
+    desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
+    star: true,
+  },
   // ── 新领域：自监督预训练（掩码建模路线，MAE 是本站渲染式预训练一脉的源头）──
   {
     domain: "自监督预训练", route: "掩码建模预训练",

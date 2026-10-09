@@ -20,13 +20,14 @@
     └── footer
 ```
 
-三条路线（2026-09 定，按监督空间/表征形态划分，右侧分组标题）：
+四条路线（右侧分组标题，按监督空间/表征形态划分；2026-09 定前三条，2026-10 增第四条）：
 1. **渲染式预训练**——掩码 + 神经渲染当解码器，训 backbone：MIM4D、UniPAD
 2. **占用世界模型**——显式/隐式占用，预测未来，接规划：SparseWorld、CascadeOcc、Drive-OccWorld、DIO
 3. **Gaussian 世界模型**——参数化基元当场景状态：GaussianWorld
+4. **点图回归**——每像素直接回归 3D 点、两张图共用一个坐标系，对应关系是副产品：DUSt3R
 
 交互：
-- 打开页面**默认选中 `PAPERS[0].domain`**（当前是 4D重建）；想换默认就调 PAPERS 数组顺序
+- 打开页面**默认选中 `PAPERS[0].domain`**（当前是 场景级重建，DrivingRecon 在数组首位）；想换默认就调 PAPERS 数组顺序
 - 点卡片整卡 → 跳转论文解读页；星标 `★`：数据里 `star:true` 的默认变黄（`--star:#e3b341`），点击切换并存 localStorage 覆盖值（key `starOv`，`{file: bool}`）
 - 点左侧领域 → 过滤右侧（`selectDomain()`）
 - 无页头无个人信息（用户明确要求）：只有菜单 + 卡片 + 一行页脚
@@ -46,6 +47,7 @@
 
 - GitHub (Primer) 主题，CSS 变量在 index.html 与各论文页 `:root`（底 `#f6f8fa`、边 `#d1d9e0`、蓝 `#0969da`、星标黄 `#e3b341`），正文 14px
 - 论文页保持 skill 原生产物不动，唯一允许的改动是插入返回按钮
+- **§0 核心解读模块**（2026-10 DUSt3R 页首创，用户点名要求，当前仅此页）：开篇全篇概括——引子段 + JS 循环动图（五步闭环：升起/同空/重合=对应/压短=Loss/输出即重建，带暂停/重播按钮，`#ptmap-anim`）+ 五步 dots + 静态网络总图（图 0-2）；是否推广到旧页待定
 - index.html 的 desc 不编造数字（同 paper-explainer 契约）
 - **卡片 desc 的一句话总结必须与论文页 §1 引子的总结逐字一致**（用户要求两边对得上；引子段末尾「整套方法概括起来就是：…」）
 
@@ -57,7 +59,7 @@
 
 ## TODO / 已知事项
 
-- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；当前 4D重建 域 7 篇：UniPAD/MIM4D/GaussianWorld/Drive-OccWorld/DIO/CascadeOcc/SparseWorld）
+- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；当前 4D重建 域 8 篇：UniPAD/MIM4D/GaussianWorld/Drive-OccWorld/DIO/CascadeOcc/SparseWorld/DUSt3R）
 - [ ] 可选：自定义域名
 
 ## 2026-09 批次备注（paper-explainer 批量产出）
@@ -67,3 +69,8 @@
 - 教训：后台 agent 批量生成会被 600s 流看门狗反复掐死（本环境网络流不稳），一夜零产出；改为主会话亲自分段生成后单日完成 6 篇。再跑批量时直接用主会话 + 分段落盘（Write 首段 → bash heredoc 追加 ≤12KB/段）
 - push 直连不稳时走代理：git -c http.proxy=http://127.0.0.1:7897 push；Pages 构建状态轮询 gh api repos/Mrwvisa/Mrwvisa.github.io/pages --jq .status（注意 built 可能是上一次构建的旧状态，push 后 sleep 20 再轮询）
 - 每篇验证流程：chrome-devtools 打开本地文件 → console 零报错（file:// 的 unique origin 报错是 MCP 工具噪声可忽略）→ flowrow 卡片数/无溢出 → 无【】占位 → 目录顶部「← 返回」存在 → push 后 curl 线上 200
+
+## 2026-10 批次备注
+
+- DUSt3R 解读（代码核对版）：材料在 /tmp/dust3r/（paper.txt=arXiv v2 全文转纯文本 + naver/dust3r 浅 clone）；论文正文表 1~4 + 附录表 5~8 的数字已逐条核对（表 7 是三段训练课程 224-linear 50ep → 512-linear 100ep → 512-dpt 90ep，别写成两阶段）
+- chrome-devtools MCP 报 "browser already running" 时：先 `pkill -f "chrome-devtools-mcp/chrome-profile"` 清残留实例再 new_page（只杀 MCP 专用 profile，不影响用户自己的 Chrome）
