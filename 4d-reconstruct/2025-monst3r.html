@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MonST3R 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.flowarrow.down{padding:6px 0;font-size:19px}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分 */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 Training for Dynamics</a>
+  <a href="#s23" class="lv2">2.3 推理与全局优化</a>
+  <a href="#s24" class="lv2">2.4 实时模式</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s31" class="lv2">3.1 微调损失</a>
+  <a href="#s32" class="lv2">3.2 全局优化损失</a>
+  <a href="#s33" class="lv2">3.3 训练配方速查</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>MonST3R：把 DUSt3R 的点图回归推进到动态场景</h1>
+  <div class="meta">MonST3R: A Simple Approach for Estimating Geometry in the Presence of Motion · arXiv 2410.03825 · github.com/Junyi42/monst3r · 4 数据集微调 · ICLR 2025</div>
+  <div class="desc">读完这一页，你能判断：<b>它凭什么改动这么小（网络结构零改动）、效果又这么好（视频深度和位姿都赢），以及自己复现的坑在哪（训练数据要四个来源、推理要跑一个优化）。</b>本页图表与数字均经代码核对，出处标注到文件。</div>
+</div>
+
+<!-- ============ §0 核心解读 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>先看它要什么：一段有物体运动的视频，估计出每个时刻场景的 3D 几何，顺带给出每帧的相机位姿、内参和视频深度。MonST3R 的出发点是两个观察。第一，DUSt3R 的点图表示对动态场景不需要改写，只需要换个读法：点图 = 每个像素一个 3D 坐标；DUSt3R 里两张图共享一套坐标系，MonST3R 改成按时刻预测——第 t 帧的点图 X<sup>t; t&#8592;t&#8242;</sup>，读作「第 t 帧拍到的每个像素的 3D 点，写在 t 帧自己的相机系里」，动态物体在这张图里只出现在「当下」的位置。一段视频的所有点图叠起来，静止背景只有一份，运动物体在每个时刻各留一份残影——连起来看就是 4D 点云。第二，真正稀缺的不是想法，是数据：带位姿和深度的动态视频几乎没有。MonST3R 的答案是「小规模微调」：冻结 DUSt3R 的编码器，只在解码器和回归头上微调，四个数据集、时间间隔 1~9 帧采样图对，损失原样照搬——网络就学会了忽略运动、用静止背景对齐。推理时，视频按滑动窗口两两组对跑前馈，得到一堆逐对点图；再用一个轻量全局优化把它们拧成一个全局点云，顺便解出每帧位姿、内参和深度（这三个量就是优化的参数本身，深度图直接拿）。优化里加了两项视频专属约束：相机轨迹要平滑，静止区域的「相机诱导流」要和现成光流对上——后者顺便产出动静掩码。整套方法概括起来就是：把 DUSt3R 的点图回归改成按时刻预测，冻结编码器、只在四个动态数据集上微调解码器与回归头，让点图表示直接吃下运动；推理端用一个视频专属的全局优化把逐对点图拧成动态点云，位姿、内参、视频深度全从这一个表示里长出来。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>动态场景的几何估计，传统上拆成深度、光流、位姿、运动分割等子任务，多阶段拼装、逐步累积误差；MonST3R 把它们合成一件事：给每对帧回归一张点图，动态物体在每个时刻各留一份，几何、位姿、深度从这一套表示里统一往外读（机制见图 0-1）。和 DUSt3R 的关系是「同一套表示、同一个网络结构、同一份初始权重」，改动全在训练与推理外围。
+      <div class="fig">
+        <svg viewBox="0 0 1400 430" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入：两帧 -->
+          <rect x="20" y="58" width="150" height="92" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">视频帧 I&#7511;</text>
+          <text x="95" y="108" text-anchor="middle" class="svg-nota">[3,512,288]（16:9）</text>
+          <circle cx="70" cy="130" r="5" fill="#cf222e"/>
+          <text x="112" y="134" text-anchor="middle" class="svg-nota" fill="#a40e26">物体在此</text>
+          <rect x="20" y="262" width="150" height="92" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="290" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">视频帧 I&#7511;&#8242;</text>
+          <text x="95" y="312" text-anchor="middle" class="svg-nota">[3,512,288]（16:9）</text>
+          <circle cx="126" cy="334" r="5" fill="#cf222e"/>
+          <text x="78" y="338" text-anchor="middle" class="svg-nota" fill="#a40e26">位置变了</text>
+          <text x="95" y="240" text-anchor="middle" class="svg-cn" fill="#59636e">&#8942;</text>
+
+          <line x1="170" y1="104" x2="218" y2="176" class="arrow"/>
+          <line x1="170" y1="308" x2="218" y2="236" class="arrow"/>
+
+          <!-- 网络（与 DUSt3R 同款） -->
+          <rect x="220" y="140" width="230" height="132" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="335" y="168" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DUSt3R 网络（结构零改动）</text>
+          <text x="335" y="192" text-anchor="middle" class="svg-nota">共享 ViT-L 编码器（冻结）</text>
+          <text x="335" y="212" text-anchor="middle" class="svg-nota">双解码器 + DPT 头（微调）</text>
+          <text x="335" y="240" text-anchor="middle" class="svg-cn" fill="#59636e">参数细节见 DUSt3R 页 §2，这里全同</text>
+          <text x="335" y="260" text-anchor="middle" class="svg-cn" fill="#59636e">变的只有权重</text>
+
+          <line x1="450" y1="188" x2="498" y2="164" class="arrow"/>
+          <line x1="450" y1="224" x2="498" y2="248" class="arrow"/>
+
+          <!-- 输出：两张点图 -->
+          <rect x="500" y="58" width="280" height="122" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="640" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X<tspan dy="-4" font-size="9">t; t&#8592;t&#8242;</tspan><tspan dy="4"> + 置信度 C</tspan></text>
+          <text x="640" y="110" text-anchor="middle" class="svg-nota">[288,512,3] + [288,512]</text>
+          <text x="640" y="134" text-anchor="middle" class="svg-cn" fill="#59636e">t 帧每个像素的 3D 点</text>
+          <text x="640" y="158" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">写在 t 帧相机系</text>
+          <rect x="500" y="262" width="280" height="122" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="640" y="290" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X<tspan dy="-4" font-size="9">t&#8242;; t&#8592;t&#8242;</tspan><tspan dy="4"> + 置信度 C</tspan></text>
+          <text x="640" y="314" text-anchor="middle" class="svg-nota">[288,512,3] + [288,512]</text>
+          <text x="640" y="338" text-anchor="middle" class="svg-cn" fill="#59636e">t&#8242; 帧每个像素的 3D 点</text>
+          <text x="640" y="362" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">同样写在 t 帧相机系</text>
+
+          <line x1="780" y1="119" x2="838" y2="180" class="arrow"/>
+          <line x1="780" y1="323" x2="838" y2="262" class="arrow"/>
+
+          <!-- 动态点云示意 -->
+          <rect x="840" y="58" width="330" height="326" rx="8" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-dasharray="6 4"/>
+          <text x="1005" y="88" text-anchor="middle" class="svg-cn" style="font-weight:700">叠起来 = 动态点云</text>
+          <!-- 背景静态点 -->
+          <circle cx="890" cy="150" r="3" fill="#818b98"/><circle cx="912" cy="140" r="3" fill="#818b98"/>
+          <circle cx="936" cy="152" r="3" fill="#818b98"/><circle cx="900" cy="172" r="3" fill="#818b98"/>
+          <circle cx="924" cy="184" r="3" fill="#818b98"/><circle cx="950" cy="174" r="3" fill="#818b98"/>
+          <circle cx="878" cy="196" r="3" fill="#818b98"/><circle cx="960" cy="196" r="3" fill="#818b98"/>
+          <circle cx="1080" cy="150" r="3" fill="#818b98"/><circle cx="1104" cy="142" r="3" fill="#818b98"/>
+          <circle cx="1128" cy="154" r="3" fill="#818b98"/><circle cx="1092" cy="172" r="3" fill="#818b98"/>
+          <circle cx="1116" cy="184" r="3" fill="#818b98"/><circle cx="1142" cy="176" r="3" fill="#818b98"/>
+          <circle cx="1070" cy="196" r="3" fill="#818b98"/><circle cx="1152" cy="196" r="3" fill="#818b98"/>
+          <!-- 动态物体残影两份 -->
+          <circle cx="986" cy="238" r="7" fill="#cf222e" opacity="0.9"/><circle cx="1000" cy="230" r="6" fill="#cf222e" opacity="0.9"/><circle cx="990" cy="252" r="6" fill="#cf222e" opacity="0.9"/>
+          <text x="1012" y="242" text-anchor="start" class="svg-nota" fill="#a40e26">t 时刻的它</text>
+          <circle cx="1064" cy="286" r="7" fill="#f66d6d" opacity="0.85"/><circle cx="1078" cy="278" r="6" fill="#f66d6d" opacity="0.85"/><circle cx="1068" cy="300" r="6" fill="#f66d6d" opacity="0.85"/>
+          <text x="1090" y="292" text-anchor="start" class="svg-nota" fill="#a40e26">t&#8242; 时刻的它</text>
+          <!-- 两个相机 -->
+          <circle cx="1005" cy="130" r="4" fill="#0969da"/><line x1="1005" y1="130" x2="988" y2="116" stroke="#0969da" stroke-width="1.4"/><line x1="1005" y1="130" x2="988" y2="144" stroke="#0969da" stroke-width="1.4"/><line x1="988" y1="116" x2="988" y2="144" stroke="#0969da" stroke-width="1.4"/>
+          <text x="972" y="130" text-anchor="end" class="svg-nota" fill="#0550ae">相机 t</text>
+          <circle cx="1145" cy="120" r="4" fill="#0969da"/><line x1="1145" y1="120" x2="1160" y2="108" stroke="#0969da" stroke-width="1.4"/><line x1="1145" y1="120" x2="1160" y2="132" stroke="#0969da" stroke-width="1.4"/><line x1="1160" y1="108" x2="1160" y2="132" stroke="#0969da" stroke-width="1.4"/>
+          <text x="1164" y="118" text-anchor="start" class="svg-nota" fill="#0550ae">相机 t&#8242;</text>
+          <text x="1005" y="336" text-anchor="middle" class="svg-cn" fill="#59636e">静止背景：一份，两时刻对得上</text>
+          <text x="1005" y="358" text-anchor="middle" class="svg-cn" fill="#a40e26" style="font-weight:700">运动物体：每时刻一份残影</text>
+
+          <text x="560" y="416" text-anchor="middle" class="svg-cn" fill="#59636e">对齐靠静止背景像素：同一个静止点，X<tspan dy="-4" font-size="9">t; t&#8592;t&#8242;</tspan><tspan dy="4"> 和 X</tspan><tspan dy="-4" font-size="9">t&#8242;; t&#8592;t&#8242;</tspan><tspan dy="4"> 里坐标重合；动态物体的两份对不上——这正是它被「看见运动」的方式</tspan></text>
+        </svg>
+        <div class="figcap">图 0-1 · MonST3R 核心机制：点图按时刻预测，动态物体在每个时刻的点图里只有一份，跨时刻叠起来就是 4D 点云；对齐靠静止背景像素。shape 依官方 512 配置（16:9 为 [3,512,288]）。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>不发明新的运动表示，只做「小规模微调」——前提是先用上了两个现成红利：DUSt3R 的权重和它的置信度加权损失，一个都不改（Loss 仍是最小改动：照抄 DUSt3R，α=0.2）。
+      <ul class="sub">
+        <li><b>输入：</b>从 4 个带位姿 + 深度的视频数据集里采一张图对（I&#7511;、I&#7511;&#8242;，间隔 1~9 帧随机）；图像长边缩到 512（训练时从 512×288 / 384 / 336 三种画幅里随机）。</li>
+        <li><b>输出：</b>两张点图 X<sup>t; t&#8592;t&#8242;</sup>、X<sup>t&#8242;; t&#8592;t&#8242;</sup>（各 [288,512,3]）+ 每像素置信度 C（各 [288,512]）。</li>
+        <li><b>GT：</b>数据集自带深度图和位姿：深度反投影成 3D 点、变换到 t 帧相机系，得 <span class="ovl">X</span><sup>t; t&#8592;t&#8242;</sup> 和 <span class="ovl">X</span><sup>t&#8242;; t&#8592;t&#8242;</sup>（记号规则与 DUSt3R 相同：横杠 = 真值，上标两段 = 哪一帧 / 写在谁的坐标系）。</li>
+        <li><b>Loss：</b>与 DUSt3R 训练的损失逐字相同（<span class="mono">ConfLoss(Regr3D(L21, norm_mode='avg_dis'), alpha=0.2)</span>）：逐像素配对算距离、乘置信度、补置信度校准项。公式与逐符号解释见 §3.1。</li>
+        <li><b>只训练一部分：</b>冻结整个编码器（ViT-Large）与 patch 嵌入，只更新解码器（两个 ViT-Base）和 DPT 头；发布命令 50 epoch（论文写 25，以命令为准），20,000 对/epoch。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <!-- 数据集配比 -->
+          <rect x="20" y="30" width="200" height="118" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="120" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">4 个训练数据集</text>
+          <text x="120" y="80" text-anchor="middle" class="svg-nota">PointOdyssey 50%</text>
+          <text x="120" y="98" text-anchor="middle" class="svg-nota">TartanAir 25% · Spring 5%</text>
+          <text x="120" y="116" text-anchor="middle" class="svg-nota">Waymo 20%</text>
+          <text x="120" y="136" text-anchor="middle" class="svg-cn" fill="#59636e">都带位姿 + 深度</text>
+
+          <!-- 采样两帧 -->
+          <rect x="270" y="30" width="200" height="118" rx="8" class="box" fill="#ffffff" stroke="#818b98"/>
+          <text x="370" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700">采一帧对</text>
+          <text x="370" y="80" text-anchor="middle" class="svg-nota">间隔 stride 1~9 帧</text>
+          <text x="370" y="98" text-anchor="middle" class="svg-nota">概率随间隔线性增大</text>
+          <text x="370" y="116" text-anchor="middle" class="svg-nota">（9 是 1 的两倍）</text>
+          <text x="370" y="136" text-anchor="middle" class="svg-cn" fill="#59636e">逼模型见大运动</text>
+
+          <!-- 网络 -->
+          <rect x="520" y="30" width="240" height="118" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="640" y="54" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DUSt3R 网络</text>
+          <text x="640" y="78" text-anchor="middle" class="svg-nota">编码器 ViT-L ❄ 冻结</text>
+          <text x="640" y="98" text-anchor="middle" class="svg-nota">解码器 ×2 + DPT 头 ✎ 可训</text>
+          <text x="640" y="122" text-anchor="middle" class="svg-cn" fill="#59636e">从 DUSt3R 512 权重出发</text>
+          <text x="640" y="140" text-anchor="middle" class="svg-cn" fill="#59636e">FOV 增强：中心裁剪改变视场角</text>
+
+          <!-- 输出 -->
+          <rect x="810" y="30" width="180" height="118" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="900" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">预测点图 + C</text>
+          <text x="900" y="80" text-anchor="middle" class="svg-nota">X<tspan dy="-4" font-size="9">t; t&#8592;t&#8242;</tspan><tspan dy="4">, X</tspan><tspan dy="-4" font-size="9">t&#8242;; t&#8592;t&#8242;</tspan></text>
+          <text x="900" y="104" text-anchor="middle" class="svg-nota">[288,512,3] 各一张</text>
+          <text x="900" y="128" text-anchor="middle" class="svg-nota">置信度 C [288,512]</text>
+
+          <!-- 损失 -->
+          <rect x="1030" y="30" width="150" height="118" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="1105" y="58" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Loss：照抄</text>
+          <text x="1105" y="82" text-anchor="middle" class="svg-nota">ConfLoss α=0.2</text>
+          <text x="1105" y="102" text-anchor="middle" class="svg-nota">逐像素对 GT</text>
+          <text x="1105" y="122" text-anchor="middle" class="svg-nota">按 C 加权</text>
+
+          <!-- GT 构造行 -->
+          <rect x="270" y="196" width="460" height="76" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="500" y="222" text-anchor="middle" class="svg-cn" style="font-weight:700">GT 构造（数据集自带，不用标注）</text>
+          <text x="500" y="244" text-anchor="middle" class="svg-nota">深度图反投影 → 用位姿变换到 t 帧相机系</text>
+          <text x="500" y="262" text-anchor="middle" class="svg-nota">→ <tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">t; t&#8592;t&#8242;</tspan><tspan dy="4">、</tspan><tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">t&#8242;; t&#8592;t&#8242;</tspan><tspan dy="4"> + valid_mask（无深度像素剔除）</tspan></text>
+
+          <line x1="220" y1="90" x2="266" y2="90" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="470" y1="90" x2="516" y2="90" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="760" y1="90" x2="806" y2="90" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="990" y1="90" x2="1026" y2="90" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="730" y1="222" x2="966" y2="152" class="arrow" style="marker-end:url(#ahT)"/>
+          <path d="M1105,148 L1105,176 L640,176 L640,152" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="830" y="170" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播：只更新解码器与 DPT 头</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：从 4 个数据集采样带运动的图对，DUSt3R 网络从既有权重出发，冻结编码器、只微调解码器与回归头；损失与 DUSt3R 训练完全相同。数据配比与超参取自发布训练命令。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>纯前馈部分和 DUSt3R 一样（逐对跑网络），动态场景的所有「补救」都在轻量后处理里，没有一个环节需要训练。
+      <ul class="sub">
+        <li><b>输入：</b>单目视频（或图片目录），长边 512；不需要相机参数。</li>
+        <li><b>输出：</b>一次流水线给出五样东西：<b>动态点云</b>（每个像素一个世界系 3D 点）、<b>每帧位姿</b>、<b>内参</b>（焦距）、<b>视频深度</b>（每帧深度图）、<b>动静掩码</b>。读法：深度 / 位姿 / 内参来自全局优化的参数本身；动静掩码来自「相机诱导流 vs 光流」的对照。</li>
+        <li><b>后处理：</b>① 组对：滑动窗口（论文用 w=9、间隔 2，60 帧约 600 对）；② 每对前馈拿点图 + 置信度；③ 现成光流网络（RAFT 系）逐对算光流；④ 用「相机流 − 光流」差异出动静掩码，用置信度筛点 + PnP 出位姿初值；⑤ 全局优化 300 步（约 1 分钟）：对齐项 + 轨迹平滑项 + 静止区光流一致项，解出全部位姿、内参、深度。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="26" width="150" height="64" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="52" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">输入视频</text>
+          <text x="95" y="74" text-anchor="middle" class="svg-nota">帧 I&#8304; … I&#8319;</text>
+
+          <rect x="210" y="26" width="180" height="64" rx="8" class="box" fill="#ffffff" stroke="#818b98"/>
+          <text x="300" y="50" text-anchor="middle" class="svg-cn" style="font-weight:700">滑窗组对</text>
+          <text x="300" y="72" text-anchor="middle" class="svg-nota">w=9 · 间隔 2 · 约 600 对</text>
+
+          <rect x="430" y="26" width="200" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="530" y="50" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">逐对前馈（约 30s）</text>
+          <text x="530" y="72" text-anchor="middle" class="svg-nota">点图 X<tspan dy="-4" font-size="9">t;e</tspan><tspan dy="4"> + 置信度 C（冻结网络）</tspan></text>
+
+          <rect x="670" y="26" width="180" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="760" y="50" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">RAFT 光流</text>
+          <text x="760" y="72" text-anchor="middle" class="svg-nota">现成网络，逐对算</text>
+
+          <rect x="890" y="26" width="270" height="64" rx="8" class="box" fill="#ffffff" stroke="#818b98"/>
+          <text x="1025" y="50" text-anchor="middle" class="svg-cn" style="font-weight:700">动静掩码 + 位姿初值</text>
+          <text x="1025" y="72" text-anchor="middle" class="svg-nota">相机流 vs 光流阈值 · PnP（置信度筛点）</text>
+
+          <rect x="210" y="140" width="600" height="72" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="510" y="166" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">全局优化 300 步（约 1 分钟）</text>
+          <text x="510" y="188" text-anchor="middle" class="svg-nota">对齐项（点图对账）+ 轨迹平滑项 + 静止区光流一致项</text>
+          <text x="510" y="204" text-anchor="middle" class="svg-nota">变量 = 每帧位姿 P&#7511; · 内参 K&#7511; · 深度图 D&#7511;</text>
+
+          <rect x="890" y="140" width="270" height="72" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1025" y="164" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">输出：五件套</text>
+          <text x="1025" y="186" text-anchor="middle" class="svg-nota">动态点云 · 位姿 · 内参</text>
+          <text x="1025" y="202" text-anchor="middle" class="svg-nota">视频深度 · 动静掩码</text>
+
+          <rect x="210" y="248" width="600" height="52" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="510" y="270" text-anchor="middle" class="svg-nota">深度读数：D&#7511; 就是「第 t 帧的深度图」，不用再换算——深度只是全局优化的参数之一</text>
+          <text x="510" y="288" text-anchor="middle" class="svg-nota">位姿/内参同一来源；点云 = 所有帧的 (位姿, 内参, 深度) 反投影出来拼一起</text>
+
+          <line x1="170" y1="58" x2="206" y2="58" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="390" y1="58" x2="426" y2="58" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="630" y1="58" x2="666" y2="58" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="850" y1="58" x2="886" y2="58" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="1025" y1="90" x2="1025" y2="136" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="530" y1="90" x2="530" y2="136" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="810" y1="176" x2="886" y2="176" class="arrow" style="marker-end:url(#ahI)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：前馈部分与 DUSt3R 相同（逐对点图），动态场景的处理集中在「光流掩码 + PnP + 全局优化」这条轻量后处理链上；时间数字为论文对 60 帧视频的报告值。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定性：</b>有运动物体的视频里，静止背景重建干净、运动物体在每个时刻各留一份残影（论文图 1）；DAVIS 上对比 CasualSAM 和 DUSt3R：轨迹和几何同时给对（论文图 4）。</li>
+        <li><b>定量：</b>视频深度超过专门做视频深度的 DepthCrafter（Bonn AbsRel 0.063 vs 0.075；只给尺度对齐时差距更大：Sintel 0.345 vs 0.692）；位姿在联合估计方法里最好（Sintel ATE 0.108，不需要 GT 内参）；单帧深度不掉（与微调前 DUSt3R 基本持平）；实时模式约 40 FPS（单卡 4090）。数字见 §4。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>动态场景的几何表示不用重新发明：把点图从「每对图一套坐标系」改成「每时刻一套坐标系」，同一套表示、同一个网络就继续用；真正决定成败的是训练配方（选数据、冻结编码器、按间隔采样）和推理端几十行的几何后处理。</li>
+  </ul>
+
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：动态物体为什么会在点云里出现多份残影？网络里有什么机制在生成它吗？</div>
+    <div class="qa-a">A：没有机制，这是表示的必然结果。每张点图只回答一个问题：「这一时刻拍到的像素，各自的 3D 点在哪」。t 时刻物体在 A 处，它的点就在 A；t&#8242; 时刻移到 B，它的点就在 B。两张点图都写在世界（帧 t）坐标系里叠起来，同一个物体自然留下 A、B 两份位置。网络从不显式预测「运动」——运动体现为「同一个物体在不同时刻的点图里位置不同」。残影不是误差，是这套表示记录运动的方式；论文的 4D 点云就是把残影按时间连起来看。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：为什么位姿用 PnP 解，而不是像 DUSt3R 那样从两张点图之间解变换（刚体配准 / Procrustes）？</div>
+    <div class="qa-a">A：因为动态物体让「两张点图之间的刚体变换」这个假设失效。DUSt3R 里 X<sup>t&#8242;; t&#8592;t&#8242;</sup> 就是 t&#8242; 帧的相机系，两片点云只差一个刚体变换，直接配准很稳；动态场景里 X<sup>t;&#8230;</sup> 里的物体点位于「当时的它」，两帧点云之间并不只差一个相机运动。PnP 换了个问题：只在「同一帧内部」用对应关系——t&#8242; 帧每个像素有自己的 3D 点（该帧点图），也有自己的像素坐标（网格），这就是标准的「已知 3D 点和像点、求相机位姿」，点全来自同一时刻、同一坐标系，动态物体干扰不了这个等式；再用 RANSAC + 置信度阈值挑内点（静止的、可信的像素占多数）就能稳住。详见 §2.3。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：全局优化里已经有对齐项（直接拿点图们去对齐），为什么还要加光流项和轨迹平滑项？</div>
+    <div class="qa-a">A：三项各修一类病。对齐项是主力：把每对点图（局部坐标系）对齐到全局坐标系，每帧的深度图是共享变量，多对观测共同约束它，所以逐对误差被平均掉、一致性来自这里。光流项修「对齐项管不到的地方」：它只压静态像素（掩码过的区域），作用是把全局解拉回和真实像素运动一致——没有它，短滑窗内局部最优可以把位姿和深度错到「点云互相对得上、但和图像动起来对不上」。轨迹平滑项修「病态帧」：视频相机运动连续，相邻帧位姿差得很小；某些帧点图质量差、把位姿带飞时，这一项把它按回到轨迹上。消融里去掉平滑项 RPE rot 从 0.732 掉到 1.456（§4），说明它主要保旋转。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：只微调解码器、冻结编码器，为什么够？直接全量微调不行吗？</div>
+    <div class="qa-a">A：数据太小，全量微调会过拟合。这次微调只用了四个数据集的采样对（每 epoch 2 万对，比 DUSt3R 预训练的 850 万对少两个数量级），要学的又只是「运动场景里的相对几何」这一件增量知识：编码器里 CroCo 预训练打下的「两幅图里哪些内容是一回事」的特征本来就通用，保下来当底座最省数据。消融（论文表 6）验证了这个选择：只微调解码器 + 头 ATE 0.108 最好；全量微调 0.181、只微调头 0.185，两种极端都更差。代码里就是一行 <span class="mono">freeze='encoder'</span>（冻结编码器、patch 嵌入与 mask token）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：训练数据四个里，TartanAir 没有动态物体、Waymo 只有驾驶场景，为什么也要收？</div>
+    <div class="qa-a">A：它们补的是「场景多样性」，不是「运动」。微调要防的是网络在四个有限数据源上过拟合：TartanAir（合成、室内外、无人机视角，无动态物体）把「场景和视角的分布」拉开、又不会教坏运动处理（它本来就是静态的，等同于巩固 DUSt3R 原有能力）；Waymo（真实、驾驶域）补真实传感器数据。配比上做了明确的偏心（消融表）：PointOdyssey（最会动的数据集）给 50%，TartanAir 25%、Spring 5%、Waymo 20%。消融显示四个都不可少：单独 PO 训 ATE 0.220，堆满四个才到 0.108；去掉 PO（只留 TA+Spring+Waymo）反而退化到 0.167——运动部分的「教材」主要由 PO 提供。</div>
+  </div>
+</section>
+
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、MonST3R 怎么解。</div>
+
+  <p>先从 DUSt3R 讲起：它把几何 3D 视觉做成一个回归问题——两张图进网络，每个像素回归一个 3D 点（点图），两张点图写在同一坐标系里，深度、位姿、对应关系全变成这一个回归目标的副产品。但它的训练数据全是静态场景，于是遇到有人动的视频会犯两种典型错误（论文图 2）：一是把运动的前景当对齐锚点，前景对上了，背景反而错开；二是前景深度估计失败，把近处的人「贴」到远处的墙上。原因都是数据分布：网络没见过「同一个物体在两张图里位置不同」这种输入。自然的修法是重新训练它——但动态场景的训练数据（带位姿和深度的视频）恰恰是最缺的东西，COLMAP 这类 SfM 在长轨迹或高动态场景里连伪标注都产不出来。MonST3R 的答案分两半：表示层面什么也不改（点图按时刻预测照样成立），训练层面只做小规模微调（冻结编码器、精选四个数据集、按时间间隔采样），推理层面配一条视频专属的后处理链（光流掩码、PnP、全局优化）。整套方法概括起来就是：把 DUSt3R 的点图回归改成按时刻预测，冻结编码器、只在四个动态数据集上微调解码器与回归头，让点图表示直接吃下运动；推理端用一个视频专属的全局优化把逐对点图拧成动态点云，位姿、内参、视频深度全从这一个表示里长出来。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>动态场景打破「静止」这个默认前提</h4>
+      <p>经典 SfM / SLAM 的全部几何推理（对极约束、三角化、增量 BA）都建立在「除了相机，场景不动」上。物体一动，它产生的像素位移不再由相机解释，轻则当外点被剔除、重则把整个解带偏。</p>
+      <p>DUSt3R 虽然不显式解几何方程，但它的对齐习惯是从静态数据里学来的——遇到运动物体，它倾向于用「动得最显眼的」前景来对齐，背景跟着错位（论文图 2 左）。</p>
+    </div>
+    <div class="card">
+      <h4>「带位姿 + 深度的动态视频」极稀缺</h4>
+      <p>要微调就得有监督：每帧的相机位姿和深度。现实中位姿最难求——本身就是「动态场景重建」要解的东西，循环依赖；COLMAP 这类工具在长轨迹、高动态数据上直接失败，伪 GT 都产不出。</p>
+      <p>合成数据（PointOdyssey、TartanAir、Spring）能顺手给出精确位姿和深度，但数量、多样性有限，还有合成到真实的域差距；真实数据只剩带 LiDAR 的 Waymo 这类驾驶集。MonST3R 的全部训练数据就只有这四个来源。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:19%">路线</th><th style="width:24%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>SfM / 视觉 SLAM</td>
+      <td class="mono">COLMAP / DROID-SLAM</td>
+      <td>几何求解 + 鲁棒估计硬扛动态物体：靠 RANSAC 把动的像素当外点。物体占比一大就失稳；而且大多只出位姿，稠密几何还得另配工具。</td>
+    </tr>
+    <tr>
+      <td>测试时优化</td>
+      <td class="mono">CasualSAM / Robust-CVD</td>
+      <td>对每个输入视频在测试时微调 / 优化深度与相机位姿，用光流和动态掩码做约束。效果扎实但代价高：CasualSAM 是重型优化，换一个视频就要重新算；部分方法还要求光流、掩码作为输入先备好。</td>
+    </tr>
+    <tr>
+      <td>学习式视觉里程计</td>
+      <td class="mono">DPVO / LEAP-VO</td>
+      <td>端到端学位姿，对动态场景鲁棒性不错。但多为 pose-only（不出稠密几何），且普遍需要 GT 内参作为输入——内参未知的真实视频就卡住了。</td>
+    </tr>
+    <tr>
+      <td>视频深度</td>
+      <td class="mono">ChronoDepth / DepthCrafter</td>
+      <td>专门做逐帧深度：ChronoDepth 靠窗口推理，帧间仍会闪；DepthCrafter 输出 scale/shift 不变的深度——对「看图」够用，对 3D 应用不行（论文明确点出，三维几何里 shift 是要预测的量）。</td>
+    </tr>
+    <tr>
+      <td>4D 重建</td>
+      <td class="mono">Shape-of-Motion / DG 类</td>
+      <td>先备好深度、2D 轨迹、相机位姿（或依赖它们），再对每段视频做测试时优化（3D 高斯 + 形变场）。重建质量高但依赖前置估计，和 MonST3R 是正交关系——MonST3R 的输出正好可以当它们的初始化。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>MonST3R 是怎么解决的</h3>
+  <p><b>表示层面：什么也不改。</b>关键洞察是「点图不需要为动态场景改写」。把点图的含义从「这一对图共享」改成「这一时刻」，它就自动是动态场景的合法表示：第 t 帧的点图是 t 时刻整个场景的 3D 快照，动态物体只出现在当下位置；跨时刻叠起来，残影按时间排开就是 4D 点云，对齐靠静止背景像素完成。</p>
+  <p><b>训练层面：小规模微调 + 三个技巧。</b>从 DUSt3R 512 权重出发：① 冻结编码器，只微调解码器和 DPT 头——保下 CroCo 预训练学到的跨视图特征，把要学的「运动场景几何」压缩成最小增量；② 采样对的时间间隔从 1 到 9 帧、概率随间隔线性增大（间隔 9 是 1 的两倍）——大运动样本更稀有也更值钱，就多喂;  ③ 视场角增强：随机中心裁剪改变有效焦距，逼模型适应不同内参。损失一个字不改：「置信度加权回归」照用（论文原话：same confidence-aware regression loss as DUSt3R）。</p>
+  <p><b>推理层面：一条视频专属的轻量后处理链。</b>逐对前馈拿点图后做三件事：用「相机诱导流 vs 现成光流」的差异算动静掩码；用置信度筛点 + PnP 解位姿初值；跑一个全局优化（对齐项 + 相机轨迹平滑项 + 静止区光流一致项，300 步约 1 分钟），把逐对点图拧成一个全局点云，位姿、内参、深度是优化的参数、直接读出。整个后处理没有任何训练，只有几十行几何与优化逻辑——这是「简单方法」的「简单」所在。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>一个模型五种输出：动态点云、每帧位姿、内参、视频深度、动静掩码——联合估计而不是把任务拆开各训一个网络。</li>
+    <li>改动极小、复用极大：网络结构零改动、初始权重直接用 DUSt3R 发布版，微调 1 天（2×RTX 6000 48GB）就能用；<span class="mono">train_criterion</span> 与 DUSt3R 逐字相同。</li>
+    <li>精度：视频深度超过专门方法 DepthCrafter（Bonn 0.063 vs 0.075；只按尺度对齐时优势更大）；位姿在「联合估计」类里最好（Sintel ATE 0.108），不需要 GT 内参输入；单帧深度与 DUSt3R 基本持平、没有因为微调而退化。</li>
+    <li>速度：60 帧视频前馈约 30 秒 + 全局优化约 1 分钟（单卡 RTX 6000）；对照同为联合估计的 ParticleSfM 快 5 倍。实时模式（附录 C）：所有帧直接对齐到锚帧，单卡 4090 约 40 FPS。</li>
+    <li>鲁棒性和泛化：Sintel 最难的几个序列（temple_3、cave_2）比基线稳；静态场景 ScanNet 上甚至超过 DUSt3R 本体（ATE 0.068 vs 0.081）——为视频加的设计没有牺牲静态精度。</li>
+  </ul>
+</section>
+
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看前馈总图（模块级、标真实形状）：它和 DUSt3R 完全一样，变的只有「哪些参数在训」和「输出拿去干什么」。细节留给三个子模块小节。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 660" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <rect x="20" y="60" width="150" height="88" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">视频帧 I&#7511;</text>
+      <text x="95" y="108" text-anchor="middle" class="svg-nota">[3,512,288]（16:9）</text>
+      <text x="95" y="130" text-anchor="middle" class="svg-cn" fill="#59636e">来自同一段视频</text>
+      <rect x="20" y="360" width="150" height="88" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="386" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">视频帧 I&#7511;&#8242;</text>
+      <text x="95" y="408" text-anchor="middle" class="svg-nota">[3,512,288]（16:9）</text>
+      <text x="95" y="430" text-anchor="middle" class="svg-cn" fill="#59636e">间隔 1~9 帧</text>
+
+      <path d="M 95,148 C 8,200 8,352 95,356" fill="none" stroke="#818b98" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ah2)"/>
+      <text x="118" y="266" text-anchor="middle" class="svg-cn" fill="#818b98">训练两种顺序都喂</text>
+
+      <line x1="170" y1="104" x2="218" y2="196" class="arrow" marker-end="url(#ah2)"/>
+      <line x1="170" y1="404" x2="218" y2="312" class="arrow" marker-end="url(#ah2)"/>
+
+      <!-- 共享编码器（冻结） -->
+      <rect x="220" y="170" width="200" height="170" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="320" y="198" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">共享 ViT-L 编码器 &#10052; 冻结</text>
+      <text x="320" y="222" text-anchor="middle" class="svg-nota">Siamese 同一套权重</text>
+      <text x="320" y="244" text-anchor="middle" class="svg-nota">patch 16 → 576 tokens</text>
+      <text x="320" y="266" text-anchor="middle" class="svg-nota">24 层 · dim 1024 · RoPE</text>
+      <text x="320" y="292" text-anchor="middle" class="svg-nota">→ F&#7511;,F&#7511;&#8242; [576,1024]</text>
+      <text x="320" y="318" text-anchor="middle" class="svg-cn" fill="#a40e26">❄ 整个微调期间不更新</text>
+
+      <line x1="420" y1="220" x2="468" y2="150" class="arrow" marker-end="url(#ah2)"/>
+      <line x1="420" y1="290" x2="468" y2="360" class="arrow" marker-end="url(#ah2)"/>
+
+      <!-- 双解码器（可训） -->
+      <rect x="470" y="60" width="230" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="585" y="88" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 t · ViT-Base×12</text>
+      <text x="585" y="112" text-anchor="middle" class="svg-nota">decoder_embed 1024→768</text>
+      <text x="585" y="134" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
+      <text x="585" y="160" text-anchor="middle" class="svg-nota">→ G&#7511; [576,768]</text>
+      <text x="585" y="188" text-anchor="middle" class="svg-cn" fill="#116329">✎ 可训练</text>
+      <rect x="470" y="350" width="230" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="585" y="378" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 t&#8242; · ViT-Base×12</text>
+      <text x="585" y="402" text-anchor="middle" class="svg-nota">dec_blocks2 独立权重</text>
+      <text x="585" y="424" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
+      <text x="585" y="450" text-anchor="middle" class="svg-nota">→ G&#7511;&#8242; [576,768]</text>
+      <text x="585" y="478" text-anchor="middle" class="svg-cn" fill="#116329">✎ 可训练</text>
+
+      <line x1="535" y1="223" x2="535" y2="343" stroke="#0969da" stroke-width="2.4" marker-end="url(#ahb2)"/>
+      <line x1="645" y1="347" x2="645" y2="227" stroke="#0969da" stroke-width="2.4" marker-end="url(#ahb2)"/>
+      <text x="590" y="285" text-anchor="middle" class="svg-nota-b" fill="#0550ae">每层双向互通</text>
+
+      <line x1="700" y1="140" x2="748" y2="140" class="arrow" marker-end="url(#ah2)"/>
+      <line x1="700" y1="430" x2="748" y2="430" class="arrow" marker-end="url(#ah2)"/>
+
+      <!-- DPT 头 -->
+      <rect x="750" y="60" width="160" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="830" y="88" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 回归头 t</text>
+      <text x="830" y="112" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
+      <text x="830" y="134" text-anchor="middle" class="svg-nota">refinenet 256 融合</text>
+      <text x="830" y="160" text-anchor="middle" class="svg-nota">→ [288,512,4]</text>
+      <text x="830" y="188" text-anchor="middle" class="svg-cn" fill="#116329">✎ 可训练</text>
+      <rect x="750" y="350" width="160" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="830" y="378" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 回归头 t&#8242;</text>
+      <text x="830" y="402" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
+      <text x="830" y="424" text-anchor="middle" class="svg-nota">refinenet 256 融合</text>
+      <text x="830" y="450" text-anchor="middle" class="svg-nota">→ [288,512,4]</text>
+      <text x="830" y="478" text-anchor="middle" class="svg-cn" fill="#116329">✎ 可训练</text>
+
+      <line x1="910" y1="140" x2="958" y2="140" class="arrow" marker-end="url(#ah2)"/>
+      <line x1="910" y1="430" x2="958" y2="430" class="arrow" marker-end="url(#ah2)"/>
+
+      <!-- 输出点图 -->
+      <rect x="960" y="60" width="270" height="160" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1095" y="88" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X<tspan dy="-4" font-size="9">t; t&#8592;t&#8242;</tspan><tspan dy="4"> + 置信度 C</tspan></text>
+      <text x="1095" y="114" text-anchor="middle" class="svg-nota">[288,512,3] + [288,512]</text>
+      <text x="1095" y="142" text-anchor="middle" class="svg-cn" fill="#59636e">t 帧每像素 3D 点（t 帧相机系）</text>
+      <text x="1095" y="166" text-anchor="middle" class="svg-nota">depth = exp(·) 保正视深度</text>
+      <text x="1095" y="190" text-anchor="middle" class="svg-nota">confidence = 1 + exp(c)，下界 1</text>
+      <rect x="960" y="350" width="270" height="160" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1095" y="378" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X<tspan dy="-4" font-size="9">t&#8242;; t&#8592;t&#8242;</tspan><tspan dy="4"> + 置信度 C</tspan></text>
+      <text x="1095" y="404" text-anchor="middle" class="svg-nota">[288,512,3] + [288,512]</text>
+      <text x="1095" y="432" text-anchor="middle" class="svg-cn" fill="#59636e">t&#8242; 帧每像素 3D 点</text>
+      <text x="1095" y="456" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">同在 t 帧相机系</text>
+      <text x="1095" y="480" text-anchor="middle" class="svg-nota">pts3d_in_other_view</text>
+
+      <!-- 去向：训练 -->
+      <rect x="20" y="560" width="660" height="84" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.8"/>
+      <text x="350" y="586" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">去向一 · 训练：对 GT 回归（解码器 + 头，编码器冻结）</text>
+      <text x="350" y="610" text-anchor="middle" class="svg-nota">GT = 深度反投影 + 位姿变换到 t 帧系 | ConfLoss(Regr3D(L21, avg_dis), α=0.2)，与 DUSt3R 逐字相同</text>
+      <text x="350" y="632" text-anchor="middle" class="svg-nota">AdamW · lr 5e-5 · warmup 3 epoch · 20,000 对/epoch · 2×RTX 6000 约 1 天</text>
+
+      <!-- 去向：推理 -->
+      <rect x="720" y="560" width="660" height="84" rx="8" fill="#f6f8fa" stroke="#818b98" stroke-width="1.8"/>
+      <text x="1050" y="586" text-anchor="middle" class="svg-cn" style="font-weight:700">去向二 · 推理：光流掩码 + PnP + 全局优化（无训练）</text>
+      <text x="1050" y="610" text-anchor="middle" class="svg-nota">滑窗组对 w=9 · 间隔 2（约 600 对）→ 逐对前馈 → RAFT 光流逐对算</text>
+      <text x="1050" y="632" text-anchor="middle" class="svg-nota">→ 对齐 + 轨迹平滑 + 静止区光流，300 步约 1 分钟 → 点云 / 位姿 / 内参 / 视频深度 / 动静掩码</text>
+
+      <path d="M 1000,510 L 1000,538 L 350,538 L 350,556" fill="none" stroke="#d4a72c" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <path d="M 1230,140 L 1352,140 L 1352,524 L 1050,524 L 1050,556" fill="none" stroke="#818b98" stroke-width="2" marker-end="url(#ah2)"/>
+      <text x="1244" y="330" text-anchor="middle" class="svg-cn" fill="#59636e" transform="rotate(90 1244 330)">训练 / 推理共用同一个网络</text>
+    </svg>
+    <div class="figcap">图 2-1 · 前馈总流程：结构与 DUSt3R 完全相同（共享 ViT-L 编码器 + 层间互通的双解码器 + 双 DPT 头），区别只在冻结标记与输出去向。形状按 512 配置、16:9 画幅（512×288 → patch 16 → 576 token → 逐像素 [288,512,4]）。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>编码器 / 解码器 / 回归头（❄ 冻结 · ✎ 可训）</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw line" style="border-color:#818b98"></span>数据流</span>
+      <span><span class="sw dash"></span>监督 / 训练去向</span>
+    </div>
+  </div>
+
+  <ul class="dots">
+    <li>结构零改动：MonST3R 的「架构」一节可以说是 DUSt3R 架构一节的复印件——同样的共享 ViT-L 编码器、双 ViT-Base 解码器（dec_blocks / dec_blocks2，层间双向交叉注意）、两个 DPT 头，输入输出形状一字不差；对照 DUSt3R 页 §2。论文没有提出任何新模块。</li>
+    <li>冻结是逐参数实现的（<span class="mono">model.py</span>）：<span class="mono">freeze='encoder'</span> 冻结 <span class="mono">mask_token</span>、<span class="mono">patch_embed</span>、<span class="mono">enc_blocks</span>——即整个 ViT-Large 与 patch 嵌入；<span class="mono">dec_blocks</span>、<span class="mono">dec_blocks2</span>、<span class="mono">dec_embed</span>、两个 DPT 头照常训练。</li>
+    <li>输入语义变了：DUSt3R 训练对是「同一场景的两张任意图」，MonST3R 是「同一段视频间隔 1~9 帧的两帧」——两帧之间必然同时有相机运动和物体运动，这是数据分布层面唯一实质的区别。</li>
+    <li>16:9 的形状链：512×288 图 → patch 16 → 两组 576 个 token（dim 1024 编码 → 768 解码）→ DPT 头回到逐像素 [288,512,4]（3 通道点 + 1 通道置信度原始值 <span class="mono">c</span>）。画幅受训练分辨率控制（512×288/384/336 随机），竖图仍走 landscape 包装器。</li>
+    <li>输出后处理两行定生死（同 DUSt3R）：深度分量 <span class="mono">z = exp(x)</span> 保正视深度；置信度 <span class="mono">C = 1 + exp(c)</span> 下界为 1——为损失里「不许弃权」的设计留接口，推理时则当质量权重用（PnP 筛点、优化加权、掩码都对它依赖）。</li>
+    <li>训练时两帧的两种顺序都进 batch（<span class="mono">symmetrize_batch=True</span>，与 DUSt3R 相同），网络对「谁当锚帧」不敏感；正因如此，静态掩码的逐对平均才能把两个方向都算进去（§2.3）。</li>
+    <li>推理端网络只是「观测提供者」：点图与置信度输出后权重全程冻结，不对网络做任何测试时更新——这和 DUSt3R 的全局对齐哲学一致；动态场景的全部额外工序都在 §2.3 的后处理链里。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.2 训练策略 ============ -->
+<section id="s22">
+  <h2><span class="no">§2.2</span>Training for Dynamics</h2>
+  <div class="sec-sub">这一节回答「小规模微调凭什么够」：数据怎么选、对怎么采、参数冻哪些、损失用哪个。</div>
+
+  <p>训练目标本身不新——就是让网络在「两帧之间有物体运动」的输入上依然把点图回归对。全部新意在三件事上：从哪拿数据、怎么从这些数据里把信息榨干、以及哪些参数不该动。按一次训练迭代的顺序过一遍：</p>
+
+  <div class="flowrow" id="train-flow"></div>
+
+  <ul class="dots">
+    <li>数据全集就四个来源（论文表 1）：PointOdyssey（合成、带铰接动态物体、131 场景 20 万帧）、TartanAir（合成、室内外无人机视角、<b>无动态物体</b>、163 场景 100 万帧）、Spring（合成、室外、真实感水体/植被运动、37 场景 6 千帧）、Waymo（真实驾驶、LiDAR 标注、798 场景 16 万帧）。四个都自带位姿 + 深度——这正是「稀缺品」里能凑出的全部。</li>
+    <li>配比不是等量采样，而是明确偏心（论文表 1「Ratio」列）：PointOdyssey 50%、TartanAir 25%、Waymo 20%、Spring 5%。代码里就是数据集字符串前缀 <span class="mono">10_000 @ … + 5_000 @ … + 1_000 @ … + 4_000 @ …</span>——每个「epoch」固定采 20,000 对，按这几个数字分配。偏心逻辑：最会动的 PO 是主教材；TartanAir 提供场景多样性但纯静态；Waymo 补真实域但样式单一。</li>
+    <li>图对采样是核心设计（代码 <span class="mono">strides=[1..9], dist_type='linear_1_2'</span>）：从同一段视频隔 stride 帧取两帧，stride 从 1 到 9，采样概率按线性增大——权重 <span class="mono">linspace(1,2,9)</span> 归一化，即间隔 9 帧被采到的概率是 1 帧的两倍。含义：大间隔 = 大相机位移 + 大物体位移，是最难也最稀缺的样本，就人为加重。</li>
+    <li>视场角增强（<span class="mono">aug_focal=0.9</span>）：随机中心裁剪，裁剪尺度 = 0.9 + 0.1×Beta(0.5,0.5)（双峰的 beta 分布，偏爱接近 0.9 或 1.0 的缩放）。裁剪改变有效焦距 = 换一个视场角，逼网络适应不同内参——训练视频里这种变化本来就少见，靠增强补。</li>
+    <li>其余常规项照旧：分辨率从 (512,288)/(512,384)/(512,336) 随机、ColorJitter 颜色抖动、<span class="mono">aug_crop=16</span> 的随机裁剪对齐。</li>
+    <li>为什么冻结 encoder 是「省数据」的关键：可训练参数量砍掉大半（ViT-Large 编码器 24 层全部不更新，只留两个 ViT-Base 解码器和头），要学的只剩「运动场景里怎么摆点」这一个增量；CroCo 预训练学到的跨视图特征被完整保留。消融（论文表 6）：只微调解码器 + 头 ATE 0.108 &gt; 全量微调 0.181 &gt; 只微调头 0.185。</li>
+    <li>损失是照抄不是重设计：<span class="mono">ConfLoss(Regr3D(L21, norm_mode='avg_dis'), alpha=0.2)</span> 与 DUSt3R 逐字相同（论文原话：same confidence-aware regression loss as DUSt3R）。也就是说这套方法从头到尾没有为「运动」发明任何一项损失——运动是靠数据采样喂进来的，不是靠损失项显式约束的。</li>
+    <li><b>超参（发布命令）：</b>AdamW · lr 5e-5（cosine 到 1e-6）· warmup 3 epoch · batch 4 × 梯度累积 4 × 2 卡 = 有效 32 · 发布命令 50 epoch（论文 §4.1 写 25，两处不一致，复现以发布命令为准）· 2×RTX 6000 48GB 约 1 天。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 推理与全局优化 ============ -->
+<section id="s23">
+  <h2><span class="no">§2.3</span>Inference &amp; Global Alignment</h2>
+  <div class="sec-sub">网络输出到此为止；从「一堆逐对点图」到「一个动态点云 + 全套相机参数」，中间是三步几何后处理，没有任何训练。</div>
+
+  <p>先立一个直觉：逐对点图各自「自说自话」——每对的坐标系都定在它自己的第一帧上，几十对之间互相不认识；全局优化的工作就是挑一套全局坐标系，把所有局部点图拧进去。动态场景让这件事比 DUSt3R 多两个麻烦：拧的时候不能被动的东西带偏（对齐和光流项都要只在静止区域生效），以及相机的轨迹本身有物理先验可以借用（平滑项）。三步按顺序：</p>
+
+  <div class="flowrow" id="global-flow"></div>
+
+  <h3><span class="no">2.3.1</span>动静掩码：用「光流对账」找出没动的东西</h3>
+  <p>思路一句话：如果场景是静止的，像素应该怎么移动，完全由相机运动决定——这个「应该的移动」可以算出来（用点图解出的深度 + 相对位姿做一次三维重投影）；拿它和现成光流网络的实测移动对账，对得上的像素就是静止的，对不上的就是运动的。公式（论文 Eq. 2/3）：先算相机诱导流</p>
+  <div class="formula">
+    <div class="fx">F<sub>cam</sub><sup>t&#8594;t&#8242;</sup> = &#960;( D<sup>t; t&#8592;t&#8242;</sup> · K<sup>t&#8242;</sup> · R<sup>t&#8594;t&#8242;</sup> · (K<sup>t</sup>)<sup>-1</sup> · x̂ + K<sup>t&#8242;</sup> · T<sup>t&#8594;t&#8242;</sup> ) &#8722; x</div>
+    <div class="note">逐符号：<b>x̂</b> 是像素网格的齐次坐标 [3,288,512]，<b>x</b> 是同格的非齐次坐标（减掉它是为了得到「位移」而不是「投影坐标」）；<b>D<sup>t; t&#8592;t&#8242;</sup></b> 是 t 帧点图里取出的深度图 [288,512]；<b>(K<sup>t</sup>)<sup>-1</sup></b> 把像素反投影成射线，乘深度成 3D 点；<b>R<sup>t&#8594;t&#8242;</sup>、T<sup>t&#8594;t&#8242;</sup></b> 是 t→t&#8242; 的相对位姿；<b>K<sup>t&#8242;</sup></b> 再投影回 t&#8242; 帧像素系；<b>&#960;(·)</b> 是 (x,y,z)→(x/z,y/z) 的投影。整条链 = 「假设世界静止，相机从 t 走到 t&#8242;，这个像素会滑到哪里」。</div>
+  </div>
+  <p>再和实测光流 <b>F<sub>est</sub><sup>t&#8594;t&#8242;</sup></b>（现成网络，逐对算）逐像素比差，阈值判定：</p>
+  <div class="formula">
+    <div class="fx">S<sup>t&#8594;t&#8242;</sup> = [ &#945; &gt; &#8214; F<sub>cam</sub><sup>t&#8594;t&#8242;</sup> &#8722; F<sub>est</sub><sup>t&#8594;t&#8242;</sup> &#8214;<sub>L1</sub> ]</div>
+    <div class="note"><b>S</b> 是逐像素的布尔「静态掩码」（真 = 静止）；<b>[·]</b> 是 Iverson 括号（条件成立取 1）；<b>&#945;</b> 是阈值。含义：相机流和实测流差得小 → 没动。逐对算出后，每个像素在它参与的所有对里取平均再二值化，得到每帧的动静掩码（论文附录 D：<span class="mono">S<sup>t</sup> = (Σ S<sup>t;t&#8594;t&#8242;</sup> + Σ S<sup>t;t&#8242;&#8594;t</sup>) / 2|N<sub>t</sub>|</span>，正反两方向都计入）。</div>
+  </div>
+  <ul class="dots">
+    <li>代码核对：光流实际调的是 <span class="mono">third_party/RAFT</span> 的 <span class="mono">load_RAFT("…Tartan-C-T-TSKH-spring540x960-M.pth")</span>——一个在 TartanAir/Spring 数据上训过的 RAFT 系权重；论文正文引的是 SEA-RAFT。两者都是「现成光流网络」，具体权重以发布代码为准。流程里光流只算一次（<span class="mono">iters=20</span>，一次 12 对分块跑），此后梯度全关（<span class="mono">requires_grad_(False)</span>）——它是常量观测，不是可学模块。</li>
+    <li>像素判静的阈值：论文没给具体数（只说 α 固定、代码默认 <span class="mono">motion_mask_thre=0.35</span>）；判据是「逐对差向量的 L2 范数」。注意与论文式（3）写的 smooth-L1 略有出入——量级和语义一致，以代码为准。</li>
+    <li>掩码还会被两处精修（代码细节，论文未提）：① 发布代码默认开 SAM2 视频分割（<span class="mono">sam2_mask_refine=True</span>），把分割出的动态物体并进掩码（<span class="mono">dynamic | sam2_dynamic</span>）——光流对账漏掉的、运动微弱的大物体靠它兜底；② 优化过程中逐像素流损失超过 50 的像素会被该项剔除（见 §3.2），等于掩码外的「残余运动点」也有第二道防线。</li>
+    <li>动静掩码是正式输出之一（论文图 1 右）：它本身就是「运动分割」结果；对下游 4D 重建也是现成资产（动态高斯/静态高斯可以分而治之）。</li>
+  </ul>
+
+  <h3><span class="no">2.3.2</span>相对位姿：同一帧内部的 PnP</h3>
+  <p>为什么不用「两张点图之间解刚体变换」：DUSt3R 里两片点云只差一个相机刚体变换，直接配准很稳；动态场景里运动物体的点位于「当时的它」，两片点云之间不再只差一个变换（这正是残影的来源），两视图假设全失效。MonST3R 换了个用法——只在同一帧内部找对应：t&#8242; 帧每个像素有自己的 3D 点（点图 X<sup>t&#8242;; t&#8592;t&#8242;</sup>），也有自己的像素坐标（网格），一组「3D 点 ↔ 像点」就是标准的 PnP 输入（已知 3D 点和对应像点，反求相机位置，无需外部资料）。求解目标（论文 Eq. 1）：</p>
+  <div class="formula">
+    <div class="fx">R*, T* = argmin<sub>R,T</sub> &#931;<sub>i&#8712;I</sub> &#8214; x<sub>i</sub> &#8722; &#960;( K<sup>t&#8242;</sup> ( R&#183;X<sub>i</sub><sup>t&#8242;; t&#8592;t&#8242;</sup> + T ) ) &#8214;<sup>2</sup>,&nbsp;&nbsp; I = { i | C<sub>i</sub> &gt; &#945; }</div>
+    <div class="note"><b>X<sub>i</sub><sup>t&#8242;; t&#8592;t&#8242;</sup></b> 是 t&#8242; 帧第 i 个像素的 3D 点（来自点图），<b>x<sub>i</sub></b> 是它在 t&#8242; 帧里的像素坐标，<b>K<sup>t&#8242;</sup></b> 是内参，<b>&#960;</b> 是投影，<b>R、T</b> 是要求的相机 3D 点所在坐标系（t 帧相机系）下的位姿；<b>I</b> 是参与求解的像素集合——用置信度阈值筛过：<b>C<sub>i</sub> &gt; &#945;</b> 只留网络有把握的点。动态物体的点置信度低、又被 RANSAC 当外点，不参与定音。</div>
+  </div>
+  <ul class="dots">
+    <li>代码实现（<span class="mono">init_im_poses.py</span> 的 <span class="mono">fast_pnp</span>）：OpenCV 的 <span class="mono">solvePnPRansac</span>（SQPNP 解法、重投影误差阈值 5、迭代 10 次）；掩码 <span class="mono">msk</span> 就是这个置信度筛选；内参未知时焦距用 Weiszfeld 法从点图直接估（<span class="mono">estimate_focal</span>，与 DUSt3R 同源）。</li>
+    <li>PnP 的产出用途有二：给全局优化提供位姿初值（沿最小生成树逐边解，见 2.3.3）；以及论文表 3 的「纯 PnP 位姿」评测（不用全局优化时的位姿读数）。</li>
+    <li>为什么乱入的动态点杀不死它：同一帧内部，动态像素的 3D 点「位置没错」——错的是它不该被当成跨帧对应的锚。PnP 要的是「帧 t&#8242; 的点 ↔ 帧 t&#8242; 的像素」，动态物体自己的点也满足这个等式（它是 t&#8242; 时刻的它）；真正要防的是噪声点，所以靠置信度 + RANSAC 就够。和跨帧配准（Procrustes）的失败形成对照：那个从根上被残影破坏。</li>
+  </ul>
+
+  <h3><span class="no">2.3.3</span>全局优化：一块拼图，三股力</h3>
+  <p>目标把 T 张帧的点图拧进同一个世界坐标系，输出全局点图 X<sup>t</sup> ∈ ℝ<sup>H×W×3</sup> 和每帧相机参数。关键的重参数化：全局点图不是独立变量，而是由「相机参数 + 每帧深度图」生成的——</p>
+  <div class="formula">
+    <div class="fx">X<sub>i,j</sub><sup>t</sup> := (P<sup>t</sup>)<sup>-1</sup> &#183; h( (K<sup>t</sup>)<sup>-1</sup> [ i&#183;D<sub>i,j</sub><sup>t</sup> ; j&#183;D<sub>i,j</sub><sup>t</sup> ; D<sub>i,j</sub><sup>t</sup> ] )</div>
+    <div class="note"><b>(i,j)</b> 像素坐标；<b>D<sub>i,j</sub><sup>t</sup></b> 第 t 帧深度图在 (i,j) 的深度；<b>K<sup>t</sup>、P<sup>t</sup></b> 该帧内参与外参；<b>h(·)</b> 齐次化。读法：像素 (i,j) 按针孔模型升到相机系三维点，再用外参摆到世界系。优化变量= 每帧的位姿 P<sup>t</sup>、内参 K<sup>t</sup>、深度图 D<sup>t</sup>；解完深度和位姿直接读出来——「视频深度」不用额外网络就是这个原因。</div>
+  </div>
+  <p>三股力（完整公式与逐符号解释在 §3.2）：</p>
+  <ul class="dots">
+    <li><b>对齐项 L<sub>align</sub></b>（主力，继承自 DUSt3R）：每个图对的局部点图乘上刚体变换 + 尺度，对齐到全局点图；每帧深度图是共享变量，它的所有邻居观测共同约束它——跨对一致性从这里来。权重恒为 1。</li>
+    <li><b>轨迹平滑项 L<sub>smooth</sub></b>（权重 0.01）：相邻帧位姿之差要小（旋转差、平移差分别罚），把被个别坏点图带飞的位姿按回连续轨迹。</li>
+    <li><b>光流一致项 L<sub>flow</sub></b>（权重 0.01）：在置信静态区域，把「全局参数算出的相机流」和光流对齐。从优化的 10% 处才开始生效（先让位姿粗略对上）；若整幅平均流损失突然高于阈值（代码 25），该项当次直接停用（防止位姿没对齐时被它带偏）。</li>
+  </ul>
+  <ul class="dots">
+    <li>初始化不用瞎猜：按成对置信度建最小生成树（MST），沿树逐边 PnP（10 次迭代）把位姿先摆个大概，再做全局迭代——<span class="mono">compute_global_alignment(init='mst')</span>，与 DUSt3R 同款初始化器。</li>
+    <li>视频图怎么建（论文 Eq.「video graph」）：不用 DUSt3R 的完全图（60 帧完全图是 1770 对，太贵），而是滑动窗口 w=9、隔 2 帧取样（每帧与间隔 2、4、…、18 的 9 个邻居组对），60 帧约 600 对；发布 demo 默认窗更小（<span class="mono">swinstride-5</span>，每帧 5 个邻居），论文评测配置是 w=9。附录 B 的窗宽消融显示：性能随推理窗宽涨到训练窗宽为止，而「窗 9 + 隔 2」比「窗 7」省 20% 显存还更准。</li>
+    <li>优化器：Adam、lr 0.01、300 步、线性衰减——60 帧约 1 分钟（单卡 RTX 6000）。社区后来还加了 window-wise 模式（发布代码里，非论文）处理长视频，显存速度折中。</li>
+    <li>显存提示（README）：65 帧 16:9 视频，默认批量模式约 33G，<span class="mono">--not_batchify</span> 降到约 23G（更慢）；关掉 flow_loss 还能再省。要跑长视频先看这一条。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 实时模式 ============ -->
+<section id="s24">
+  <h2><span class="no">§2.4</span>实时模式（附录 C）</h2>
+  <p>论文还给了个有趣的变体：完全前馈、不要优化，把 T 帧全部直接对到同一张锚帧上——组对从「相邻帧对」换成 {锚帧 ← t | t=1…T}，每帧的点图直接写在锚帧相机系里（X<sup>t</sup> = X<sup>t; 锚&#8592;t</sup>），叠起来就是全局点云。锚帧取中间帧（代码 <span class="mono">oneref_mid</span>）。</p>
+  <ul class="dots">
+    <li>速度：单卡 RTX 4090 约 40 FPS——因为它就是把前馈推理批量拉起，没有任何迭代。</li>
+    <li>代价（论文自述）：重建质量对锚帧选择敏感；每帧各自对齐锚帧、帧间没有信息共享，会出现漂移/伪影。适用面：相机运动较小的场景，以及做流式重建的起点（锚帧可以自适应地滚动更新）。</li>
+    <li>发布代码里的用法：<span class="mono">python demo.py --input xxx.mp4 --real_time</span>；可视化用配套的 <span class="mono">visualizer_monst3r_realtime.py</span>。定位：一个「值得关注的下一步」，不是主推路径。</li>
+  </ul>
+</section>
+
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="sec-sub">两套损失各管一段：训练（微调网络）用 DUSt3R 原损失；推理（全局优化）用「对齐 + 平滑 + 光流」三件套。</div>
+
+  <h3 id="s31"><span class="no">3.1</span>微调损失：照搬 DUSt3R 的那一个</h3>
+  <p>先把最重要的一句说死：<b>MonST3R 的训练损失与 DUSt3R 逐字相同</b>——<span class="mono">ConfLoss(Regr3D(L21, norm_mode='avg_dis'), alpha=0.2)</span>，发布训练命令里一行没改。它要表达的事是「每个像素的预测 3D 点逼近真值 3D 点，同时让网络自学每个像素的可信度」。分两步：</p>
+  <div class="formula">
+    <div class="fx">&#8467;<sub>regr</sub>(v,i) = &#8214; X<sup>v</sup><sub>i</sub> / z &#8722; <span class="ovl">X</span><sup>v</sup><sub>i</sub> / <span class="ovl">z</span> &#8214;,&nbsp;&nbsp;&nbsp; z = norm(X<sup>t;e</sup>, X<sup>t&#8242;;e</sup>)</div>
+    <div class="note">论文 Eq.5，v ∈ {t, t&#8242;} 遍历两张点图上的所有有效像素 i。<b>X<sub>i</sub><sup>v</sup></b>：网络预测的第 v 帧第 i 像素 3D 点 [3]；<b><span class="ovl">X</span><sub>i</sub><sup>v</sup></b>：真值点（深度反投影 + 位姿变换构造）；<b>z</b>：两张点图所有有效点到相机原点的平均距离（<span class="mono">avg_dis</span>）——预测和 GT 各自除以自己的，把绝对尺度从损失里拿掉（视觉重建的尺度本来就任意，让网络只管形状）；<b>&#8214;·&#8214;</b> 欧氏距离。</div>
+  </div>
+  <div class="formula">
+    <div class="fx">L = &#931;<sub>v</sub> &#931;<sub>i&#8712;D<sup>v</sup></sub> [ C<sub>i</sub><sup>v</sup> &#183; &#8467;<sub>regr</sub>(v,i) &#8722; &#945; &#183; log C<sub>i</sub><sup>v</sup> ],&nbsp;&nbsp;&nbsp; C = 1 + exp(c),&nbsp;&nbsp; &#945; = 0.2</div>
+    <div class="note"><b>D<sup>v</sup></b>：有深度真值的像素集合（valid_mask，天空/无深度区域剔除）；<b>C<sub>i</sub><sup>v</sup></b>：置信度，网络的第 4 通道原始输出 c 经 <span class="mono">1+exp(c)</span> 得到，下界 1；<b>&#945;</b>：平衡系数 0.2（与 DUSt3R 相同）。逐符号读完就是两件事：误差大就要么降 C 要么改预测（第一项 C·ℓ 是加权误差），宣称高可信度要交税（第二项 −α·log C）；对 C 求极值得到平衡点 C* ≈ α/ℓ——每个像素的置信度自动收敛到它自己误差尺度的倒数。为什么 C 下界 1、不许弃权——推导与含义见 DUSt3R 页 §3 的「难像素」QA，这里不再展开。</div>
+  </div>
+  <div class="fig small-svg">
+    <svg viewBox="0 0 960 150" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+
+      <rect x="12" y="20" width="176" height="40" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="100" y="45" text-anchor="middle" class="svg-nota" fill="#116329">GT 点图 <tspan text-decoration="overline">X</tspan>（t 帧相机系）</text>
+      <rect x="12" y="76" width="176" height="40" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="100" y="101" text-anchor="middle" class="svg-nota" fill="#a40e26">预测点图 X<tspan dy="-4" font-size="9">t;e</tspan><tspan dy="4"> / X</tspan><tspan dy="-4" font-size="9">t&#8242;;e</tspan></text>
+      <text x="100" y="134" text-anchor="middle" class="svg-nota">深度图 + 位姿 → t 帧系（数据集自带）</text>
+
+      <polyline points="188,40 222,40 222,56 236,56" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <polyline points="188,96 222,96 222,72 236,72" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+
+      <rect x="238" y="38" width="128" height="52" rx="6" class="box" fill="#ffffff" stroke="#818b98" stroke-dasharray="5 4"/>
+      <text x="302" y="58" text-anchor="middle" class="svg-nota-b">÷ z 尺度归一</text>
+      <text x="302" y="76" text-anchor="middle" class="svg-nota">z：平均距离</text>
+
+      <line x1="366" y1="64" x2="402" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+
+      <rect x="404" y="38" width="146" height="52" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="477" y="58" text-anchor="middle" class="svg-nota-b">逐点欧氏距离</text>
+      <text x="477" y="76" text-anchor="middle" class="svg-nota">&#8467;_regr（逐像素）</text>
+
+      <line x1="550" y1="64" x2="586" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+
+      <rect x="588" y="38" width="196" height="52" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="686" y="58" text-anchor="middle" class="svg-nota-b" fill="#5c4400">置信度整理 C·&#8467; &#8722; &#945; log C</text>
+      <text x="686" y="76" text-anchor="middle" class="svg-nota" fill="#5c4400">C = 1+exp(c) · &#945; = 0.2</text>
+
+      <line x1="784" y1="64" x2="820" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+
+      <rect x="822" y="38" width="62" height="52" rx="6" fill="#cf222e"/>
+      <text x="853" y="70" text-anchor="middle" class="svg-nota-b" fill="#ffffff">&#931; L</text>
+      <text x="853" y="118" text-anchor="middle" class="svg-nota">backward → 解码器 / DPT 头</text>
+      <text x="853" y="136" text-anchor="middle" class="svg-nota" fill="#a40e26">（编码器冻结，梯度不到）</text>
+    </svg>
+    <div class="figcap">图 3-1 · 微调损失链路：GT 构造 → 尺度归一 → 逐点距离 → 置信度整理，反向传播只覆盖解码器与 DPT 头。此图与 DUSt3R 页图 3-1 的唯一区别是最右边一行。</div>
+  </div>
+  <ul class="dots">
+    <li>评估用的尺度不变准则（<span class="mono">Regr3D_ScaleShiftInv</span>）只影响训练中报数，不参与梯度；训练报数用的测试集是 PointOdyssey + Sintel 各 1000 对（发布命令 <span class="mono">--test_dataset</span>）。</li>
+    <li>为什么不为运动加损失项：论文的立场是运动是「数据采出来的」——按间隔 1~9 采图对，训练分布里就天然包含运动；损失只管「点图对不对」。省下的是一个显式的运动/光流监督源（那恰恰是缺的数据）。消融支持这个立场：换损失项无从谈起，但数据配比一动（§4 表 5）结果就动。</li>
+  </ul>
+
+  <h3 id="s32"><span class="no">3.2</span>全局优化损失：对齐 + 平滑 + 光流</h3>
+  <p>推理端的损失不再是训练曲线，而是每段视频现解一个最小化问题。三个损失、一个总目标（论文 Eq. 9~12）：</p>
+  <div class="formula">
+    <div class="fx">L<sub>align</sub>(X, &#963;, P<sub>W</sub>) = &#931;<sub>W<sup>i</sup></sub> &#931;<sub>e&#8712;W<sup>i</sup></sub> &#931;<sub>t&#8712;e</sub> &#8214; C<sup>t;e</sup> &#183; ( X<sup>t</sup> &#8722; &#963;<sup>e</sup> &#183; P<sup>t;e</sup> &#183; X<sup>t;e</sup> ) &#8214;<sub>1</sub></div>
+    <div class="note">对齐项（继承 DUSt3R 的 alignment loss，式 9）。<b>X<sup>t</sup></b>：全局系点图（由 P<sup>t</sup>、K<sup>t</sup>、D<sup>t</sup> 生成，2.3.3 的公式）；<b>X<sup>t;e</sup></b>：网络给图对 e=(t,t&#8242;) 输出的局部点图（t 帧点图，写在 t 帧系）；<b>P<sup>t;e</sup></b>、<b>&#963;<sup>e</sup></b>：把 e 的局部点图摆进全局系所需的刚体变换与尺度（每对一个，不共享）；<b>C<sup>t;e</sup></b>：该对的置信度，逐像素加权（网络说「这里我没把握」的地方，对齐误差少听它的）；<b>W<sup>i</sup></b> 是视频图里每个时间窗内的图对集合；<b>&#8214;·&#8214;<sub>1</sub></b> 逐像素 L1。一句话：所有局部点图对齐到同一套全局点，误差按置信度加权求和。</div>
+  </div>
+  <div class="formula">
+    <div class="fx">L<sub>smooth</sub>(X) = &#931;<sub>t=0</sub><sup>N</sup> ( &#8214; (R<sup>t</sup>)<sup>&#8868;</sup> R<sup>t+1</sup> &#8722; I &#8214;<sub>F</sub> + &#8214; T<sup>t+1</sup> &#8722; T<sup>t</sup> &#8214;<sub>2</sub> )</div>
+    <div class="note">轨迹平滑项（式 10）。<b>R<sup>t</sup>、T<sup>t</sup></b>：第 t 帧相机在世界系的旋转和平移（从优化变量 P<sup>t</sup> 里取）；<b>I</b>：单位矩阵；<b>&#8214;·&#8214;<sub>F</sub></b> 矩阵的 Frobenius 范数，<b>&#8214;·&#8214;<sub>2</sub></b> 向量 L2 范数。第一项衡量「相邻两帧的旋转差有多接近不变」——相机运动连续，相邻帧之间本该几乎没有相对旋转；第二项直接罚平移跳变。代码里平移项带一个权重 <span class="mono">translation_weight</span>（demo 传 1.0）；Frobenius 这一项没有额外系数。</div>
+  </div>
+  <div class="formula">
+    <div class="fx">L<sub>flow</sub>(X) = &#931;<sub>W<sup>i</sup></sub> &#931;<sub>t&#8594;t&#8242;&#8712;W<sup>i</sup></sub> &#8214; S<sup>global; t&#8594;t&#8242;</sup> &#183; ( F<sub>cam</sub><sup>global; t&#8594;t&#8242;</sup> &#8722; F<sub>est</sub><sup>t&#8594;t&#8242;</sup> ) &#8214;<sub>1</sub></div>
+    <div class="note">光流一致项（式 11）。<b>S<sup>global; t&#8594;t&#8242;</sup></b>：置信静态掩码（2.3.1 的逐对掩码，初始化自逐对预测，优化中由全局参数刷新并取并集，论文附录 D 给了刷新公式）；<b>F<sub>cam</sub><sup>global; t&#8594;t&#8242;</sup></b>：用全局参数（当前位姿、内参、深度）按「假设静止」算出的相机诱导流，公式与 2.3.1 的 F<sub>cam</sub> 相同、只是输入换成全局变量；<b>F<sub>est</sub></b> 实测光流。点乘 = 逐像素掩码；只在判静的像素上罚差异。</div>
+  </div>
+  <div class="formula">
+    <div class="fx">X&#770; = argmin<sub>X, P<sub>W</sub>, &#963;</sub> L<sub>align</sub> + 0.01 &#183; L<sub>smooth</sub> + 0.01 &#183; L<sub>flow</sub></div>
+    <div class="note">总目标（式 12），两个权重都取 0.01（论文 §4.1；demo 里 <span class="mono">temporal_smoothing_weight=0.01</span>、<span class="mono">flow_loss_weight=0.01</span>）。解 X&#770; 即得全套输出：深度 <b>D&#770;</b>、位姿 <b>P&#770;</b>、内参 <b>K&#770;</b>（X 的重参数化包含了它们，2.3.3）。</div>
+  </div>
+  <div class="fig small-svg">
+    <svg viewBox="0 0 980 284" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah8" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ah8r" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 三个输入源 -->
+      <rect x="14" y="18" width="188" height="46" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="108" y="38" text-anchor="middle" class="svg-nota" fill="#a40e26">逐对点图 X<tspan dy="-4" font-size="9">t;e</tspan><tspan dy="4"> + 置信度 C</tspan></text>
+      <text x="108" y="56" text-anchor="middle" class="svg-nota">（网络输出，冻结）</text>
+
+      <rect x="14" y="100" width="188" height="46" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="108" y="120" text-anchor="middle" class="svg-nota" fill="#116329">静区掩码 S + 光流 F_est</text>
+      <text x="108" y="138" text-anchor="middle" class="svg-nota">（现成网络 + 阈值，一次性）</text>
+
+      <rect x="14" y="182" width="188" height="46" rx="6" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="108" y="202" text-anchor="middle" class="svg-nota" fill="#0550ae">相邻帧位姿 R<tspan dy="-4" font-size="9">t</tspan><tspan dy="4">, T</tspan><tspan dy="-4" font-size="9">t</tspan></text>
+      <text x="108" y="220" text-anchor="middle" class="svg-nota">（优化变量本身）</text>
+
+      <!-- 三个损失 -->
+      <rect x="300" y="18" width="210" height="46" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="405" y="40" text-anchor="middle" class="svg-nota-b">L_align · 点图对账</text>
+      <text x="405" y="58" text-anchor="middle" class="svg-nota">权重恒 1 · C 加权</text>
+
+      <rect x="300" y="100" width="210" height="46" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="405" y="122" text-anchor="middle" class="svg-nota-b">L_flow · 静区流一致</text>
+      <text x="405" y="140" text-anchor="middle" class="svg-nota">权重 0.01 · 10% 步数后启用</text>
+
+      <rect x="300" y="182" width="210" height="46" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="405" y="204" text-anchor="middle" class="svg-nota-b">L_smooth · 轨迹平滑</text>
+      <text x="405" y="222" text-anchor="middle" class="svg-nota">权重 0.01 · 旋转 + 平移</text>
+
+      <!-- 相机流生成 -->
+      <rect x="300" y="158" width="0" height="0"/>
+      <rect x="556" y="100" width="188" height="46" rx="6" class="box" fill="#fff8c5" stroke="#9a6700" stroke-dasharray="5 4"/>
+      <text x="650" y="120" text-anchor="middle" class="svg-nota" fill="#5c4400">F_cam_global：由当前全局</text>
+      <text x="650" y="138" text-anchor="middle" class="svg-nota" fill="#5c4400">参数现算「静止应怎么动」</text>
+
+      <rect x="790" y="52" width="170" height="120" rx="6" fill="#cf222e"/>
+      <text x="875" y="86" text-anchor="middle" class="svg-nota-b" fill="#ffffff">&#931; 三损失</text>
+      <text x="875" y="110" text-anchor="middle" class="svg-nota" fill="#ffd3d0">1 · 0.01 · 0.01</text>
+      <text x="875" y="132" text-anchor="middle" class="svg-nota" fill="#ffd3d0">Adam · lr 0.01 · 300 步</text>
+      <text x="875" y="152" text-anchor="middle" class="svg-nota" fill="#ffd3d0">约 1 分钟 / 60 帧</text>
+
+      <!-- 输出 -->
+      <rect x="790" y="196" width="170" height="46" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="875" y="216" text-anchor="middle" class="svg-nota-b" fill="#a40e26">输出：点云 · P&#770; · K&#770; · D&#770;</text>
+      <text x="875" y="234" text-anchor="middle" class="svg-nota">位姿 / 内参 / 视频深度</text>
+
+      <line x1="202" y1="41" x2="296" y2="41" class="arrow" style="marker-end:url(#ah8)"/>
+      <polyline points="202,123 250,123 250,123 296,123" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah8)"/>
+      <line x1="202" y1="205" x2="296" y2="205" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah8)"/>
+      <line x1="510" y1="123" x2="552" y2="123" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah8)"/>
+      <path d="M 660,100 L 660,66 L 750,66 L 750,96" fill="none" stroke="#d4a72c" stroke-width="1.8" marker-end="url(#ah8)"/>
+      <line x1="510" y1="41" x2="742" y2="80" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah8)"/>
+      <line x1="744" y1="146" x2="786" y2="132" stroke="#818b98" stroke-width="1.8"/>
+      <path d="M 875,172 L 875,192" stroke="#cf222e" stroke-width="2" fill="none" marker-end="url(#ah8r)"/>
+      <path d="M 798,166 L 772,166 L 772,248 L 108,248 L 108,232" fill="none" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ah8r)"/>
+      <text x="440" y="266" text-anchor="middle" class="svg-nota" fill="#a40e26">每次迭代用新参数刷新掩码与相机流（梯度回传）</text>
+    </svg>
+    <div class="figcap">图 3-2 · 全局优化链路：三路损失共用一套优化变量；相机流随参数刷新，闭合成回路；解完直接读出点云与全部相机参数。</div>
+  </div>
+  <ul class="dots">
+    <li>三个「开关」都写在代码里（<span class="mono">optimizer.py</span>）：流损失从总步数的 10% 起步（<span class="mono">flow_loss_start_epoch=0.1</span>，先让位姿粗略对齐）；单次平均流损失若高于阈值 25（demo 值；论文正文写 20）则当次停用流损失（<span class="mono">flow_loss=0；flow_loss_flag=True</span>）——防止位姿没对齐时被坏光流带偏；逐像素流损失 ≥ 50 的像素不参与该次平均（<span class="mono">per_pixel_thre=50</span>，论文说的「逐像素损失高于 50 更新运动掩码」即指此）。</li>
+    <li>权重敏感性（论文附录 B.2）：<span class="mono">w_flow</span> 在 0.001~0.1 之间怎么调都不敏感（ATE 0.108~0.118）；<span class="mono">w_smooth</span> 更敏感——太小（0.001）旋转误差 RPE rot 从 0.732 涨到 0.869，太大（0.1）ATE 退化到 0.138（轨迹被过度约束）。复现时先稳 smooth 的 0.01。</li>
+    <li>静态掩码在优化中会被刷新：每步用当前全局参数重算「相机流 vs 光流」差异，取并集更新（论文附录 D 的 <span class="mono">S<sup>global</sup> = S<sup>t</sup> ∨ [α &gt; ‖F_cam<sup>global</sup> − F_est‖]</span>）——掩码不是一次定死的，随位姿变准而变准。</li>
+  </ul>
+
+  <h3 id="s33"><span class="no">3.3</span>训练配方速查</h3>
+  <table>
+    <tr><th>项</th><th>值（发布命令，代码核对）</th><th>说明</th></tr>
+    <tr><td>初始权重</td><td class="mono">DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth</td><td>官方发布版，一行 <span class="mono">--pretrained</span> 指过去</td></tr>
+    <tr><td>可训练参数</td><td class="mono">dec_blocks ×2 + dec_embed + 2×DPT 头</td><td><span class="mono">freeze='encoder'</span>：ViT-L 编码器与 patch 嵌入不更新</td></tr>
+    <tr><td>训练损失</td><td class="mono">ConfLoss(Regr3D(L21, avg_dis), α=0.2)</td><td>与 DUSt3R 逐字相同</td></tr>
+    <tr><td>数据配比（对/epoch）</td><td class="mono">PO 10,000 + TA 5,000 + Spring 1,000 + Waymo 4,000</td><td>合计 20,000 对/epoch，比例 50/25/5/20</td></tr>
+    <tr><td>图对采样</td><td class="mono">strides 1~9 · linear_1_2</td><td>间隔越大概率线性越高（9 是 1 的两倍）</td></tr>
+    <tr><td>增强</td><td class="mono">aug_focal 0.9 · aug_crop 16 · ColorJitter</td><td>视场角增强 = 随机中心裁剪改有效焦距</td></tr>
+    <tr><td>分辨率</td><td class="mono">(512,288) / (512,384) / (512,336)</td><td>训练随机三选一，长边 512</td></tr>
+    <tr><td>优化器</td><td class="mono">AdamW · lr 5e-5 → 1e-6（cosine）· wd 0.05 · β (0.9,0.95)</td><td>warmup 3 epoch</td></tr>
+    <tr><td>batch</td><td class="mono">4 × accum 4 × 2 GPU = 有效 32</td><td>发布命令</td></tr>
+    <tr><td>epoch</td><td class="mono">50（命令）/ 25（论文 §4.1）</td><td>两处不一致，复现以发布命令为准</td></tr>
+    <tr><td>硬件 / 时长</td><td class="mono">2 × RTX 6000 48GB · 约 1 天</td><td>论文 §4.1</td></tr>
+    <tr><td>推理全局优化</td><td class="mono">Adam · lr 0.01 · 300 步 · w_smooth 0.01 · w_flow 0.01</td><td>60 帧约 1 分钟（单卡 6000）</td></tr>
+    <tr><td>推理显存（README）</td><td class="mono">33G（批量）→ 23G（--not_batchify）</td><td>65 帧 16:9；关 flow_loss 再省</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1（数据）、§4.1（超参）、附录 B.1（窗宽消融）与发布 README/训练命令逐条对照得出；「论文写 25、命令写 50」的不一致在两处原文可查，本页保留原始信息、不替作者圆场。</p>
+</section>
+
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">评测口径先说明：位姿用 Sim(3) Umeyama 对齐后报 ATE/RPE（旋转和平移），视频深度按「每段视频一个 scale &amp; shift（或只 scale）」对齐后报 Abs Rel 与 δ&lt;1.25；单帧深度按逐帧中值对齐（与 DUSt3R 页相同口径）。表内数字照抄论文表 2~6 与附录 B.1。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">0.108 <small>ATE</small></div><div class="k">Sintel 相机位姿（联合估计类最好）<br>不需要 GT 内参；CasualSAM 0.141</div></div>
+    <div class="metric"><div class="v">0.063 <small>Abs Rel</small></div><div class="k">Bonn 视频深度（每段 scale&amp;shift）<br>DepthCrafter 0.075 → 0.063</div></div>
+    <div class="metric"><div class="v">~30s+1min</div><div class="k">60 帧推理：前馈约 30 秒<br>+ 全局优化约 1 分钟（单卡 6000）</div></div>
+    <div class="metric"><div class="v">40 <small>FPS</small></div><div class="k">实时模式（全前馈 · 锚帧对齐）<br>单卡 RTX 4090</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>视频深度：联合估计里反超专项方法（论文表 2）</h3>
+  <table>
+    <tr><th>对齐 / 类别</th><th>方法</th><th class="mono">Sintel AbsRel↓ / δ↑</th><th class="mono">Bonn AbsRel↓ / δ↑</th><th class="mono">KITTI AbsRel↓ / δ↑</th></tr>
+    <tr><td rowspan="7">每段视频<br>scale &amp; shift</td><td>Marigold（单帧）</td><td class="mono">0.532 / 51.5</td><td class="mono">0.091 / 93.1</td><td class="mono">0.149 / 79.6</td></tr>
+    <tr><td>Depth-Anything-V2（单帧）</td><td class="mono">0.367 / 55.4</td><td class="mono">0.106 / 92.1</td><td class="mono">0.140 / 80.4</td></tr>
+    <tr><td>NVDS（视频）</td><td class="mono">0.408 / 48.3</td><td class="mono">0.167 / 76.6</td><td class="mono">0.253 / 58.8</td></tr>
+    <tr><td>ChronoDepth（视频）</td><td class="mono">0.687 / 48.6</td><td class="mono">0.100 / 91.1</td><td class="mono">0.167 / 75.9</td></tr>
+    <tr><td>DepthCrafter（视频 · 同期工作）</td><td class="mono">0.292 / 69.7</td><td class="mono">0.075 / 97.1</td><td class="mono">0.110 / 88.1</td></tr>
+    <tr><td>CasualSAM（联合）</td><td class="mono">0.387 / 54.7</td><td class="mono">0.169 / 73.7</td><td class="mono">0.246 / 62.2</td></tr>
+    <tr><td><b>MonST3R（联合）</b></td><td class="mono up">0.335 / 58.5</td><td class="mono up">0.063 / 96.4</td><td class="mono up">0.104 / 89.5</td></tr>
+    <tr><td rowspan="2">只按尺度<br>scale only</td><td>DepthCrafter</td><td class="mono">0.692 / 53.5</td><td class="mono">0.217 / 57.6</td><td class="mono">0.141 / 81.8</td></tr>
+    <tr><td><b>MonST3R</b></td><td class="mono up">0.345 / 56.2</td><td class="mono up">0.065 / 96.3</td><td class="mono up">0.106 / 89.3</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">Robust-CVD 只在 Sintel 报数（0.703 / 47.8），未单列。读法：① 允许 shift 时（上表），MonST3R 在 Bonn/KITTI 反超 DepthCrafter，Sintel 略低于它（0.335 vs 0.292）——这是「联合估计」（多解了位姿）对「只估深度」的天然劣势；② 只允许尺度时（下表），DepthCrafter 全线崩（Sintel 0.692），MonST3R 几乎不动（0.345）——它的深度是几何解的一部分、shift 是预测出来的量，这正是论文强调「shift 对 3D 应用重要」的意思。</p>
+
+  <h3><span class="no">4.2</span>单帧深度：微调没有拆东墙（论文表 3）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">Sintel AbsRel↓ / δ↑</th><th class="mono">Bonn</th><th class="mono">KITTI</th><th class="mono">NYU-v2（静态）</th></tr>
+    <tr><td>DUSt3R（微调前）</td><td class="mono">0.424 / 58.7</td><td class="mono">0.141 / 82.5</td><td class="mono">0.112 / 86.3</td><td class="mono">0.080 / 90.7</td></tr>
+    <tr><td><b>MonST3R</b></td><td class="mono up">0.345 / 56.5</td><td class="mono up">0.076 / 93.9</td><td class="mono up">0.101 / 89.3</td><td class="mono">0.091 / 88.8</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">Sintel/Bonn/KITTI 上单帧深度比 DUSt3R 还好（Bonn 0.141 → 0.076），NYU-v2 静态集轻微回落（0.080 → 0.091）——为动态付出的代价有限，换来的是视频能力。评测协议同 DepthCrafter（逐帧中值对齐）。</p>
+
+  <h3><span class="no">4.3</span>相机位姿：联合估计第一，逼近专用 VO（论文表 4）</h3>
+  <table>
+    <tr><th>类别</th><th>方法</th><th class="mono">Sintel ATE↓</th><th class="mono">TUM-dyn ATE↓</th><th class="mono">ScanNet ATE↓</th><th>备注</th></tr>
+    <tr><td rowspan="4">只估位姿</td><td>DROID-SLAM*</td><td class="mono">0.175</td><td class="mono">–</td><td class="mono">–</td><td class="mono">* 需 GT 内参</td></tr>
+    <tr><td>DPVO*</td><td class="mono">0.115</td><td class="mono">–</td><td class="mono">–</td><td class="mono">* 需 GT 内参</td></tr>
+    <tr><td>ParticleSfM</td><td class="mono">0.129</td><td class="mono">–</td><td class="mono">0.136</td><td>比 MonST3R 慢 5×</td></tr>
+    <tr><td>LEAP-VO*</td><td class="mono">0.089</td><td class="mono">0.046</td><td class="mono">0.070</td><td class="mono">* 需 GT 内参</td></tr>
+    <tr><td rowspan="4">联合深度<br>&amp; 位姿</td><td>Robust-CVD</td><td class="mono">0.360</td><td class="mono">0.189</td><td class="mono">0.227</td><td></td></tr>
+    <tr><td>CasualSAM</td><td class="mono">0.141</td><td class="mono">0.045</td><td class="mono">0.158</td><td>重型测试时优化</td></tr>
+    <tr><td>DUSt3R w/ mask†</td><td class="mono">0.417</td><td class="mono">0.127</td><td class="mono">0.081</td><td class="mono">† 给 GT 运动掩码也不出前景深度</td></tr>
+    <tr><td><b>MonST3R</b></td><td class="mono up">0.108</td><td class="mono">0.074</td><td class="mono up">0.068</td><td>无需内参、无需掩码</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">Sintel 14 个序列（沿用 LEAP-VO 协议，剔除静态与匀速直线序列）；TUM-dynamics / ScanNet 取前 90 帧、间隔 3。要点：① 同为联合估计，MonST3R 全面领先（Sintel 0.108 vs CasualSAM 0.141）；② 对 pose-only 方法，Sintel/ScanNet 上已追到同一梯队（0.108 / 0.068），而对方要么吃 GT 内参、要么不做稠密几何；③ TUM 上 0.074 略逊于 CasualSAM 0.045 和 LEAP-VO 0.046——论文没强调这一格，复现者应对 TUM 型手持快速运动场景有心理预期；④ 「DUSt3R + GT 掩码」baseline 全线最差（Sintel 0.417）——说明问题不在「不知道哪里动」，掩码换不来运动理解，得让网络自己训。</p>
+
+  <h3><span class="no">4.4</span>消融：数据、冻结、损失各自值多少（论文表 6，Sintel）</h3>
+  <table>
+    <tr><th>类别</th><th>变体</th><th class="mono">位姿 ATE↓</th><th class="mono">RPE trans↓</th><th class="mono">RPE rot↓</th><th class="mono">深度 AbsRel↓</th></tr>
+    <tr><td rowspan="6">训练数据</td><td>不微调（原 DUSt3R 权重）</td><td class="mono">0.354</td><td class="mono">0.167</td><td class="mono">0.996</td><td class="mono">0.482</td></tr>
+    <tr><td>只加 PO</td><td class="mono">0.220</td><td class="mono">0.129</td><td class="mono">0.901</td><td class="mono">0.378</td></tr>
+    <tr><td>PO + TA</td><td class="mono">0.158</td><td class="mono">0.054</td><td class="mono">0.886</td><td class="mono">0.362</td></tr>
+    <tr><td>PO + TA + Spring</td><td class="mono">0.121</td><td class="mono">0.046</td><td class="mono">0.777</td><td class="mono up">0.329</td></tr>
+    <tr><td>TA + Spring + Waymo（去掉 PO）</td><td class="mono">0.167</td><td class="mono">0.107</td><td class="mono">1.136</td><td class="mono">0.462</td></tr>
+    <tr><td><b>四个全用</b></td><td class="mono up">0.108</td><td class="mono up">0.042</td><td class="mono up">0.732</td><td class="mono">0.335</td></tr>
+    <tr><td rowspan="3">微调策略</td><td>全量微调</td><td class="mono">0.181</td><td class="mono">0.110</td><td class="mono">0.738</td><td class="mono">0.352</td></tr>
+    <tr><td><b>解码器 + 头</b></td><td class="mono up">0.108</td><td class="mono up">0.042</td><td class="mono up">0.732</td><td class="mono up">0.335</td></tr>
+    <tr><td>只微调头</td><td class="mono">0.185</td><td class="mono">0.128</td><td class="mono">0.860</td><td class="mono">0.394</td></tr>
+    <tr><td rowspan="4">推理损失</td><td>去掉流损失</td><td class="mono">0.140</td><td class="mono">0.051</td><td class="mono">0.903</td><td class="mono">0.339</td></tr>
+    <tr><td>去掉静区掩码</td><td class="mono">0.132</td><td class="mono">0.049</td><td class="mono">0.899</td><td class="mono">0.334</td></tr>
+    <tr><td>去掉平滑损失</td><td class="mono">0.127</td><td class="mono">0.060</td><td class="mono">1.456</td><td class="mono up">0.333</td></tr>
+    <tr><td><b>完整方法</b></td><td class="mono up">0.108</td><td class="mono up">0.042</td><td class="mono up">0.732</td><td class="mono">0.335</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">结论逐条：① 微调前后差距巨大（ATE 0.354 → 0.108），「小规模微调」不是锦上添花而是成败关键；② 四个数据集都必要，去掉哪个都退步，PO 是运动教材的主力（去掉它 RPE rot 从 0.732 跌回 1.136）；③ 冻结策略的甜蜜点在中间：全量微调数据不够、只调头学不够；④ 平滑损失主要保旋转（去掉后 RPE rot 0.732 → 1.456），流损失和掩码主要保平移与 ATE——两项对深度都几乎无损（0.333~0.339 vs 0.335）。</p>
+
+  <h3><span class="no">4.5</span>窗宽 / 步长：精度与显存的折中（论文附录 B.1）</h3>
+  <table>
+    <tr><th class="mono">显存</th><th>推理视频图</th><th class="mono">ATE↓ / 深度 AbsRel↓（训练窗 9）</th></tr>
+    <tr><td class="mono">20.1G</td><td>窗 4</td><td class="mono">0.148 / 0.362</td></tr>
+    <tr><td class="mono">23.5G</td><td>窗 5</td><td class="mono">0.133 / 0.355</td></tr>
+    <tr><td class="mono">19.9G</td><td>窗 7 · 隔 2</td><td class="mono">0.121 / 0.359</td></tr>
+    <tr><td class="mono">23.2G</td><td><b>窗 9 · 隔 2（默认）</b></td><td class="mono up">0.108 / 0.345</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">「窗 9 隔 2」比「窗 7 密采」省 20% 显存还更准——隔帧采样是这个设计的省钱关键。推理窗一旦超过训练窗（9），精度开始回落（附录灰色格），复现时别把窗开到训练配置之上。</p>
+
+  <h3><span class="no">4.6</span>定性结果（论文图 4、附录 A）</h3>
+  <ul class="dots">
+    <li>DAVIS 联合重建对比（论文图 4）：DUSt3R 在运动前景上几何错、位姿跟着错；CasualSAM 轨迹稳但前景几何常错；MonST3R 两者同时给对。附录 A.3 给三个逐例分析（mbike-trick：CasualSAM 几何位姿双错；train：CasualSAM 位姿对、几何错，DUSt3R 双错；dog：CasualSAM 几何发糊、DUSt3R 帧间错位）。</li>
+    <li>逐对点图质量（附录 A.4）：微调后模型还能处理两帧几乎无重叠的「不可能对齐」，并改善了大尺度场景的表示（原 DUSt3R 会预测成平面）；换内参场景也稳（保留了对动态内参的理论能力）。</li>
+    <li>动静掩码（附录 A.5）：论文的最终掩码来自优化中的全局参数（配合光流残差），比只在逐对预测上算准；发布代码里再叠加 SAM2 分割（§2.3.1）。</li>
+  </ul>
+</section>
+
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li>表示的选择比模块的堆砌更值钱，这一条在动态场景再次成立：点图不需要任何「动态版」改造，把坐标系锚点从「图对」换成「时刻」，它对运动天然合法——动态物体的残影不是 bug，是这套表示记录运动的方式。</li>
+    <li>「运动理解」可以直接从数据采出来，不必写成损失项：把训练图对的时间间隔拉大、概率随间隔加权，微调一个现成网络 1 天，就能处理运动——全程没有任何光流/运动监督、没有显式运动表示。</li>
+    <li>少数据微调的关键是「冻对地方」：冻结编码器保通用特征、只调解码器 + 头学增量，三个策略（freeze、间隔采样、FOV 增强）合起来把四个小数据集榨出了可用的模型；消融里三个极端（全量、只调头、换数据配比）一致更差。</li>
+    <li>推理端的「轻量几何」回报率极高：光流对账出掩码、同帧 PnP 出位姿初值、三损失全局优化拧点云——没有训练、没有测试时微调，就补上了前馈网络的动态短板，还把视频深度顺手做到超过专项方法（Bonn 0.063 vs DepthCrafter 0.075）。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读代码看出来的）</h3>
+  <ul class="dots">
+    <li>动态内参只是「理论上能处理」：论文自述实际需要小心调超参或人工约束；发布 demo 默认 <span class="mono">shared_focal=True</span>——所有帧共享一个焦距，等于默认回避了逐帧变内参。要真处理变焦/裁切视频得自己开 <span class="mono">shared_focal=False</span> 并约束。</li>
+    <li>滑窗小对长时遮挡脆弱：全局图只连窗内邻居（w=9 量级），被长时间遮挡或来回重叠的场景缺少跨段约束；窗开大又超训练分布（附录 B.1 灰色格）——两头都要权衡。</li>
+    <li>分布外输入会退化：论文点名「开阔田野」这类 OOD 场景；训练数据就四个来源（三个合成 + 一个驾驶），域的边界就是模型能力的边界。</li>
+    <li>显存不便宜：65 帧 16:9 约 33G（<span class="mono">--not_batchify</span> 23G）；光流是逐对算的，图对多了这项也涨。</li>
+    <li>实时模式只是「演示级」：只在相机运动小的时候成立，锚帧选择敏感、帧间无信息共享会漂移（论文附录 C 自述）。</li>
+    <li>评测口径注意：位姿 ATE 是 Sim(3) 对齐后报的——尺度是对齐出来的，不是预测准的绝对尺度；跨论文比数字时先对齐口径。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向（论文 + 本站路线视角）</h3>
+  <ul class="dots">
+    <li>论文自己指的路：扩训练集（尤其真实动态数据）提升 in-the-wild 鲁棒性；把「按时刻点图」推广到更多下游（4D 重建、运动分割、编辑）。</li>
+    <li>它在路线图上的位置（本站「前馈式重建 · 前馈几何基座」路线）：DUSt3R（静态两张图）→ MASt3R（匹配增强）→ <b>MonST3R（动态视频）</b> → Fast3R / VGGT（多图一次前馈的规模化）——「点图回归」从一对图长成一条路线，MonST3R 是动态这一格的答案。</li>
+    <li>和本站其他路线对读：它输出的动态点云正是 4D 高斯类方法（前馈 4D 高斯路线）的天然初始化/监督源——论文自己说「我们的估计可以当这些方法的初始化或中间信号」；反过来，渲染式预训练用「画得像」逼 3D 理解，这条路线用「坐标对不对」逼 3D 理解，互为镜像。</li>
+    <li>复现建议（一页浓缩）：想要最快跑通 → 按发布 README 走 demo（下 DUSt3R 权重之外还要下 RAFT 与 SAM2 权重，见 <span class="mono">data/download_ckpt.sh</span>，这是文档里最容易漏的一步）；想复现训练 → 四个数据集的预处理脚本在 <span class="mono">datasets_preprocess/</span>，Waymo 需要 GCS 授权，预算按「1 天 / 2×48G 卡」估；想改方法 → 便宜的两处旋钮是先动数据采样（stride 分布）与推理窗宽，它们在消融里被证明最灵敏。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= JS 引擎（模板原样）：SVG 工具 + 面板流构建 + 目录 scrollspy ================= */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+function tri(x1, y1, x2, y2, color, svg){   // 带手绘三角箭头的连线（迷你面板用）
+  el("line",{x1:x1, y1:y1, x2:x2, y2:y2, stroke:color, "stroke-width":1.6}, svg);
+  const a = Math.atan2(y2-y1, x2-x1);
+  const bx = x2 - 6*Math.cos(a), by = y2 - 6*Math.sin(a);
+  el("path",{d:`M ${x2} ${y2} L ${bx-4*Math.sin(a)} ${by+4*Math.cos(a)} L ${bx+4*Math.sin(a)} ${by-4*Math.cos(a)} z`, fill:color}, svg);
+}
+
+/* ============ ① 微调训练内部 ============ */
+(function(){
+  const root = document.getElementById("train-flow");
+  if(!root) return;
+  const steps = [
+    ["混采四个数据集","按 50/25/5/20 的比例各采一批图对，合计 2 万对/epoch（PO 最重）", s=>{
+      const segs = [["#0969da",61],["#54aeff",31],["#a5d8ff",7],["#8250df",25]];
+      let x = 14;
+      segs.forEach(sg=>{ el("rect",{x:x,y:24,width:sg[1],height:22,rx:2,fill:sg[0],opacity:.9}, s); x += sg[1]+1; });
+      txt(41,62,"PO 50%",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(107,62,"TA 25%",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(41,80,"Waymo 20%",{class:"svg-nota-b",fill:"#5c4400"}, s);
+      txt(107,80,"Spring 5%",{class:"svg-nota-b",fill:"#59636e"}, s);
+      txt(75,102,"四个都带位姿 + 深度",{class:"svg-nota"}, s);
+    }],
+    ["组对与增强","同一视频隔 1~9 帧取两帧（间隔越大概率越高）；随机裁剪改视场角", s=>{
+      el("rect",{x:14,y:20,width:34,height:36,rx:3,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      el("rect",{x:100,y:20,width:34,height:36,rx:3,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(31,42,"Iᵗ",{class:"svg-nota-b",fill:"#116329"}, s);
+      txt(117,42,"Iᵗ′",{class:"svg-nota-b",fill:"#116329"}, s);
+      tri(50,38,98,38,"#818b98", s);
+      txt(74,30,"间隔 1~9",{class:"svg-nota",fill:"#59636e"}, s);
+      el("rect",{x:30,y:72,width:90,height:30,rx:3,fill:"none",stroke:"#d4a72c","stroke-width":1.6,"stroke-dasharray":"5 4"}, s);
+      txt(75,91,"中心裁剪 = 改焦距",{class:"svg-nota",fill:"#5c4400"}, s);
+    }],
+    ["冻结前向","编码器 ViT-L 冻结（❄），双解码器 + DPT 头可训（✎）", s=>{
+      el("rect",{x:16,y:16,width:118,height:26,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(75,33,"ViT-L 编码器 ❄ 冻结",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      el("rect",{x:16,y:52,width:118,height:26,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(75,69,"解码器 ×2 ✎ 可训",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      el("rect",{x:16,y:88,width:118,height:22,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(75,103,"DPT 头 ✎ 可训",{class:"svg-nota-b",fill:"#0550ae"}, s);
+    }],
+    ["GT 与损失","深度反投影 + 位姿变换造 GT；ConfLoss(Regr3D, α=0.2) 照抄 DUSt3R", s=>{
+      el("rect",{x:12,y:16,width:60,height:34,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(42,37,"GT 点图",{class:"svg-nota-b",fill:"#116329"}, s);
+      el("rect",{x:82,y:16,width:60,height:34,rx:4,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(112,37,"预测 X",{class:"svg-nota-b",fill:"#a40e26"}, s);
+      tri(42,52,60,74,"#818b98", s); tri(112,52,92,74,"#818b98", s);
+      el("rect",{x:26,y:76,width:100,height:26,rx:4,fill:"#fff8c5",stroke:"#d4a72c","stroke-width":1.4}, s);
+      txt(76,93,"C·ℓ − α·log C",{class:"svg-nota-b",fill:"#5c4400"}, s);
+    }],
+    ["只回传解码器与头","编码器梯度被冻结挡下；两个极端（全量 / 只调头）消融都更差", s=>{
+      el("rect",{x:16,y:14,width:118,height:24,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2,opacity:.5}, s);
+      txt(75,30,"编码器（不更新）",{class:"svg-nota",fill:"#0550ae"}, s);
+      el("rect",{x:16,y:76,width:118,height:24,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2}, s);
+      txt(75,92,"解码器 / 头（更新）",{class:"svg-nota",fill:"#0550ae"}, s);
+      el("path",{d:"M 40 76 C 30 60 30 44 44 40",fill:"none",stroke:"#cf222e","stroke-width":1.8,"stroke-dasharray":"5 4"}, s);
+      const a = Math.atan2(40-76, 44-30);
+      el("path",{d:"M 44 40 L 38 43 M 44 40 L 41 46",stroke:"#cf222e","stroke-width":1.8,fill:"none"}, s);
+      txt(96,56,"梯度到此为止",{class:"svg-cn",fill:"#a40e26"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② 推理与全局优化 ============ */
+(function(){
+  const root = document.getElementById("global-flow");
+  if(!root) return;
+  const steps = [
+    ["滑窗组对","每帧与间隔 2、4、…、18 的 9 个邻居组对；60 帧约 600 对（demo 默认窗 5）", s=>{
+      for(let i=0;i<7;i++){
+        el("rect",{x:10+i*19,y:44,width:15,height:24,rx:2,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s);
+      }
+      el("path",{d:"M 18 44 C 40 14 96 14 122 44",fill:"none",stroke:"#0969da","stroke-width":1.4}, s);
+      el("path",{d:"M 18 68 C 40 98 96 98 122 68",fill:"none",stroke:"#a5d8ff","stroke-width":1.4}, s);
+      txt(75,26,"w=9 · 隔 2",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(75,100,"近邻密、远邻疏",{class:"svg-nota"}, s);
+    }],
+    ["逐对前馈","每对输出同坐标系两张点图 + 置信度；网络权重全程冻结", s=>{
+      el("rect",{x:14,y:20,width:44,height:34,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(36,41,"网络",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      tri(60,37,78,30,"#818b98", s); tri(60,50,78,58,"#818b98", s);
+      el("rect",{x:80,y:16,width:56,height:26,rx:3,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(108,33,"Xᵗᵉ + C",{class:"svg-nota-b",fill:"#a40e26"}, s);
+      el("rect",{x:80,y:50,width:56,height:26,rx:3,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(108,67,"Xᵗ′ᵉ + C",{class:"svg-nota-b",fill:"#a40e26"}, s);
+      txt(75,96,"不对网络做任何更新",{class:"svg-cn",fill:"#59636e"}, s);
+    }],
+    ["光流对账","「假设静止应怎么动」（相机流）与实测光流逐像素比差 → 动静掩码", s=>{
+      el("rect",{x:14,y:22,width:56,height:30,rx:4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.2}, s);
+      txt(42,41,"F_cam",{class:"svg-nota-b",fill:"#5c4400"}, s);
+      el("rect",{x:80,y:22,width:56,height:30,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      txt(108,41,"F_est",{class:"svg-nota-b",fill:"#116329"}, s);
+      el("line",{x1:75,y1:52,x2:75,y2:66,stroke:"#818b98","stroke-width":1.6}, s);
+      el("rect",{x:30,y:66,width:90,height:26,rx:4,fill:"#ffffff",stroke:"#818b98","stroke-width":1.2}, s);
+      txt(75,83,"|差| > α → 动",{class:"svg-nota-b"}, s);
+      txt(75,106,"SAM2 补刀（代码默认）",{class:"svg-nota"}, s);
+    }],
+    ["PnP 位姿初值","同帧内 3D 点 ↔ 像点，置信度筛点 + RANSAC 解相对位姿", s=>{
+      [[26,32],[48,26],[70,34],[40,48],[62,50]].forEach(p=> el("circle",{cx:p[0],cy:p[1],r:3,fill:"#cf222e"}, s));
+      txt(45,68,"3D 点 X",{class:"svg-nota",fill:"#a40e26"}, s);
+      tri(80,42,94,42,"#818b98", s);
+      el("circle",{cx:113,cy:42,r:9,fill:"none",stroke:"#0969da","stroke-width":1.6}, s);
+      el("circle",{cx:113,cy:42,r:2.5,fill:"#0969da"}, s);
+      txt(113,68,"位姿 R,T",{class:"svg-nota",fill:"#0550ae"}, s);
+      txt(75,96,"C > α 的点才参与",{class:"svg-nota"}, s);
+    }],
+    ["MST 初始化","按成对置信度建最小生成树，沿树逐边 PnP（10 次迭代）摆好初值", s=>{
+      const NODES=[[30,32],[92,26],[62,64],[26,82],[102,86]];
+      const MST=[[0,2],[1,2],[2,3],[2,4]];
+      MST.forEach(e=> el("line",{x1:NODES[e[0]][0],y1:NODES[e[0]][1],x2:NODES[e[1]][0],y2:NODES[e[1]][1],stroke:"#0969da","stroke-width":2.2}, s));
+      NODES.forEach(n=> el("circle",{cx:n[0],cy:n[1],r:5,fill:"#0969da",stroke:"#fff","stroke-width":1.2}, s));
+      txt(75,108,"置信度高的边先进树",{class:"svg-nota"}, s);
+    }],
+    ["300 步全局优化","对齐 + 平滑 + 光流三损失；掩码与相机流随参数刷新；约 1 分钟", s=>{
+      txt(75,22,"L_align + L_smooth",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(75,40,"+ L_flow（均含系数）",{class:"svg-nota-b",fill:"#8250df"}, s);
+      el("circle",{cx:75,cy:74,r:15,fill:"none",stroke:"#cf222e","stroke-width":2}, s);
+      txt(75,79,"Σ",{class:"svg-nota-b",fill:"#cf222e"}, s);
+      el("path",{d:"M 90 74 C 112 74 112 50 106 42",fill:"none",stroke:"#cf222e","stroke-width":1.6,"stroke-dasharray":"5 4"}, s);
+      txt(75,106,"迭代刷新，收敛即停",{class:"svg-nota"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>

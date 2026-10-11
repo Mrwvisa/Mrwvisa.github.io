@@ -26,7 +26,7 @@
 2. **占用世界模型**——显式/隐式占用，预测未来，接规划：SparseWorld、CascadeOcc、Drive-OccWorld、DIO
 3. **Gaussian 世界模型**——参数化基元当场景状态：GaussianWorld
 — 前馈式重建 域：
-4. **前馈几何基座**（原「点图回归」，2026-10-11 与路线图对齐改名）——每像素直接回归 3D 点、两张图共用一个坐标系，对应关系是副产品：DUSt3R（同日从 4D重建 域移入，置数组首位，保证路线序：路线一在前）
+4. **前馈几何基座**（原「点图回归」，2026-10-11 与路线图对齐改名）——每像素直接回归 3D 点、两张图共用一个坐标系，对应关系是副产品：DUSt3R（同日从 4D重建 域移入，置数组首位，保证路线序：路线一在前）、MonST3R（2026-10-11 加入，ICLR 2025）
 5. **前馈 4D 高斯**（原「前馈泛化重建」，同日对齐路线三改名）：DrivingRecon
 
 交互：
@@ -39,7 +39,7 @@
 
 ## 数据模型（index.html 顶部 script）
 
-- `PAPERS` 数组，每条字段：`domain`（领域，左侧菜单）、`route`（技术路线，右侧分组，上面三条之一或新路线名）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等，含年份）、`year`（发表年份，路线内**严格按时间线升序**排列的依据：早年在前，同年保持数组顺序；2026-10-11 用户定，全站规则）、`file`（解读页相对路径，`<目录>/<year>-<slug>.html`；目录按页面最早归属的域命名，**不强制与 domain 字段一一对应**——如「前馈式重建」域两篇分处 `scene-reconstruct/` 与 `4d-reconstruct/`）、`desc`（一句话，可选）、`star`（true = 默认星标，可选）
+- `PAPERS` 数组，每条字段：`domain`（领域，左侧菜单）、`route`（技术路线，右侧分组，上面三条之一或新路线名）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等，含年份）、`year`（发表年份，路线内**严格按时间线升序**排列的依据：早年在前，同年保持数组顺序；2026-10-11 用户定，全站规则）、`file`（解读页相对路径，`<目录>/<year>-<slug>.html`；目录按页面最早归属的域命名，**不强制与 domain 字段一一对应**——如「前馈式重建」域三篇分处 `scene-reconstruct/` 与 `4d-reconstruct/`）、`desc`（一句话，可选）、`star`（true = 默认星标，可选）
 
 ## 加一篇新论文解读的流程
 
@@ -68,7 +68,7 @@
 
 ## TODO / 已知事项
 
-- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；4D重建 域 7 篇：UniPAD/MIM4D/GaussianWorld/Drive-OccWorld/DIO/CascadeOcc/SparseWorld；前馈式重建 域 2 篇：DrivingRecon、DUSt3R）
+- [ ] 更多领域随解读补充（PAPERS 里有注释示例条目；4D重建 域 7 篇：UniPAD/MIM4D/GaussianWorld/Drive-OccWorld/DIO/CascadeOcc/SparseWorld；前馈式重建 域 3 篇：DrivingRecon、DUSt3R、MonST3R）
 - [ ] 可选：自定义域名
 
 ## 2026-09 批次备注（paper-explainer 批量产出）
@@ -82,4 +82,5 @@
 ## 2026-10 批次备注
 
 - DUSt3R 解读（代码核对版）：材料在 /tmp/dust3r/（paper.txt=arXiv v2 全文转纯文本 + naver/dust3r 浅 clone）；论文正文表 1~4 + 附录表 5~8 的数字已逐条核对（表 7 是三段训练课程 224-linear 50ep → 512-linear 100ep → 512-dpt 90ep，别写成两阶段）
+- MonST3R 解读（代码核对版，2026-10-11）：材料在 /tmp/monst3r/（paper_read.md=arXiv HTML 转文本 + src/=arXiv e-print LaTeX 源码 + repo=Junyi42/monst3r 浅 clone）。教训：**arXiv HTML 版正文的公式是 SVG，pandoc 转出来会碎成噪声——公式必须以 e-print 源码为准**（`arxiv.org/e-print/<id>` 下 tar，内含 sec/*.tex 与 tbls/*.tex，公式表格齐全）；PDF 直连下载易截断，走代理 `-x http://127.0.0.1:7897`。事实备注：论文 §4.1 写微调 25 epoch、发布训练命令写 `--epochs=50`（两处不一致，页面两处都留记录）；光流论文引 SEA-RAFT、发布代码实载 `third_party/RAFT` 的 Tartan-C-T-TSKH-spring540x960-M（页面按「以发布代码为准」写）；venue 按 ICLR 2025 落，路线图节点已从「arXiv 24.10」改「ICLR 25」
 - chrome-devtools MCP 报 "browser already running" 时：先 `pkill -f "chrome-devtools-mcp/chrome-profile"` 清残留实例再 new_page（只杀 MCP 专用 profile，不影响用户自己的 Chrome）

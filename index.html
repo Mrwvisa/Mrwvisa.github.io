@@ -126,7 +126,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <div class="maxis"></div>
           <div class="mnode up ms read" style="left:6%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DUSt3R <span class="st">★</span></b><i>CVPR 24</i></span></div>
           <div class="mnode dn" style="left:20%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MASt3R</b><i>ECCV 24</i></span></div>
-          <div class="mnode up" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>arXiv 24.10</i></span></div>
+          <div class="mnode up" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>ICLR 25</i></span></div>
           <div class="mnode dn" style="left:36%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>Fast3R</b><i>CVPR 25</i></span></div>
           <div class="mnode up ms" style="left:43%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VGGT <span class="st">★</span></b><i>CVPR 25 最佳</i></span></div>
           <div class="mnode dn" style="left:60%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MapAnything</b><i>Meta 25.09</i></span></div>
@@ -179,7 +179,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
 /* domain = 领域（左侧菜单）；route = 技术路线（右侧分组，替换原年份分组）；
-   路线内按年份从近到远排；star: true 的论文默认带星标；read: true = 已读完（由作者告知后 Claude 在源码标记，页面只读不可点改） */
+   路线内严格按时间线从早到晚排（同年保持数组顺序；2026-10-11 用户定，全站规则）；star: true 的论文默认带星标；read: true = 已读完（由作者告知后 Claude 在源码标记，页面只读不可点改） */
 const PAPERS = [
   // ── 路线一 · 前馈几何基座（点图回归；2026-10-11 移入「前馈式重建」域，置数组首位保证路线序）──
   {
@@ -191,6 +191,16 @@ const PAPERS = [
     file: "4d-reconstruct/2024-dust3r.html",
     read: true,   // 已读完（源码标记，页面只读）
     desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
+    star: true,
+  },
+  {
+    domain: "前馈式重建", route: "前馈几何基座",
+    title: "MonST3R",
+    full: "MonST3R: A Simple Approach for Estimating Geometry in the Presence of Motion",
+    venue: "ICLR 2025",
+    year: 2025,
+    file: "4d-reconstruct/2025-monst3r.html",
+    desc: "把 DUSt3R 的点图回归改成按时刻预测，冻结编码器、只在四个动态数据集上微调解码器与回归头，让点图表示直接吃下运动；推理端用一个视频专属的全局优化把逐对点图拧成动态点云，位姿、内参、视频深度全从这一个表示里长出来",
     star: true,
   },
   // ── 前馈式重建（2026-09 新增域，原名「场景级重建」，2026-10 改名）──
@@ -325,7 +335,7 @@ function renderGroups() {
   const rmapTpl = document.querySelector(`template.rmap-tpl[data-domain="${currentDomain}"]`);
   const rmap = rmapTpl ? rmapTpl.innerHTML : "";
   const cards = routes.map(rt => {
-    const ps = list.filter(p => p.route === rt).sort((a, b) => b.year - a.year);
+    const ps = list.filter(p => p.route === rt).sort((a, b) => a.year - b.year);  // 严格按时间线升序：早年在前，同年保持数组顺序
     return `
       <section class="year">
         <h2 class="year-title">${rt}<span class="year-count">${ps.length} 篇</span></h2>
