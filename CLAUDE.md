@@ -32,7 +32,7 @@
 交互：
 - 打开页面**默认选中 `PAPERS[0].domain`**（当前是 前馈式重建，DUSt3R 在数组首位；该域 2026-10 由「场景级重建」改名）；想换默认就调 PAPERS 数组顺序
 - **领域专属路线图（2026-10 新增）**：每个领域可配自己的路线图，切领域时跟着换——机制是 body 里 `<template class="rmap-tpl" data-domain="领域名">` 存 HTML，`renderGroups()` 开头按 `currentDomain` 查询并注入 `#groups` 顶部；没配的领域不显示。当前仅「前馈式重建」配了三路线时间轴（前馈几何基座 DUSt3R→VGGT→…／前馈 3D 高斯 SplatterImage→MVSplat→…／前馈 4D 高斯 L4GM→VG3S 汇合），样式类 `.rmap/.mtl/.mnode`（节点上下交替挂标签，`.mtl` 高度须容纳三行标签否则溢出遮挡，现 134px）；新领域配图复制一个 template 改 data-domain 即可
-- **已读标记（2026-10-11 改版，只读）**：读者读完告知 Claude → Claude 在源码标（PAPERS 条目加 `read: true`；路线图节点加 `read` 类）→ 页面只读展示（卡片绿 ✓、节点带勾绿点），**访问者不能点击/更改**；旧的 localStorage 点选机制（readOv）已移除，别再实现前端切换。当前已标：DUSt3R、DrivingRecon
+- **已读标记（只读，写完即标）**：一篇解读**写完后**，Claude 即在同一笔提交里打双勾——PAPERS 条目加 `read: true`（卡片右上角绿 ✓）＋ 路线图对应节点加 `read` 类（带勾绿点），两处同时标、缺一不可；页面只读展示，**访问者不能点击/更改**；旧的 localStorage 点选机制（readOv）已移除，别再实现前端切换（2026-10-11 用户定）。
 - 点卡片整卡 → 跳转论文解读页；星标 `★`：数据里 `star:true` 的默认变黄（`--star:#e3b341`），点击切换并存 localStorage 覆盖值（key `starOv`，`{file: bool}`）
 - 点左侧领域 → 过滤右侧（`selectDomain()`）
 - 无页头无个人信息（用户明确要求）：只有菜单 + 卡片 + 一行页脚
