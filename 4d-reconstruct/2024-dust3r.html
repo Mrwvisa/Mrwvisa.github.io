@@ -674,7 +674,7 @@ details.deep ul{margin:4px 0}
     <li>交叉注意力的接线就一行：<span class="mono">blk1(final[::+1], pos1, pos2)</span>、<span class="mono">blk2(final[::-1], pos2, pos1)</span>——参数顺序就是「谁的 token 查询谁」，每个解码块执行 self-attn、cross-attn、MLP 三段。</li>
     <li>位置编码用 RoPE（相对位置），patch 大小 16；ManyAR_PatchEmbed 支持任意长宽比：图像 padding 到 patch 整数倍，<span class="mono">true_shape</span> 记录有效区域，注意力只算有效 token。</li>
     <li>竖图有个省事的处理：landscape 包装器把竖图转成横图进网络（权重只在横向分辨率上训练过），输出点图再转置回来，竖图也能直接跑。</li>
-    <li>给下游留了 freeze 开关（none / mask / encoder），DUSt3R 本体训练用 none 全量更新；后续工作（如 MASt3R）就是冻住 encoder 在这上面加匹配头。</li>
+    <li>给下游留了 freeze 开关（none / mask / encoder），DUSt3R 本体训练用 none 全量更新；后续工作（如 MASt3R）从这套权重初始化、加一个匹配头后继续全量微调——它发布模型的训练命令里没有冻结任何模块（详细对照见 MASt3R 页 §3.2）。</li>
     <li>对称化训练的算力账：每个 batch 同时含 (I¹,I²) 和 (I²,I¹)，<span class="mono">is_symmetrized</span> 检测到后编码器只算一半再 interleave 回来——两份监督、一份编码开销。</li>
   </ul>
 </section>
@@ -889,7 +889,7 @@ details.deep ul{margin:4px 0}
   <h3><span class="no">5.3</span>后续方向</h3>
   <ul class="dots">
     <li>论文自己指的路：更大模型、更多数据、更多任务头，以及把点图范式推广到更广的几何视觉任务。</li>
-    <li>同团队的实际后续：MASt3R（加显式局部特征头与 InfoNCE 匹配损失，把隐式对应磨锐，匹配类任务再涨一截）、Spann3R（流式递增重建，摆脱两两前馈）、MonST3R（动态场景的点图）。</li>
+    <li>同团队的实际后续：<a href="2024-mast3r.html" style="color:var(--c-enc);text-decoration:none">MASt3R</a>（加显式描述子头与 InfoNCE 匹配损失，把隐式对应磨锐，匹配类任务再涨一截；本站有专页）、Spann3R（流式递增重建，摆脱两两前馈）、MonST3R（动态场景的点图）。</li>
     <li>社区沿这条路长出来的：Fast3R（多图一次前馈）、VGGT（2025，前馈大模型一次输出全部相机参数与点图）——点图回归已经从一篇文章长成一条路线。</li>
     <li>和本站其他路线的对照也值得一看：渲染式预训练用「画得像不像」当监督，点图回归用「坐标对不对」当监督——一个从外观侧、一个从几何侧逼网络理解 3D，互为镜像。</li>
   </ul>

@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MASt3R 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 匹配头</a>
+  <a href="#s23" class="lv2">2.3 快速互匹配</a>
+  <a href="#s24" class="lv2">2.4 粗到细匹配</a>
+  <a href="#s25" class="lv2">2.5 多图稀疏对齐</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>MASt3R：把图像匹配做成 3D 问题</h1>
+  <div class="meta">Grounding Image Matching in 3D with MASt3R · arXiv 2406.09756 · github.com/naver/mast3r · 14 数据集 · ECCV 2024</div>
+</div>
+
+<!-- ============ §0 核心解读 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>先看 <a href="2024-dust3r.html" style="color:var(--c-enc);text-decoration:none">DUSt3R</a> 留下的缺口。DUSt3R 用点图把几何任务统一成一个回归问题：两张图一次前馈，输出同一坐标系下的两张点图，同一个物理点坐标重合，对应关系不用专门学。但它从没为「匹配」优化过：点图是回归出来的稠密张量，回归损失只要求「大概在这附近」，差一两个像素跟不差没区别——坐标重合给出的对应，精度停在粗粒度上。MASt3R 的做法是把匹配显式接进来：在同一个网络上加一个描述子头，给每个像素再输出一个 24 维单位向量（描述子），用 InfoNCE 匹配损失训练——每条真匹配当一个分类样本：「在这对图采样出的几千个像素里，认出和第 1 张图这个像素看到同一个 3D 点的那个」。分类损失只有指对才算分，逼网络把描述子磨到像素级。3D 回归损失原样保留，两个监督互相补位。推理时不需要再训第二个网络：两张描述子图上找互为最近邻的像素对（快速互匹配算法，约 3000 个种子、迭代几轮收敛，比暴力全算快 64 倍），每条匹配自带置信度。这个子采样过程有个反直觉的性质——匹配点在图上的分布比全量匹配更均匀，位姿估计反而更准。整套方法概括起来就是：在 DUSt3R 的点图回归旁边加一个显式描述子头，用 InfoNCE 把「看到同一个 3D 点」训成可分类的像素匹配，再配一套快速互匹配算法，匹配的速度和精度一起抬上去。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>匹配（找出两图看到同一 3D 点的像素对）是 3D 视觉所有流水线的核心零件，但主流做法一直把它当 2D 问题：提关键点、算描述子、在特征空间比距离。MASt3R 的主张是匹配本质上是 3D 问题——对应的像素就是看到同一个 3D 点的像素。于是在 DUSt3R 的主干上只加一件事：每视图多一个描述子头，把「同一个 3D 点」从坐标重合的隐式副产品，升级成可分类、可置信度打分的显式输出；配套一个快速互匹配算法把稠密匹配变得可用（§2.3）。
+      <div class="fig">
+        <svg viewBox="0 0 1420 500" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah1" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb1" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="18" y="72" width="124" height="76" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="80" y="100" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="80" y="122" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <text x="80" y="142" text-anchor="middle" class="svg-cn" fill="#59636e">视图 1</text>
+          <rect x="18" y="306" width="124" height="76" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="80" y="334" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="80" y="356" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <text x="80" y="376" text-anchor="middle" class="svg-cn" fill="#59636e">视图 2</text>
+
+          <line x1="166" y1="110" x2="203" y2="162" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="166" y1="344" x2="203" y2="294" class="arrow" marker-end="url(#ah1)"/>
+
+          <!-- 共享编码器 -->
+          <rect x="205" y="168" width="174" height="128" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="292" y="196" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">共享 ViT-L 编码器</text>
+          <text x="292" y="218" text-anchor="middle" class="svg-cn" fill="#59636e">Siamese，同一套权重</text>
+          <text x="292" y="240" text-anchor="middle" class="svg-nota">24 层 · dim 1024</text>
+          <text x="292" y="262" text-anchor="middle" class="svg-nota">patch 16 → 1024 tokens</text>
+          <text x="292" y="284" text-anchor="middle" class="svg-nota">→ F¹,F² [1024,1024]</text>
+
+          <line x1="379" y1="196" x2="413" y2="142" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="379" y1="268" x2="413" y2="324" class="arrow" marker-end="url(#ah1)"/>
+
+          <!-- 双解码器 -->
+          <rect x="415" y="72" width="196" height="132" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="513" y="100" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 1 · ViT-B×12</text>
+          <text x="513" y="124" text-anchor="middle" class="svg-nota">self → cross → MLP</text>
+          <text x="513" y="148" text-anchor="middle" class="svg-nota">→ G¹ [1024,768]</text>
+          <text x="513" y="172" text-anchor="middle" class="svg-cn" fill="#59636e">与解码器 2 每层互通</text>
+          <rect x="415" y="296" width="196" height="132" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="513" y="324" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 2 · 独立权重</text>
+          <text x="513" y="348" text-anchor="middle" class="svg-nota">self → cross → MLP</text>
+          <text x="513" y="372" text-anchor="middle" class="svg-nota">→ G² [1024,768]</text>
+
+          <line x1="470" y1="208" x2="470" y2="290" stroke="#0969da" stroke-width="2.2" marker-end="url(#ahb1)"/>
+          <line x1="556" y1="290" x2="556" y2="210" stroke="#0969da" stroke-width="2.2" marker-end="url(#ahb1)"/>
+          <text x="513" y="256" text-anchor="middle" class="svg-nota-b" fill="#0550ae">每层互通</text>
+
+          <!-- 每视图双头 -->
+          <rect x="650" y="50" width="240" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="770" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">3D 头（DPT，原样保留）</text>
+          <text x="770" y="98" text-anchor="middle" class="svg-nota">→ X¹,¹ + C¹,¹</text>
+          <rect x="650" y="128" width="240" height="92" rx="8" class="box" fill="#ddf4ff" stroke="#0969da" stroke-width="2.6"/>
+          <text x="770" y="152" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">描述子头（新增）</text>
+          <text x="770" y="174" text-anchor="middle" class="svg-nota">拼接 enc+dec → MLP → pixel_shuffle</text>
+          <text x="770" y="196" text-anchor="middle" class="svg-nota">→ D¹ [512,512,24] + 描述子置信度</text>
+          <rect x="650" y="270" width="240" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="770" y="296" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">3D 头 2（DPT，原样保留）</text>
+          <text x="770" y="318" text-anchor="middle" class="svg-nota">→ X²,¹（图像 1 系）+ C²,¹</text>
+          <rect x="650" y="348" width="240" height="92" rx="8" class="box" fill="#ddf4ff" stroke="#0969da" stroke-width="2.6"/>
+          <text x="770" y="372" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">描述子头 2（新增）</text>
+          <text x="770" y="394" text-anchor="middle" class="svg-nota">拼接 enc+dec → MLP → pixel_shuffle</text>
+          <text x="770" y="416" text-anchor="middle" class="svg-nota">→ D² [512,512,24] + 描述子置信度</text>
+
+          <line x1="613" y1="130" x2="646" y2="88" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="613" y1="146" x2="646" y2="172" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="613" y1="354" x2="646" y2="306" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="613" y1="370" x2="646" y2="394" class="arrow" marker-end="url(#ah1)"/>
+
+          <!-- 输出 -->
+          <rect x="930" y="120" width="205" height="86" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1032" y="146" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X¹,¹ X²,¹</text>
+          <text x="1032" y="168" text-anchor="middle" class="svg-nota">[512,512,3] 各一张</text>
+          <text x="1032" y="190" text-anchor="middle" class="svg-cn" fill="#59636e">同一坐标系（同 DUSt3R）</text>
+          <rect x="930" y="270" width="205" height="86" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1032" y="296" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">描述子 D¹ D²</text>
+          <text x="1032" y="318" text-anchor="middle" class="svg-nota">[512,512,24] 各一张</text>
+          <text x="1032" y="340" text-anchor="middle" class="svg-cn" fill="#59636e">单位向量，逐像素</text>
+
+          <line x1="890" y1="90" x2="926" y2="140" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="890" y1="310" x2="926" y2="186" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="890" y1="170" x2="926" y2="282" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="890" y1="400" x2="926" y2="330" class="arrow" marker-end="url(#ah1)"/>
+
+          <!-- 推理侧：快速互匹配 -->
+          <rect x="1165" y="50" width="240" height="392" rx="8" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-dasharray="6 4"/>
+          <text x="1285" y="80" text-anchor="middle" class="svg-cn" style="font-weight:700">推理：快速互匹配（§2.3）</text>
+          <text x="1285" y="106" text-anchor="middle" class="svg-nota">D¹、D² 互为最近邻的像素对 = 匹配</text>
+          <text x="1285" y="126" text-anchor="middle" class="svg-nota">种子 ≈3000 → 迭代几轮收敛</text>
+          <text x="1285" y="146" text-anchor="middle" class="svg-nota">比暴力全算快 64 倍，还更准</text>
+          <circle cx="1210" cy="194" r="3.5" fill="#cf222e"/><circle cx="1226" cy="182" r="3.5" fill="#cf222e"/>
+          <circle cx="1240" cy="200" r="3.5" fill="#cf222e"/><circle cx="1222" cy="216" r="3.5" fill="#cf222e"/>
+          <circle cx="1238" cy="228" r="3.5" fill="#cf222e"/><circle cx="1206" cy="208" r="3.5" fill="#cf222e"/>
+          <circle cx="1350" cy="190" r="3.5" fill="#0969da"/><circle cx="1366" cy="202" r="3.5" fill="#0969da"/>
+          <circle cx="1346" cy="218" r="3.5" fill="#0969da"/><circle cx="1364" cy="230" r="3.5" fill="#0969da"/>
+          <circle cx="1352" cy="176" r="3.5" fill="#0969da"/><circle cx="1332" cy="204" r="3.5" fill="#0969da"/>
+          <line x1="1216" y1="190" x2="1346" y2="188" stroke="#818b98" stroke-width="1.2"/>
+          <line x1="1230" y1="184" x2="1362" y2="200" stroke="#818b98" stroke-width="1.2"/>
+          <line x1="1240" y1="202" x2="1346" y2="216" stroke="#818b98" stroke-width="1.2"/>
+          <line x1="1226" y1="216" x2="1362" y2="228" stroke="#818b98" stroke-width="1.2"/>
+          <line x1="1208" y1="208" x2="1334" y2="206" stroke="#818b98" stroke-width="1.2"/>
+          <text x="1285" y="262" text-anchor="middle" class="svg-nota-b">D¹ 像素 ↔ D² 像素</text>
+          <text x="1285" y="298" text-anchor="middle" class="svg-nota">匹配表：像素对 (i,j) 的列表</text>
+          <text x="1285" y="318" text-anchor="middle" class="svg-nota">每条匹配带置信度（§2.3）</text>
+          <text x="1285" y="352" text-anchor="middle" class="svg-cn" fill="#59636e">后续读法：相对位姿 / 视觉定位</text>
+          <text x="1285" y="370" text-anchor="middle" class="svg-cn" fill="#59636e">/ 稠密重建——都从这张表出发</text>
+          <text x="1285" y="410" text-anchor="middle" class="svg-nota">不需要第二个网络</text>
+
+          <line x1="1135" y1="160" x2="1161" y2="168" class="arrow" marker-end="url(#ah1)"/>
+          <line x1="1135" y1="310" x2="1161" y2="300" class="arrow" marker-end="url(#ah1)"/>
+
+          <text x="700" y="484" text-anchor="middle" class="svg-cn" fill="#59636e">结构上只多一个描述子头（每视图一个）；匹配是推理侧的算法。监督两项：点图回归（原样）+ 匹配分类（新增）——消融显示两者互相成就（§4.5）</text>
+        </svg>
+        <div class="figcap">图 0-1 · MASt3R 核心机制：DUSt3R 主干原样保留，每视图多挂一个描述子头输出逐像素 24 维描述子；匹配在推理侧由快速互匹配算法完成。shape 取自官方发布模型（512 档、patch 16），点图结果口径与 DUSt3R 页一致。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>输入：</b>图像 I¹、I²，各缩到长边 512、保持长宽比（训练时在 512×384、512×336、512×288、512×256、512×160 五档里随机）；14 个数据集混合采样，每 epoch 约 70 万对（逐数据集配比见 §3.2）；权重从公开的 DUSt3R 模型初始化，然后全量微调——3D 先验直接继承，匹配头不必从零学「两图哪块对哪块」。</li>
+        <li><b>输出：</b>每张图一路走到底出四样：点图 X（[512,512,3]，X²,¹ 写在图像 1 坐标系、同 DUSt3R）、点图置信度 C（[512,512]）、描述子 D（[512,512,24]，每个像素一个 24 维单位向量）、描述子置信度（[512,512]，独立一个通道——发布模型是双置信度配置）。</li>
+        <li><b>GT：</b>两项监督都不需要人工标注。①点图 GT：数据集自带的深度图 + 位姿变换到图像 1 相机系（同 DUSt3R）；区别是 14 个数据集里 10 个的 GT 是米制，这些数据集的点图不做尺度归一，预测直接和米制数值对齐（细节在 §3.1）。②匹配 GT：两张 GT 点图互相投影「对账」，互落到同一像素的才算真匹配（共视区、无遮挡的那些像素）；每对图采样 4096 条真匹配 + 4096 条假匹配，凑成 8192 的候选池，假匹配只进分母不进分子（§3.1）。</li>
+        <li><b>Loss：</b>两项相加——点图回归（置信度加权欧氏距离，同 DUSt3R）+ 匹配分类（InfoNCE：每条真匹配是一道「在几千个候选像素里认出你」的分类题）。公式和每个符号的含义：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:15px">L = L<sub>conf</sub> + w·L<sub>match</sub>，&nbsp; w = 0.075（仓库命令）</div>
+            <div class="fx" style="font-size:15px">L<sub>conf</sub> = Σ C·ℓ<sub>regr</sub> − α·log C，&nbsp; ℓ<sub>regr</sub> = ‖ X/z − <span class="ovl">X</span>/<span class="ovl">z</span> ‖，米制数据集令 z := <span class="ovl">z</span></div>
+            <div class="fx" style="font-size:15px">L<sub>match</sub> = − Σ<sub>(i,j)</sub> [ log s(i,j)/Σ<sub>k</sub>s(k,j) + log s(i,j)/Σ<sub>k</sub>s(i,k) ]，&nbsp; s(i,j) = exp( D¹<sub>i</sub>·D²<sub>j</sub> / τ )，τ = 0.05</div>
+            <div class="note">公式里每个符号的含义：<br>
+              <b>X</b>：预测点图（X¹,¹、X²,¹）；<b><span class="ovl">X</span></b>：真值点图（横杠=答案，同 DUSt3R 记号）；<b>z、<span class="ovl">z</span></b>：预测侧 / GT 侧的尺度因子，= 所有有效点到原点距离的平均。米制数据集把预测侧的 z 直接设成 GT 的 <span class="ovl">z</span>——预测不按自己的尺度归一，绝对尺度第一次被放进损失里，这就是「metric 预测」；其余数据集照 DUSt3R 两边各自归一。<br>
+              <b>C、c、α</b>：点图置信度（C = 1 + exp(c)，≥1）、其原始输出、平衡系数 0.2——整套机制与 DUSt3R 完全一致（为什么下界是 1、为什么会自动校准，见 DUSt3R 页 §3）。<br>
+              <b>(i,j)</b>：一条 GT 真匹配——图像 1 的像素 i 和图像 2 的像素 j 看到同一个 3D 点；<b>D¹<sub>i</sub>、D²<sub>j</sub></b>：两个像素的描述子（24 维单位向量，点积就是余弦相似度）；<br>
+              <b>s(i,j)</b>：匹配得分 = exp(余弦 / τ)，越像越大；<b>τ</b>：温度，越小 softmax 越尖、越只认精确命中；<b>k</b>：遍历 8192 像素候选池（4096 真 + 4096 假）的求和下标，作分母用——第 1 项沿图像 1 的池求和（对每个 j 认出 i），第 2 项沿图像 2 的池求和（对每个 i 认出 j）。<br>
+              两处和论文对不上、以仓库为准的地方：论文正文写 β=1、τ=0.07；仓库训练发布模型的命令是 w=0.075、τ=0.05，且匹配项外面还套了一层匹配置信度加权（§3.2 有逐项对照）。另外论文印出的 s(i,j) 式子带负号（exp[−τ·D⊤D]），和代码方向相反——按那个式子越像的分越低，明显是笔误（附录自己定义的相似度也是普通的点积），以代码 exp(·/τ) 为准。</div>
+          </div>
+        </li>
+      </ul>
+      消融里还有一条反直觉的结论（§4.5）：匹配目标单独练会更「专注」，但位姿精度反而回退——3D 回归损失不能丢，两个监督是互相成就的关系。
+      <div class="fig">
+        <svg viewBox="0 0 1200 276" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="26" width="160" height="58" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="52" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="100" y="72" text-anchor="middle" class="svg-nota">[3,512,H×W]</text>
+          <rect x="20" y="100" width="160" height="58" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="126" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="100" y="146" text-anchor="middle" class="svg-nota">[3,512,H×W]</text>
+          <rect x="220" y="44" width="250" height="96" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="345" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">MASt3R 前馈</text>
+          <text x="345" y="98" text-anchor="middle" class="svg-nota">共享编码器 + 双解码器 + 双头</text>
+          <text x="345" y="118" text-anchor="middle" class="svg-nota">（结构见图 0-1 · 主干自 DUSt3R 初始化）</text>
+          <rect x="510" y="44" width="230" height="96" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="625" y="72" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X + C · 描述子 D + 置信度</text>
+          <text x="625" y="94" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
+          <text x="625" y="116" text-anchor="middle" class="svg-nota">+ [512,512,24] + [512,512]</text>
+          <rect x="880" y="44" width="300" height="96" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="1030" y="72" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Loss：两项相加</text>
+          <text x="1030" y="96" text-anchor="middle" class="svg-nota">回归：X¹,¹ ↔ <tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">1,1</tspan><tspan dy="4">，X²,¹ ↔ </tspan><tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">2,1</tspan><tspan dy="4">（按 C 加权）</tspan></text>
+          <text x="1030" y="118" text-anchor="middle" class="svg-nota">匹配：真匹配 (i,j) 在 8192 池里做分类（InfoNCE）</text>
+          <rect x="20" y="196" width="160" height="66" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="220" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">数据集</text>
+          <text x="100" y="240" text-anchor="middle" class="svg-nota">14 个 · ~70 万对/epoch</text>
+          <text x="100" y="258" text-anchor="middle" class="svg-nota">深度 + 位姿（10 个米制）</text>
+          <rect x="220" y="196" width="330" height="66" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="385" y="220" text-anchor="middle" class="svg-cn" style="font-weight:700">GT 构造：全自动</text>
+          <text x="385" y="240" text-anchor="middle" class="svg-nota">点图 GT：深度 + 位姿 → 图像 1 系（米制不归一）</text>
+          <text x="385" y="258" text-anchor="middle" class="svg-nota">匹配 GT：GT 点图互投影对账 → 4096 真 + 4096 假</text>
+          <line x1="180" y1="55" x2="216" y2="80" class="arrow" style="marker-end:url(#ahT2)"/>
+          <line x1="180" y1="129" x2="216" y2="104" class="arrow" style="marker-end:url(#ahT2)"/>
+          <line x1="470" y1="92" x2="506" y2="92" class="arrow" style="marker-end:url(#ahT2)"/>
+          <line x1="740" y1="92" x2="876" y2="92" class="arrow" style="marker-end:url(#ahT2)"/>
+          <line x1="180" y1="229" x2="216" y2="229" class="arrow" style="marker-end:url(#ahT2)"/>
+          <line x1="550" y1="229" x2="876" y2="128" class="arrow" style="marker-end:url(#ahT2)"/>
+          <path d="M1030,44 L1030,14 L345,14 L345,40" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT2)"/>
+          <text x="688" y="32" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播：更新主干 + 新描述子头</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：一次前馈出四样（点图、点图置信度、描述子、描述子置信度）；两项 GT 全自动构造；回归 + 分类两个损失一起回传（图内只放符号，公式与变量解释见训练条）。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>图像 I¹、I²，任意分辨率（比 512 大就自动走粗到细，§2.4）；不需要任何相机参数。</li>
+        <li><b>输出：</b>一次前馈（编码器 1 次 + 解码器对称跑 2 个方向）得到点图 ×2、描述子 ×2；在描述子图上跑快速互匹配，得到一张匹配表：像素对 (i,j) 的列表，每条带置信度。从它读出三样东西：
+          <ul class="sub">
+            <li><b>相对位姿：</b>匹配上估计本质矩阵 E（5 点 RANSAC——随机抽 5 对匹配解 E，留内点最多的那个；E 编码两台相机之间的旋转和平移）→ 旋转 R、平移方向 t。要绝对尺度就把 t 用网络自带的米制深度定长。</li>
+            <li><b>绝对位姿（视觉定位）：</b>查询图跟库图（已知 3D 点的参考图）做匹配，库图像素本来就挂着 3D 点，于是得到一批「2D 像素 ↔ 3D 点」配对 → PnP（已知 3D 点和对应像点，反求相机位姿）。</li>
+            <li><b>重建：</b>双图的点图直接叠（同 DUSt3R）；多图走仓库附带的 SparseGA——匹配对 + 点图联合优化成整场景（§2.5；论文本身只做双图）。</li>
+          </ul>
+        </li>
+        <li><b>后处理：</b>粗到细匹配的坐标要映回原图；多图时两两前馈再跑一次全局优化。值得注意的是吞吐瓶颈：论文实测「在描述子上找互为最近邻」比网络前向本身还慢得多，砍它的办法就是 §2.3 的快速互匹配。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="24" width="160" height="56" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="48" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="100" y="68" text-anchor="middle" class="svg-nota">任意分辨率</text>
+          <rect x="20" y="100" width="160" height="56" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="124" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="100" y="144" text-anchor="middle" class="svg-nota">无需相机参数</text>
+          <rect x="220" y="40" width="225" height="100" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="332" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">一次前馈（对称两方向）</text>
+          <text x="332" y="88" text-anchor="middle" class="svg-nota">编码器 ×1 + 解码器 ×2</text>
+          <text x="332" y="110" text-anchor="middle" class="svg-nota">→ 点图 + 描述子（图 0-1）</text>
+          <text x="332" y="130" text-anchor="middle" class="svg-nota">约几十毫秒量级（H100 上同 DUSt3R）</text>
+          <rect x="485" y="40" width="245" height="100" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="607" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">快速互匹配（§2.3）</text>
+          <text x="607" y="88" text-anchor="middle" class="svg-nota">描述子图上找互为最近邻的像素对</text>
+          <text x="607" y="110" text-anchor="middle" class="svg-nota">种子 ≈3000 · 迭代 ≤10 轮收敛</text>
+          <text x="607" y="130" text-anchor="middle" class="svg-nota">比暴力全算快 64 倍（§4.5）</text>
+          <rect x="770" y="40" width="190" height="100" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="865" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">匹配表</text>
+          <text x="865" y="88" text-anchor="middle" class="svg-nota">像素对 (i,j) 列表</text>
+          <text x="865" y="110" text-anchor="middle" class="svg-nota">每条带置信度</text>
+          <rect x="995" y="6" width="195" height="62" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="1092" y="28" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">相对位姿</text>
+          <text x="1092" y="50" text-anchor="middle" class="svg-nota">本质矩阵（5点RANSAC）→ R, t</text>
+          <rect x="995" y="84" width="195" height="62" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="1092" y="106" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">绝对位姿（定位）</text>
+          <text x="1092" y="128" text-anchor="middle" class="svg-nota">匹配 + 库图 3D 点 → PnP</text>
+          <rect x="995" y="162" width="195" height="62" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="1092" y="184" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">重建</text>
+          <text x="1092" y="206" text-anchor="middle" class="svg-nota">双图直接叠 / 多图 SparseGA</text>
+          <rect x="220" y="168" width="510" height="58" rx="8" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-dasharray="6 4"/>
+          <text x="475" y="192" text-anchor="middle" class="svg-nota">原图比 512 大？先粗匹配定窗口，再按 512 的窗口逐对细匹配</text>
+          <text x="475" y="212" text-anchor="middle" class="svg-nota">坐标映回原图（§2.4 粗到细）</text>
+          <rect x="20" y="252" width="1170" height="54" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="605" y="276" text-anchor="middle" class="svg-nota">要绝对尺度：网络自带米制深度（10/14 数据集是米制 GT 训出来的），不用接外部深度模型</text>
+          <text x="605" y="296" text-anchor="middle" class="svg-nota">——Map-free 重定位上平移误差 0.80m → 0.36m（§4.1）</text>
+          <line x1="180" y1="52" x2="216" y2="72" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="180" y1="128" x2="216" y2="108" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="445" y1="90" x2="481" y2="90" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="730" y1="90" x2="766" y2="90" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="960" y1="72" x2="991" y2="42" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="960" y1="90" x2="991" y2="112" class="arrow" style="marker-end:url(#ahI3)"/>
+          <line x1="960" y1="108" x2="991" y2="188" class="arrow" style="marker-end:url(#ahI3)"/>
+          <path d="M475,168 L475,146" fill="none" stroke="#818b98" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahI3)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：一次前馈（对称两方向）得到点图与描述子；匹配由快速互匹配算法从描述子图上抽；三块读法都从匹配表出发，米制深度提供绝对尺度。时间为 H100 量级参考（官方未给具体数字，按同主干推断）。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定性：</b>极端视角变化（两张图隔着约 180° 看同一场景）仍能对出大片正确匹配，弱纹理、重复纹理、昼夜光照差异都扛得住（论文图 1、图 6）。</li>
+        <li><b>定量：</b>Map-free 重定位 VCRE AUC 93.3%，比此前最好（LoFTR+KBR 63.4%）高 30 个绝对点；中位平移误差 36cm，此前方法约 2m。CO3Dv2 相对位姿 mAA(30) 81.8（DUSt3R 77.2、PoseDiffusion 66.5）；RealEstate10K 76.4（DUSt3R 61.2，比最好的多视图方法高 8.7）。DTU 零样本 MVS 整体误差 0.374mm（DUSt3R 1.741），追平专门训练的 MVS。InLoc 视觉定位超过全部已发表方法。快速互匹配 64× 加速且更准；粗到细把 Aachen 夜景 top1 从 55.5% 拉到 70.2%（数字见 §4）。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>匹配和 3D 重建是一件事的两面。把匹配显式接进 3D 网络（描述子头 + 分类损失），匹配在硬场景里全面超车；反过来，留着 3D 回归损失，匹配本身也更准——两个监督互相成就。还有个工程结论：限制稠密匹配可用性的从来不是网络前向，而是匹配算法本身——「怎么选点」比「选多少个点」重要，子采样迭代匹配因此又快又准。</li>
+  </ul>
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：DUSt3R 的「坐标重合」不已经是匹配了吗？为什么还要单加一个头？</div>
+    <div class="qa-a">A：是匹配，但精度不够，而且从没被显式训练过。①点图是回归出来的稠密张量，回归损失只罚「离答案多远」——差一两个像素的坐标和完全对上的坐标，梯度差不多，它不区分「对」和「差一点」。匹配却是分类问题：要在几千个候选里指对那一个，差一点就是错。②差距可测：同样用 MASt3R 网络，Map-free 消融里匹配 3D 点（II）位姿 AUC 0.409，匹配描述子（IV）0.435、旋转中位误差 3.6°→3.0°——描述子头是专为「指对」优化的通道。一句话：DUSt3R 的对应是重建做好之后的副产品，MASt3R 把它变成被训练目标直接盯着的输出。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：既然匹配头好使，为什么不能只训匹配、把 3D 回归损失去掉？</div>
+    <div class="qa-a">A：消融 (III) 试过：去掉 3D 回归、只留 InfoNCE，VCRE AUC 0.744 看着还行，但位姿中位旋转从 3.0° 涨到 10.8°——位姿直接崩。论文的说法是「grounding matching in 3D is crucial」：3D 回归在逼解码器把场景几何真搞明白，描述子头共享这份理解；只留匹配，网络就走了捷径——匹配是局部可判的题，靠纹理细节就能把 InfoNCE 刷下去，不需要真懂 3D。结果描述子单看能匹配，但匹配点之间的几何一致性差，一位姿求解就露馅。分工：3D 回归管「理解场景」，匹配分类管「指对像素」。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：InfoNCE 的分母里都有谁？那 4096 条「假匹配」是干嘛的？</div>
+    <div class="qa-a">A：每对图采样出一个 8192 像素的候选池 = 4096 条真匹配（GT 点图互投影对账出来的）+ 4096 条假匹配（两图各随机挑非共视像素配成对，代码里 nneg=0.5）。损失只对 4096 条真匹配算（分子），但 softmax 分母遍历全部 8192。假匹配有两个作用：①当负样本——描述子得把它们和真匹配区分开；②更隐蔽的作用是把分母大小钉死——没有它们的话，重叠区大的图对分母大、小的分母小，同一个 InfoNCE 数值在不同图对间不可比，「在几千个里认出你」的难度会随重叠度漂移。论文文字的版本是「不够就补随机假对应，让找到真匹配的概率保持恒定」，代码把「补」做成了固定 50% 的配比。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：子采样 3000 个种子，匹配怎么反而更准了？丢的不是信息吗？</div>
+    <div class="qa-a">A：因为快速互匹配不是「随机抽 3000 个点」，而是「迭代走到收敛」。每个种子沿最近邻的箭头一路走，最终走进一个环（互为最近邻的像素对）。这个过程隐式地按「收敛盆地」大小采样：盆地大 = 该区域互为最近邻的密集对少（一般是纹理弱、匹配稀疏的地方），会有更多种子被吸过去。结果是匹配点的空间分布比全量互匹配更均匀——全量会被纹理密集区刷屏。位姿估计（RANSAC 拟合对极几何）最怕匹配点挤在一小块，分布均匀让估计稳得多。附录对照实验很直白：把全量互匹配随机抽到同样数量 → 性能崩；按盆地大小有偏抽 → 比全量还好；快速互匹配 ≈ 有偏抽样，但便宜得多（遍历量从 O(W²H²) 降到 O(kWH)，k≈3000 时实测快 64 倍）。收敛性有理论保证：最近邻图是「一堆树 + 一个根环」的结构（每个点只有一条出边），沿树走相似度单调不降，必然到根环；实测 6 轮内绝大多数收敛。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：MASt3R 的深度为什么是米制的？尺度从哪来？</div>
+    <div class="qa-a">A：训练集 14 个数据集里有 10 个的 GT 是米制（激光雷达或标定过的重建）。代码对这类数据集关掉尺度归一：预测点图不按自己的尺度归一，直接被拉去跟米制 GT 比——尺度错了就是损失。剩下 4 个尺度未知的数据集（SfM 建出来的）照 DUSt3R 老办法各自归一、只练形状。于是同一个网络对「像米制场景」的输入统一输出米制几何——Map-free 上直接拿它给平移定长，中位平移误差从 0.80m（外部 DPT-KITTI 深度）掉到 0.36m，不依赖任何外部深度模型。这是「两个目标互相成就」的另一个切面：能算米制深度的网络，匹配也更好用。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：论文写 β=1、τ=0.07，仓库训练命令却是 0.075、τ=0.05，哪个是真的？</div>
+    <div class="qa-a">A：都是作者写的，很可能来自不同的训练记录。论文正文/附录给的是 β=1、τ=0.07；仓库 README「Our Hyperparameters」给的是一条据称用于训练发布 checkpoint 的完整命令，里面匹配项是 0.075×ConfMatchingLoss(τ=0.05, α=10)。两个数字还不能直接比大小：ConfMatchingLoss 会把每条正样本的损失先乘上匹配置信度（学出来、约 1 附近），0.075 是乘置信度之前的系数。要复现官方权重就按 README 命令来，论文数字当设计意图读。本站规矩：数字以能跑起来的代码为准，和论文有出入就两边都标出来（§3.2 有完整对照表）。</div>
+  </div>
+</section>
+
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、MASt3R 怎么解。</div>
+
+  <p>给定两张图和未知相机参数，图像匹配要回答的是：哪些像素对看到同一个 3D 点。这件事是 3D 视觉所有流水线的地基——SfM、SLAM、视觉定位、多视图重建，上游全在消费匹配结果。传统做法把它拆成三步：提关键点、算局部描述子、在特征空间找最近邻。问题在于判据是 2D 纹理的：弱纹理、重复纹理、极端视角变化一来，局部描述子本身就不可靠了。MASt3R 的观察跟 DUSt3R 一脉相承：匹配表面上发生在 2D 像素之间，本质上却是 3D 问题——对应的像素就是看到同一个 3D 点的像素；2D 对应和多视图几何本来就是同一枚硬币的两面。而 DUSt3R 已经把路线指出来了：它的匹配（点图坐标重合）在最难的 Map-free 基准上霸榜，靠的正是 3D 表示对视角变化的天然鲁棒；但对应只是副产品，没为匹配优化过，精度停在粗粒度。MASt3R 就是把这条路修完：保留 3D 主干，显式加一个描述子头，用匹配分类损失把对应磨到像素级，再用一套快速互匹配算法把稠密匹配的成本降下来。整套方法概括起来就是：在 DUSt3R 的点图回归旁边加一个显式描述子头，用 InfoNCE 把「看到同一个 3D 点」训成可分类的像素匹配，再配一套快速互匹配算法，匹配的速度和精度一起抬上去。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>关键点路线被局部性困住</h4>
+      <p>关键点匹配（检测关键点、描述、最近邻配对）在光照和视角温和时又快又准，SIFT 到今天还活在 COLMAP 这类流水线里。但它是局部判据：把匹配降维成一袋关键点，丢掉了全局几何上下文；重复纹理和弱纹理区对局部描述子本身就是 ill-posed 的（从一小块纹理判不出唯一对应）。</p>
+      <p>SuperGlue / LightGlue 这类方法在最后的配对阶段补全局推理，但关键点和描述子若不携带足够信息，全局推理补得太晚。</p>
+    </div>
+    <div class="card">
+      <h4>3D 方法能对上，但不精、也不快</h4>
+      <p>DUSt3R 证明 3D 表示对视角变化天然鲁棒——它的匹配是点图坐标重合，建立在「懂几何」之上，Map-free 上直接登顶。但这份对应从没被匹配目标训练过，精度粗，而且点图回归的损失压根不区分「指对像素」和「指到旁边」。</p>
+      <p>另一个难点在推理侧：稠密匹配的朴素实现是 O(W²H²)——每个像素跟另一张图所有像素比距离，比网络前向本身还慢得多，再准也难落地。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:17%">路线</th><th style="width:28%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>关键点法</td>
+      <td class="mono">SIFT / SuperPoint+SuperGlue / LightGlue</td>
+      <td>检测 + 局部描述 + 最近邻，近年用图神经网络在配对阶段补全局推理。底子还是局部判据：重复纹理、弱纹理、大视角变化下失效；关键点的密度和分布也不可控。</td>
+    </tr>
+    <tr>
+      <td>半稠密 / 稠密 2D 匹配</td>
+      <td class="mono">LoFTR / DKM / RoMa</td>
+      <td>用全局注意力直接在全图范围匹配，弱纹理和大视角下比关键点稳，Map-free 上 LoFTR+KBR 此前位居第二（VCRE AUC 63.4%）。但本质仍是 2D 问题：判据是外观相似度——视角变化大到外观都变样时，判据本身就没了。计算也重。</td>
+    </tr>
+    <tr>
+      <td>端到端位姿回归</td>
+      <td class="mono">RelPose / PoseDiffusion / RayDiffusion</td>
+      <td>直接从多张图回归位姿或光线，绕开显式匹配。输出只有位姿一个量，深度和重建要另找工具；评测也只覆盖自己能报的指标（如 RayDiffusion 只报 RRA）。</td>
+    </tr>
+    <tr>
+      <td>3D 建模式匹配</td>
+      <td class="mono">DUSt3R</td>
+      <td>点图坐标重合即对应，极端视角下最鲁棒（Map-free 榜首）。但对应是重建的副产品、没被显式训练过：回归只知道「大概在这附近」，不知道「有没有精确指对」。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>MASt3R 是怎么解决的</h3>
+  <p><b>网络层：把匹配接回 3D，给对应一个自己的监督。</b>主干原样保留（DUSt3R 权重初始化），每视图加一个描述子头：给每个像素输出 24 维单位向量，用 InfoNCE 匹配损失训练——每条 GT 真匹配是一道分类题：「在这对图采样出的 8192 个候选像素里，认出和第 1 张图这个像素看到同一个 3D 点的那个」。3D 回归损失原样留下（米制数据集还有增强，见 §3.1）。分类目标只奖励精确命中，把 DUSt3R 那份粗对应磨细；3D 回归则保证描述子背后的几何理解不偷懒——两边互相成就（消融见 §4.5）。</p>
+  <p><b>推理层：把稠密匹配做到可用。</b>两张描述子图上找互为最近邻的像素对，朴素实现是 O(W²H²)，不可用。MASt3R 的快速互匹配从约 3000 个种子像素出发迭代：去程找最近邻、回程再找回来，走成环的收作匹配，没收敛的继续；遍历量降到 O(k·WH)，快 64 倍。附录还给了收敛性证明和一个反直觉的副产品：这个迭代过程隐式地按「收敛盆地」大小采样，匹配点在图上铺得比全量匹配更均匀，位姿估计反而更准（§2.3）。高分辨率图像还有一层粗到细：先在小图上粗匹配定出窗口对，再在原分辨率逐窗精匹配（§2.4）。</p>
+  <p><b>顺带解决尺度。</b>训练集里 10/14 个数据集的 GT 是米制的，这些数据集的点图不做尺度归一——网络学会了输出米制几何，Map-free 上的平移直接有了绝对尺度，不用再外挂一个深度模型估尺度。</p>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>一个模型把匹配、相对位姿、绝对位姿、稠密重建串成一条链，评测全部零样本直接推理，不按任务微调（论文在各基准上都不微调）。</li>
+    <li>匹配质量上台阶：Map-free 重定位 VCRE AUC 93.3%（此前最好 63.4%，+30 个绝对点）；InLoc 视觉定位超过全部已发表方法；DTU 密集重建误差比 DUSt3R 降 4.6 倍（1.741 → 0.374），追平专门训练的 MVS 方法（论文表 3，零样本）。</li>
+    <li>抗视角、抗光照：两张图隔约 180° 反向看同一场景也能对出大片正确匹配（论文图 6）；Aachen 昼夜、InLoc 长时差场景都扛得住。</li>
+    <li>快和准不是取舍：快速互匹配 64× 加速，精度还升——子采样偏向大收敛盆地，匹配点分布更均匀（§2.3、§4.5）。</li>
+    <li>训练增量小：从 DUSt3R checkpoint 出发全量微调，改的是「一个头 + 两个损失 + 一套推理侧匹配算法」，不需要新标注。</li>
+  </ul>
+</section>
+
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看前馈总图（模块级，每个模块标真实输入输出 shape），细节留给四个子模块小节。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 680" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2x" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahb2x" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+        <marker id="ahr2x" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <rect x="20" y="80" width="150" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="108" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+      <text x="95" y="130" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+      <text x="95" y="152" text-anchor="middle" class="svg-cn" fill="#59636e">长边缩到 512</text>
+      <rect x="20" y="400" width="150" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="428" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+      <text x="95" y="450" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+      <text x="95" y="472" text-anchor="middle" class="svg-cn" fill="#59636e">长边缩到 512</text>
+
+      <line x1="170" y1="122" x2="226" y2="222" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="170" y1="442" x2="226" y2="328" class="arrow" marker-end="url(#ah2x)"/>
+
+      <!-- 共享编码器 -->
+      <rect x="230" y="190" width="200" height="170" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="330" y="220" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">共享 ViT-L 编码器</text>
+      <text x="330" y="244" text-anchor="middle" class="svg-cn" fill="#59636e">Siamese，同一套权重</text>
+      <text x="330" y="268" text-anchor="middle" class="svg-nota">patch 16 → 1024 tokens</text>
+      <text x="330" y="290" text-anchor="middle" class="svg-nota">24 层 · dim 1024 · RoPE</text>
+      <text x="330" y="318" text-anchor="middle" class="svg-nota">→ F¹,F² [1024,1024]</text>
+
+      <line x1="430" y1="240" x2="476" y2="150" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="430" y1="320" x2="476" y2="440" class="arrow" marker-end="url(#ah2x)"/>
+
+      <!-- 双解码器 -->
+      <rect x="480" y="60" width="240" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="600" y="88" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 1 · ViT-B×12</text>
+      <text x="600" y="112" text-anchor="middle" class="svg-nota">decoder_embed 1024→768</text>
+      <text x="600" y="136" text-anchor="middle" class="svg-nota">self → cross → MLP</text>
+      <text x="600" y="164" text-anchor="middle" class="svg-nota">→ G¹ [1024,768]</text>
+      <rect x="480" y="400" width="240" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="600" y="428" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 2 · 独立权重</text>
+      <text x="600" y="452" text-anchor="middle" class="svg-nota">dec_blocks2 深拷贝初始化</text>
+      <text x="600" y="476" text-anchor="middle" class="svg-nota">self → cross → MLP</text>
+      <text x="600" y="504" text-anchor="middle" class="svg-nota">→ G² [1024,768]</text>
+
+      <line x1="545" y1="226" x2="545" y2="394" stroke="#0969da" stroke-width="2.4" marker-end="url(#ahb2x)"/>
+      <line x1="655" y1="394" x2="655" y2="226" stroke="#0969da" stroke-width="2.4" marker-end="url(#ahb2x)"/>
+      <text x="600" y="314" text-anchor="middle" class="svg-nota-b" fill="#0550ae">每层双向互通</text>
+
+      <line x1="720" y1="118" x2="766" y2="90" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="720" y1="150" x2="766" y2="180" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="720" y1="458" x2="766" y2="428" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="720" y1="490" x2="766" y2="520" class="arrow" marker-end="url(#ah2x)"/>
+
+      <!-- 每视图双头 -->
+      <rect x="770" y="40" width="250" height="88" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="895" y="64" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">3D 头 1（DPT，原样）</text>
+      <text x="895" y="86" text-anchor="middle" class="svg-nota">hooks 0/6/9/12 · refinenet 256</text>
+      <text x="895" y="106" text-anchor="middle" class="svg-nota">→ 点图 3 维 + 置信度 1 维</text>
+      <rect x="770" y="146" width="250" height="124" rx="8" class="box" fill="#ddf4ff" stroke="#0969da" stroke-width="2.6"/>
+      <text x="895" y="170" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">描述子头 1（新增）</text>
+      <text x="895" y="192" text-anchor="middle" class="svg-nota">拼接 [G¹, F¹] → MLP 1792→7168→6400</text>
+      <text x="895" y="212" text-anchor="middle" class="svg-nota">每 patch 出 16×16×25 → pixel_shuffle</text>
+      <text x="895" y="232" text-anchor="middle" class="svg-nota">→ D¹ [512,512,24] + 描述子置信度</text>
+      <text x="895" y="252" text-anchor="middle" class="svg-nota">每个描述子 L2 归一化</text>
+      <rect x="770" y="376" width="250" height="88" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="895" y="400" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">3D 头 2（DPT，原样）</text>
+      <text x="895" y="422" text-anchor="middle" class="svg-nota">→ X²,¹ 写在图像 1 系</text>
+      <text x="895" y="442" text-anchor="middle" class="svg-nota">+ 置信度 C²,¹</text>
+      <rect x="770" y="482" width="250" height="124" rx="8" class="box" fill="#ddf4ff" stroke="#0969da" stroke-width="2.6"/>
+      <text x="895" y="506" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">描述子头 2（新增）</text>
+      <text x="895" y="528" text-anchor="middle" class="svg-nota">拼接 [G², F²] → MLP 1792→7168→6400</text>
+      <text x="895" y="548" text-anchor="middle" class="svg-nota">每 patch 出 16×16×25 → pixel_shuffle</text>
+      <text x="895" y="568" text-anchor="middle" class="svg-nota">→ D² [512,512,24] + 描述子置信度</text>
+      <text x="895" y="588" text-anchor="middle" class="svg-nota">每个描述子 L2 归一化</text>
+
+      <line x1="1020" y1="84" x2="1056" y2="140" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="1020" y1="200" x2="1056" y2="462" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="1020" y1="420" x2="1056" y2="190" class="arrow" marker-end="url(#ah2x)"/>
+      <line x1="1020" y1="540" x2="1056" y2="492" class="arrow" marker-end="url(#ah2x)"/>
+
+      <!-- 输出 -->
+      <rect x="1060" y="100" width="200" height="130" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1160" y="126" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X¹,¹ / X²,¹</text>
+      <text x="1160" y="148" text-anchor="middle" class="svg-nota">[512,512,3] 各一张</text>
+      <text x="1160" y="170" text-anchor="middle" class="svg-nota">置信度 C [512,512]</text>
+      <text x="1160" y="194" text-anchor="middle" class="svg-cn" fill="#59636e">同一坐标系（同 DUSt3R）</text>
+      <text x="1160" y="216" text-anchor="middle" class="svg-nota">深度 = exp(·) 保正视</text>
+      <rect x="1060" y="430" width="200" height="120" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1160" y="456" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">描述子 D¹ / D²</text>
+      <text x="1160" y="478" text-anchor="middle" class="svg-nota">[512,512,24] 各一张</text>
+      <text x="1160" y="500" text-anchor="middle" class="svg-nota">描述子置信度 [512,512]</text>
+      <text x="1160" y="524" text-anchor="middle" class="svg-cn" fill="#59636e">单位向量，匹配用</text>
+
+      <!-- 监督 -->
+      <rect x="1040" y="596" width="250" height="70" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1165" y="620" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督两项（§3，全自动）</text>
+      <text x="1165" y="640" text-anchor="middle" class="svg-nota">点图 GT：深度 + 位姿 → 图像 1 系</text>
+      <text x="1165" y="658" text-anchor="middle" class="svg-nota">匹配 GT：点图对账 → 4096 真 + 4096 假</text>
+      <path d="M1060,596 L1060,166 L1052,166" fill="none" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahr2x)"/>
+      <path d="M1240,596 L1240,556" fill="none" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahr2x)"/>
+
+      <text x="520" y="656" text-anchor="middle" class="svg-cn" fill="#59636e">推理侧：D¹、D² 做快速互匹配（§2.3）得匹配表；原图大于 512 走粗到细（§2.4）；多图由 SparseGA 拼接（§2.5）</text>
+    </svg>
+    <div class="figcap">图 2-1 · AsymmetricMASt3R 前馈总流程：主干（编码器 + 双解码器）原样继承 DUSt3R，每视图新增一个描述子头（粗蓝框）；两个头都吃「编码器 token + 解码器 token」的拼接。shape 取自官方发布模型（512 档、patch 16、双置信度配置）。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>编码器 / 解码器 / 头</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw line" style="border-color:#818b98"></span>数据流</span>
+      <span><span class="sw dash"></span>监督 / 训练细节</span>
+      <span>粗蓝框 = 相对 DUSt3R 新增</span>
+    </div>
+  </div>
+
+  <ul class="dots">
+    <li>输入侧只有 resize：长边缩到 512、保持长宽比；训练在五档分辨率（512×384、336、288、256、160）里随机，推理各种画幅都见过；竖图由 landscape 包装器先转置再进网络（同 DUSt3R）。</li>
+    <li>编码器真共享：两图沿 batch 维拼接后过一次 ViT-L 再切开；解码器两套权重（dec_blocks2 是 dec_blocks 的深拷贝），每个块 self-attn → cross-attn 查对方全部 token → MLP。这一整段与 DUSt3R 完全一致，一个参数没改。</li>
+    <li>唯一的结构改动是描述子头：吃「编码器 token + 解码器 token」的拼接（1024 + 768 = 1792 维），2 层 MLP（隐藏 4×1792 = 7168）一次预测出本 patch 内 256 个像素 × 25 维的块，pixel_shuffle 摆成 [512,512,25]——前 24 维 L2 归一化成描述子（每个像素一个单位向量），最后 1 维是描述子置信度（exp 激活，取值下界 0，和点图置信度的下界 1 不同）。</li>
+    <li>为什么描述子是「全像素分辨率」：匹配要的是像素级指对，patch 级的粗描述子做不了；MLP 把「上采样」并进了预测里——每个 token 直接吐出 16×16 个像素各自的描述子，省掉一个独立解码器。</li>
+    <li>3D 头 1/2 是 DUSt3R 的 DPT 头原样：从解码器第 0/6/9/12 层钩 token，refinenet 多尺度融合出 4 通道（点图 3 + 置信度 1）。「非对称」依旧指输出写法——头 2 的点图 X²,¹ 写在图像 1 系，靠 GT 构造把它训出来。</li>
+    <li>推理时解码器对称跑两个方向（1→2、2→1），描述子匹配也把两套方向的结果合并去重——单对图也这么做（代码 symmetric_inference），不是训练专属技巧。</li>
+    <li>两个头的分工是本页主线：点图管 3D（监督、尺度、重建），描述子管匹配（对上号）；而消融显示两者互相带飞——3D 学会几何，匹配更稳；匹配练到像素级，位姿更准（§4.5）。</li>
+    <li>N 张图场景没有第三种网络调用：两两跑本流程（或按检索挑对），再接 SparseGA 全局优化（§2.5）。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.2 匹配头 ============ -->
+<section id="s22">
+  <h2><span class="no">§2.2</span>匹配头（Descriptor Head）</h2>
+
+  <p>描述子从哪里长出来？论文只写了一句「2 层 MLP、中间 GELU、输出归一化，细节见附录」——附录其实没展开；细节全在代码里（<span class="mono">catmlp_dpt_head.py</span>）。下面按一次前向的顺序过一遍：</p>
+
+  <div class="flowrow" id="desc-flow"></div>
+
+  <ul class="dots">
+    <li>输入是拼接，不是单选：每个 token 喂给描述子头的是 [Gᵛ, Fᵛ]——解码器最后一层输出（768 维，带跨视图几何信息；匹配要的「另一个视图在哪」在这里）拼编码器输出（1024 维，带单图细节纹理；描述子要的「这块长什么样」在这里）。1792 维一起进 MLP。</li>
+    <li>MLP 的结构（代码核对）：<span class="mono">Mlp(1792 → 7168 → 6400)</span>，隐藏层放大 4 倍，GELU 在中间，无 dropout——论文那句「2-layers MLP interleaved with GELU」说的就是它。6400 = (24 + 1) × 16²：每个 token 一次预测「它管的 16×16 个像素 × 25 个数」。</li>
+    <li>pixel_shuffle 的角色：把 [B,6400,32,32] 重排成 [B,25,512,512]——第 c 个通道的第 (x,y) 个像素，对应「管 (x,y) 那个 token 输出的第 c 个数」。等价于把「上采样」并进了预测本身，不需要独立的上采样解码器。</li>
+    <li>归一化与「距离」：前 24 个通道逐像素 L2 归一化成单位向量；匹配时用点积找最大相似度——单位向量上，点积最大即欧氏距离最小（‖a−b‖² = 2 − 2·a·b），两种写法一回事，读公式时别被外观骗了。</li>
+    <li>描述子置信度是独立通道（发布配置 two_confs=true）：exp 激活、下界 0——和点图置信度的下界 1 不同。它没有人工监督，靠匹配损失里的自校准项学出来（§3.1），推理时当匹配的可靠性分用。</li>
+    <li>一个对照记法：DUSt3R 在 3D 空间找对应（点图坐标互为最近邻），MASt3R 在 24 维描述子空间找。空间是学出来的——网络可以自由地把「同一个 3D 点」的两个像素在描述子空间里压到一起，把不同 3D 点的像素推开；这正是 InfoNCE 干的事。</li>
+    <li>整链 shape：<span class="mono">[B,1024,1792] → MLP → [B,1024,6400] → transpose×view → [B,6400,32,32] → pixel_shuffle ×16 → [B,25,512,512] → 拆分 → D [B,24,512,512] + 描述子置信度 [B,1,512,512]</span>。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 快速互匹配 ============ -->
+<section id="s23">
+  <h2><span class="no">§2.3</span>快速互匹配（Fast Reciprocal Matching）</h2>
+
+  <p>匹配发生在推理侧：两张描述子图 D¹、D² 进来，一张匹配表出去。最直白的定义是互为最近邻——i 的最近邻是 j，j 的最近邻也正好是 i。麻烦在成本：512 档一张图 26 万像素，两两比距离是 26 万² ≈ 700 亿次，比网络前向贵得多。论文实测「找互最近邻」是整个推理链最耗时的一环，砍它的办法是一次子采样迭代：</p>
+
+  <div class="flowrow" id="frm-flow"></div>
+
+  <ul class="dots">
+    <li>算法本体（论文 §3.3，代码 <span class="mono">fast_nn.py</span>）：在第 1 张图撒 k 个种子像素 U⁰（代码默认步长 8 的网格；512×384 上 ≈ 3000 个，刚好对上论文用的 k=3000）。每轮：U^t 里的点去 D² 找最近邻得到 V^t，V^t 再回 D¹ 找最近邻得到 U^{t+1}；U^t 里「回到原点」的（U^t_n = U^{t+1}_n）就是互最近邻，收进结果、移出活跃集；剩下的继续迭代，上限 10 轮（实测 5~6 轮几乎全部收敛）。</li>
+    <li>复杂度从 O(W²H²) 降到 O(k·WH)：每轮只有活跃点要查最近邻，活跃点最多 k 个；k≈3000、WH≈26 万时遍历量降两个数量级，Map-free 上实测匹配快 64 倍。</li>
+    <li>收敛性有证明（附录）：把「每个像素指向它的最近邻」连成有向图——每个点只有一条出边，所以整张图分解成一堆「树」，每棵树的根是一个环（根环必存在：沿路径相似度单调不降，有限图必到极值；且每棵子树只有一个环）。从任何种子出发沿箭头走，必然走进根环——根环就是一条互最近邻。环是偶数的（图是二部图）；24 维浮点下多节点环要求精确相等，概率可忽略。</li>
+    <li>为什么反而更准：根环的「吸引域」（收敛盆地）大小 ∝ 该区域匹配密度之倒数——匹配稀疏处盆地大，撒下去的种子更容易落进去。于是快速互匹配 ≈ 按盆地大小有偏采样，匹配点的空间分布比全量互匹配更均匀（全量会被纹理密集区刷屏）。位姿估计（RANSAC 拟合对极几何）最怕内点挤在一小块，分布均匀让它稳得多。附录对照实验：全量互匹配随机抽到同样数量 → 性能崩；按盆地有偏抽 → 比全量还好；快速互匹配 ≈ 有偏抽但便宜得多。</li>
+    <li>工程细节（代码核对）：种子在两张图上各撒一轮（图 1 的种子跑一遍、图 2 的种子再跑一遍），两批匹配合并、按像素对去重（论文只说「一图撒种子」，代码做了双向以求覆盖）。描述子匹配用点积（GPU 上分块暴力算，块大小 8192）；如果改匹配 3D 点（代码开关），换 scipy KD 树 + L2，在 CPU 上跑。每条匹配的置信度 = 两端描述子置信度的几何平均（√(C₁·C₂)）。</li>
+    <li>注意这只是「候选匹配抽取」：抽出来的表交给下游（RANSAC/PnP）做最后的几何筛选，所以多抽几条错的不致命、漏掉对的才致命——快速互匹配的设计正好反过来压住了「分布不均」这个真问题。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 粗到细 ============ -->
+<section id="s24">
+  <h2><span class="no">§2.4</span>粗到细匹配（Coarse-to-Fine）</h2>
+
+  <p>网络只吃 512 长边——这是硬约束（注意力对图像面积二次复杂度 + ViT 不泛化到训练分辨率之外）。但真实输入动辄 1~2MP，整图降采样到 512 再匹配，细节全丢，定位和重建精度差一截。粗到细（论文 §3.4）保留分辨率，流程五步：</p>
+
+  <div class="flowrow" id="c2f-flow"></div>
+
+  <ul class="dots">
+    <li>什么时候启用：原图长边超过 512 才走（Map-free 的 720×540 接近 512，官方实测直接不用 c2f）；定位脚本里是个开关（<span class="mono">visloc.py --coarse_to_fine</span>，配 <span class="mono">--max_image_size</span> 限定细匹配的窗尺寸）。</li>
+    <li>窗口怎么切：两个方向都做——图 1 切出网格窗尝试对到图 2，图 2 也切网格窗对到图 1，候选合并。窗长边 512、相邻窗重叠 50%、边长取 16 的倍数，长宽比向 3:4 规整（代码 <span class="mono">_make_overlapping_grid / _norm_windows</span>）。</li>
+    <li>每个窗对在哪：靠粗匹配估——对某个窗内的粗匹配点，算它们在另一张图里的中位中心 + 稳健尺度（10–90 分位比），推出「对应的那个窗」的位置和大小。等价于用粗匹配做了一次局部对极定位。</li>
+    <li>贪心选窗（覆盖 90%）：每个候选窗对按窗内匹配数打分（高斯加权，离窗中心近的匹配权重高）；每轮挑当前分最高的一对，收下并把它的匹配从其他候选里扣掉，直到 90% 的粗匹配被覆盖。少跑窗、覆盖全——每个窗对都要过一次网络，这一步就是省算力的地方。</li>
+    <li>收益（附录表）：Aachen 夜景 top1 从 55.5% 提到 70.2%（top1 白天 74.9 → 79.6）；DTU 重建整体误差从 0.622 降到 0.374，几乎腰斩。粗匹配单独用不是不能用（仍好于 DUSt3R 回归），只是精度明显掉档。</li>
+    <li>和 §2.3 的关系：粗匹配这一层本身也是快速互匹配跑出来的；c2f 把「一张大图」拆成「若干 512 窗」，窗对匹配仍是同一套网络 + 同一套 FRM——没有第二个模型。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.5 多图稀疏对齐 ============ -->
+<section id="s25">
+  <h2><span class="no">§2.5</span>多图稀疏对齐（SparseGA，仓库附带）</h2>
+
+  <p>论文明确声明本文只做双图（binocular）：「多图用全局对齐拼起来」这一步原文不涉及。但仓库为了让 demo 能重建整个场景，附了一整套稀疏全局对齐（SparseGA，<span class="mono">cloud_opt/sparse_ga.py</span>）——用匹配当约束、点图当先验，把 N 张图优化到一个坐标系。它不在论文里，但后续的 MASt3R-SfM 就是把它发展成了正规建图流水线（§5.3）。</p>
+
+  <ul class="dots">
+    <li>两两前馈 + 匹配，全部按图对缓存：每对图做对称推理（两个方向解码）→ 描述子 FRM → 匹配表落盘。这样重跑场景不用重算网络。</li>
+    <li>场景图五种连线方式：complete（全连）、swin（滑窗）、logwin（长程滑窗）、oneref（都对同一张参考图）、retrieval（用官方检索模型挑相似对）。连线定了之后，按「每对的匹配置信度」建最小生成树（或层次聚类），得到一条从粗到细的「运动链」当优化骨架。</li>
+    <li>优化变量（网络冻结，只当观测）：每图一个单位四元数 + 平移、log 焦距、主点、一张中值归一化的深度图；可选共享内参（所有图同一套焦距/主点）。</li>
+    <li>两段优化：粗段 300 步、lr 0.07，只动位姿，损失 = 匹配点的 3D 一致性（配对的两条匹配点各自反投影，两端 3D 点要重合，按匹配置信度加权）；匹配不可用的图对（最强一条匹配的置信度都 ≤ 5）回退到 DUSt3R 的稀疏化稠密回归项（权重 0.01）。细段 300 步、lr 0.01，放开焦距/主点/深度，损失换成匹配点的 2D 重投影误差。两段都用稳健 γ 损失 + Adam。</li>
+    <li>输出：每图的深度图 + 位姿 → 稠密点云（每像素一个点），可选出 TSDF 融合去噪。demo 里的完整链路一句话概括：forward → matching → 3D optim → 2D refinement → triangulation。</li>
+    <li>和 DUSt3R 全局对齐的区别：DUSt3R 对齐的是「逐对稠密点图」（每个像素都是约束）；SparseGA 对齐的是「稀疏匹配点」（几千条/对），约束更稀但更锐——匹配是像素级精准的，不像点图坐标那么粗。代价是匹配不可用的图对要回退到稠密项兜底。</li>
+  </ul>
+</section>
+
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+
+  <h3><span class="no">3.1</span>两项监督各管一段</h3>
+
+  <p>MASt3R 的损失由两项看家：一项逼点图对齐 GT（回归），一项逼描述子指对像素（分类）。两项都带置信度自校准，但校准的是两个不同的通道（点图置信度、匹配置信度），互不干扰。逐条过：</p>
+
+  <div class="formula">
+    <div class="fx">
+      ℓ<sub>regr</sub>(v,i) = ‖ X<sup>v,1</sup><sub>i</sub> / z − <span class="ovl">X</span><sup>v,1</sup><sub>i</sub> / <span class="ovl">z</span> ‖，&nbsp;&nbsp; 米制数据集令 z := <span class="ovl">z</span>
+    </div>
+    <div class="note">论文 Eq.1/2，v ∈ {1,2} 是视图。逐像素欧氏距离（代码 <span class="mono">L21Loss</span>）；z、<span class="ovl">z</span> 是预测侧 / GT 侧的尺度因子，各自等于「所有有效点到原点距离的平均」。DUSt3R 两边各自归一——网络只对形状负责、不管绝对尺度；MASt3R 加了一个开关：只要这个数据集的 GT 是米制的（14 个里 10 个），预测侧就不再归一（z := <span class="ovl">z</span>），预测被拉去和米制 GT 直接比，尺度错了就是损失。这就是「米制预测」的全部机关（代码 <span class="mono">norm_mode='?avg_dis'</span>：对声明米制尺度的数据集跳过预测侧归一，两侧同除 <span class="ovl">z</span>）。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx">
+      L<sub>conf</sub> = Σ<sub>v∈{1,2}</sub> Σ<sub>i∈𝒱</sub> [ C<sup>v</sup><sub>i</sub> · ℓ<sub>regr</sub>(v,i) − α · log C<sup>v</sup><sub>i</sub> ]，&nbsp;&nbsp; C = 1 + exp(c)，&nbsp;&nbsp; α = 0.2
+    </div>
+    <div class="note">论文 Eq.3，与 DUSt3R 完全一致、一字未改。C 是每像素的点图置信度（c 是回归头自由输出的原始参数），C·ℓ 是标准化残差、−α·log C 是「自称精确」要交的税，平衡点 C* ≈ α/ℓ 让每个像素自动校准自己的可信度；C ≥ 1 的下界逼网络在难区也外推。机制细节（为什么下界是 1、天空像素经历什么）见 DUSt3R 页 §3 与 QA，这里不重复。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx">
+      L<sub>match</sub> = − Σ<sub>(i,j)∈<span class="ovl">ℳ</span></sub> [ log s(i,j)/Σ<sub>k∈𝒫¹</sub> s(k,j) + log s(i,j)/Σ<sub>k∈𝒫²</sub> s(i,k) ]，&nbsp;&nbsp; s(i,j) = exp( D¹<sub>i</sub>⊤D²<sub>j</sub> / τ )
+    </div>
+    <div class="note">论文 Eq.10/11（<span class="mono">InfoNCE(mode='proper')</span>）。逐符号：<br>
+      <b>(i,j) ∈ <span class="ovl">ℳ</span></b>：一条 GT 真匹配——图像 1 的像素 i 和图像 2 的像素 j 看到同一个 3D 点（<span class="ovl">ℳ</span> 即真匹配集合，由 GT 点图对账得到）；<br>
+      <b>D¹<sub>i</sub>、D²<sub>j</sub></b>：两个像素的描述子，24 维单位向量，点积即余弦；<br>
+      <b>s(i,j)</b>：匹配得分 = exp(余弦 / τ)，越像越大；<b>τ = 0.05</b>（温度，越小 softmax 越尖——cos 差 0.1，权重差 e² ≈ 7.4 倍，几乎只认精确命中）；<br>
+      <b>𝒫¹、𝒫²</b>：两张图的采样像素集合，即 8192 池（4096 真 + 4096 假）落在这对图上的像素；分母遍历池、分子是真匹配那一项；<br>
+      两项 = 两个方向的 cross-entropy（对每个 j 认出 i、对每个 i 认出 j）。为什么要双向（代码注释叫 <span class="mono">'proper'</span>）：只留单向时，softmax 允许「一堆 i 都指到同一个 j」的塌缩解——加反向项后真匹配必须互为唯一最强。<br>
+      代码核对：论文印的式子是 s(i,j) = exp[−τ·D⊤D]，负号与 τ 的位置都和代码相反（按论文式子「越像的分越低」，匹配方向整个反了，附录自己定义相似度时用的也是普通点积）——以代码 exp(余弦/τ) 为准。τ 的取值论文写 0.07、仓库训练命令写 0.05，§3.2 有对照。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx">
+      L<sub>total</sub> = L<sub>conf</sub> + 0.075 · [ C<sub>d</sub>·L<sub>match</sub> − α<sub>m</sub>·log C<sub>d</sub> ]，&nbsp;&nbsp; α<sub>m</sub> = 10（仓库命令）
+    </div>
+    <div class="note">匹配项外面还套了一层匹配置信度加权（代码 <span class="mono">ConfMatchingLoss</span>）：每条真匹配的损失先乘匹配置信度 C<sub>d</sub>（两端描述子置信度的平均），再补自校准项。数学与上面的点图置信度同一套：平衡点 C<sub>d</sub>* ≈ α<sub>m</sub>/ℓ<sub>match</sub> = 10/ℓ——匹配越难，自报置信度越低；推理时这张置信度图用于匹配过滤与加权（§4.1 的 depth='auto' 变体就吃它）。注意 C<sub>d</sub> 的下界是 0（exp 激活、无 +1），和点图置信度的下界 1 不同：匹配候选本来就允许被筛掉，「弃权」在这里是合法操作（对匹配损失而言弃权的匹配不进分子，只进分母）。论文正文写的总损失是 L = ℓ<sub>conf</sub> + β·ℓ<sub>match</sub>（β=1），没提这层加权和 0.075 的系数；两个数字不可直接比大小（0.075 是乘置信度之前的系数）。</div>
+  </div>
+
+  <div class="fhuman"><b>人话版：</b>两个损失各盯一个通道——点图要「坐标对」（错多少罚多少，米制数据集连绝对大小一起罚）；描述子要「认出你」（在几千个候选里指错就挨罚，且必须双向唯一）。两个置信度（点图 / 匹配）各自学会自报误差，都靠损失自身平衡，没有任何额外标签。</div>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 960 208" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7m" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+
+      <rect x="12" y="20" width="150" height="44" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="87" y="40" text-anchor="middle" class="svg-nota" fill="#116329">GT 点图</text>
+      <text x="87" y="56" text-anchor="middle" class="svg-nota">（深度 + 位姿 → 图像 1 系）</text>
+      <rect x="185" y="20" width="175" height="44" rx="6" class="box" fill="#ffffff" stroke="#818b98" stroke-dasharray="5 4"/>
+      <text x="272" y="40" text-anchor="middle" class="svg-nota-b">尺度策略</text>
+      <text x="272" y="56" text-anchor="middle" class="svg-nota">米制：不归一 / 其余：各自归一</text>
+      <rect x="383" y="20" width="150" height="44" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="458" y="40" text-anchor="middle" class="svg-nota-b">逐点欧氏距离</text>
+      <text x="458" y="56" text-anchor="middle" class="svg-nota">ℓ_regr</text>
+      <rect x="556" y="20" width="180" height="44" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="646" y="40" text-anchor="middle" class="svg-nota-b" fill="#5c4400">× C − α·log C</text>
+      <text x="646" y="56" text-anchor="middle" class="svg-nota" fill="#5c4400">点图置信度（α = 0.2）</text>
+
+      <rect x="12" y="96" width="150" height="40" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="87" y="121" text-anchor="middle" class="svg-nota" fill="#116329">GT 匹配池 4096 真 + 4096 假</text>
+      <rect x="12" y="150" width="150" height="40" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="87" y="175" text-anchor="middle" class="svg-nota" fill="#a40e26">描述子 D¹ D²（单位向量）</text>
+      <rect x="185" y="96" width="175" height="94" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="272" y="130" text-anchor="middle" class="svg-nota-b">余弦 / τ → softmax</text>
+      <text x="272" y="152" text-anchor="middle" class="svg-nota">分母 = 8192 像素池</text>
+      <text x="272" y="170" text-anchor="middle" class="svg-nota">τ = 0.05</text>
+      <rect x="383" y="96" width="150" height="94" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
+      <text x="458" y="130" text-anchor="middle" class="svg-nota-b">InfoNCE</text>
+      <text x="458" y="152" text-anchor="middle" class="svg-nota">双向 cross-entropy</text>
+      <text x="458" y="170" text-anchor="middle" class="svg-nota">只算 4096 条真匹配</text>
+      <rect x="556" y="96" width="180" height="94" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="646" y="130" text-anchor="middle" class="svg-nota-b" fill="#5c4400">× C_d − α_m·log C_d</text>
+      <text x="646" y="152" text-anchor="middle" class="svg-nota" fill="#5c4400">匹配置信度（α_m = 10）</text>
+      <text x="646" y="170" text-anchor="middle" class="svg-nota" fill="#5c4400">权重 0.075</text>
+
+      <rect x="790" y="60" width="160" height="80" rx="6" fill="#cf222e"/>
+      <text x="870" y="106" text-anchor="middle" class="svg-nota-b" fill="#ffffff" font-size="13">Σ L</text>
+      <text x="870" y="162" text-anchor="middle" class="svg-nota">backward → 主干 + 描述子头</text>
+
+      <line x1="162" y1="42" x2="181" y2="42" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="360" y1="42" x2="379" y2="42" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="533" y1="42" x2="552" y2="42" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="162" y1="116" x2="181" y2="122" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="162" y1="170" x2="181" y2="162" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="360" y1="143" x2="379" y2="143" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="533" y1="143" x2="552" y2="143" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="736" y1="42" x2="786" y2="84" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+      <line x1="736" y1="143" x2="786" y2="118" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7m)"/>
+    </svg>
+    <div class="figcap">图 3-1 · 损失链路：回归链（上）与匹配链（下）各自带置信度自校准，最后合并回传；两条链共用同一个主干和描述子头。</div>
+  </div>
+
+  <ul class="dots">
+    <li>匹配 GT 的「对账」细节（代码 <span class="mono">extract_correspondences_from_pts3d</span>）：把图 1 的 GT 3D 点投影进图 2、图 2 的投影进图 1，只保留「双向都对得上」的像素对——这自动排除了遮挡（投影过去被挡住的不是对）和共视区外的像素。真匹配不够 4096 条时（重叠很少的图对），假匹配会补足剩下的名额。</li>
+    <li>假匹配怎么来的：从「非共视像素」里随机挑——图 1 随机一个像素配图 2 随机一个像素，两者本不共点。它们组成分母的一部分（负样本），且让分母大小恒定在图对之间可比（QA §0 有展开）。</li>
+    <li>为什么真匹配采样 4096 条而不是全用：全像素级匹配 GT 一图对可能有几万条，全用显存和计算都涨；4096 条已足够把梯度噪声压下去。</li>
+    <li>训练里点图和描述子共享整个主干：两个目标的梯度都回传到编码器和解码器（代码里没有 freeze 任何模块；DUSt3R 留的 freeze 开关发布训练没用），这也是消融里「只留一个目标反而差」的结构原因之一。</li>
+    <li>验证监控用的是 APLoss（匹配的平均精度）而不是 InfoNCE 值——评估口径和训练目标解耦，训练曲线更可读（代码 test_criterion）。</li>
+  </ul>
+
+  <table>
+    <tr><th>数据集</th><th>类型</th><th class="mono">图对/epoch</th><th>数据集</th><th>类型</th><th class="mono">图对/epoch</th></tr>
+    <tr><td>Habitat512</td><td>室内 · 合成</td><td class="mono">57k</td><td>ScanNet++</td><td>室内 · 真实</td><td class="mono">45.6k</td></tr>
+    <tr><td>BlendedMVS</td><td>室外 · 合成</td><td class="mono">68.4k</td><td>TartanAir</td><td>合成 · 多变环境</td><td class="mono">45.6k</td></tr>
+    <tr><td>MegaDepth</td><td>室外 · 真实</td><td class="mono">68.4k</td><td>UnrealStereo4K</td><td>合成</td><td class="mono">4.56k</td></tr>
+    <tr><td>ARKitScenes</td><td>室内 · 真实</td><td class="mono">45.6k</td><td>VirtualKitti</td><td>合成 · 驾驶</td><td class="mono">1.14k</td></tr>
+    <tr><td>CO3Dv2</td><td>物体 · 真实</td><td class="mono">22.8k</td><td>WildRGBD</td><td>物体 · 真实</td><td class="mono">22.8k</td></tr>
+    <tr><td>StaticThings3D</td><td>物体 · 合成</td><td class="mono">22.8k</td><td>Map-free</td><td>室外 · 真实</td><td class="mono">145.9k</td></tr>
+    <tr><td>DL3DV（两档）</td><td>室内外 · 真实</td><td class="mono">57k + 57k</td><td>内部数据集（未公开）</td><td>—</td><td class="mono">34.2k</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">逐项配比照抄仓库 README 训练命令（合计 ≈ 70 万对/epoch，这就是「每 epoch 650k」的实际来源——论文写 650k，仓库命令加起来约 70 万，以仓库为准）。论文正文列的 14 个数据集里有 Waymo、没有 DL3DV；仓库实际混合里有 DL3DV（含一档曾被 cosxl 做过雨天/雾天等增广实验，作者注明「效果不满意，最终没启用」）、没有 Waymo——两处出入都按仓库为准。10 个米制数据集指 GT 带真实尺度的那批（激光/标定重建来源），其余按尺度不定处理。</p>
+
+  <h3><span class="no">3.2</span>训练配方速查</h3>
+  <table>
+    <tr><th style="width:22%">项目</th><th>论文附录表 7</th><th>仓库 README 命令（发布模型）</th></tr>
+    <tr><td>输入分辨率</td><td class="mono">512×{384,336,288,256,160}</td><td>相同</td></tr>
+    <tr><td>每 epoch 图对</td><td class="mono">650k</td><td>≈ 70 万（逐数据集配比见上表）</td></tr>
+    <tr><td>epochs / warmup</td><td class="mono">35 / 7</td><td class="mono">50 / 8</td></tr>
+    <tr><td>batch</td><td class="mono">64</td><td class="mono">4 × accum 2 × 8 卡（等效 64）</td></tr>
+    <tr><td>优化器</td><td class="mono">AdamW · lr 1e-4 · wd 0.05 · β(0.9,0.95) · cosine</td><td class="mono">AdamW · lr 1e-4 · min_lr 1e-6 · cosine（wd 未在命令中列出，框架默认 0.05）</td></tr>
+    <tr><td>初始化</td><td>DUSt3R 权重</td><td class="mono">DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth</td></tr>
+    <tr><td>描述子维度 d</td><td class="mono">24</td><td>相同</td></tr>
+    <tr><td>温度 τ</td><td class="mono">0.07</td><td class="mono">0.05</td></tr>
+    <tr><td>匹配损失权重</td><td class="mono">β = 1</td><td class="mono">0.075 × ConfMatchingLoss(α_m=10, confmode='mean')</td></tr>
+    <tr><td>真匹配数 / 图对</td><td class="mono">4096（不够时随机假对应补足）</td><td class="mono">8192 池 = 4096 真 + 4096 假（nneg=0.5）</td></tr>
+    <tr><td>置信度损失 α</td><td class="mono">0.2</td><td>相同</td></tr>
+    <tr><td>数据增强</td><td>随机裁剪（homography 保持主点居中）+ 颜色抖动</td><td>同（aug_crop + ColorJitter）</td></tr>
+    <tr><td>数据混合</td><td>14 个数据集（正文含 Waymo）</td><td>14 个数据集、15 个条目（含 DL3DV 两档、无 Waymo）</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">两份记录出自不同环节（论文成稿 vs 仓库复盘），τ、匹配权重、epochs 三处对不上。对复现来说直接跑 README 命令——作者声明它就是训练发布权重的那条；论文数字当设计意图读。另外命令里验证监控用 APLoss（见上）而不是 InfoNCE，评估口径与训练目标解耦。</p>
+</section>
+
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">MASt3R 在所有评测上零样本直接推理、不按任务微调；数字照抄论文表 1~4 与附录表 5。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">93.3 <small>VCRE AUC</small></div><div class="k">Map-free 重定位（test）<br>此前最好 63.4 → 93.3，+30 绝对点</div></div>
+    <div class="metric"><div class="v">81.8 <small>mAA(30)</small></div><div class="k">CO3Dv2 相对位姿 · 10 帧<br>DUSt3R 77.2 → 81.8</div></div>
+    <div class="metric"><div class="v">0.374 <small>mm</small></div><div class="k">DTU 零样本 MVS（整体误差）<br>DUSt3R 1.741 → 0.374</div></div>
+    <div class="metric"><div class="v">64× <small>加速</small></div><div class="k">快速互匹配（k=3000）<br>加速的同时精度还升</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>Map-free 重定位（单张参考图，无地图）</h3>
+  <p>Map-free 是当前最狠的重定位基准：只给一张参考图、没有地图，视角变化可达 180°，还要输出米制位姿。两个口径：VCRE（虚拟对应重投影误差，px）与位姿精度（平移米 / 旋转度）。先看 test 集和已发表方法的对比（论文表 2）：</p>
+  <table>
+    <tr><th>方法</th><th>深度 / 尺度来源</th><th class="mono">VCRE 重投影 ↓</th><th class="mono">VCRE 精度 ↑</th><th class="mono">VCRE AUC ↑</th><th class="mono">位姿中位误差 (m,°) ↓</th><th class="mono">位姿精度 ↑</th><th class="mono">位姿 AUC ↑</th></tr>
+    <tr><td>RPR</td><td>DPT</td><td class="mono">147.1 px</td><td class="mono">40.2%</td><td class="mono">0.402</td><td class="mono">1.68m, 22.5°</td><td class="mono">6.0%</td><td class="mono">0.060</td></tr>
+    <tr><td>SIFT</td><td>DPT</td><td class="mono">222.8 px</td><td class="mono">25.0%</td><td class="mono">0.504</td><td class="mono">2.93m, 61.4°</td><td class="mono">10.3%</td><td class="mono">0.252</td></tr>
+    <tr><td>SuperPoint + SuperGlue</td><td>DPT</td><td class="mono">160.3 px</td><td class="mono">36.1%</td><td class="mono">0.602</td><td class="mono">1.88m, 25.4°</td><td class="mono">16.8%</td><td class="mono">0.346</td></tr>
+    <tr><td>LoFTR + KBR</td><td>KBR</td><td class="mono">165.0 px</td><td class="mono">34.3%</td><td class="mono">0.634</td><td class="mono">2.23m, 37.8°</td><td class="mono">11.0%</td><td class="mono">0.295</td></tr>
+    <tr><td>DUSt3R</td><td>DPT</td><td class="mono">116.0 px</td><td class="mono">50.3%</td><td class="mono">0.697</td><td class="mono">0.97m, 7.1°</td><td class="mono">21.6%</td><td class="mono">0.394</td></tr>
+    <tr><td>MASt3R（纯匹配）</td><td>DPT</td><td class="mono up">104.0 px</td><td class="mono up">54.2%</td><td class="mono">0.726</td><td class="mono">0.80m, 2.2°</td><td class="mono">27.0%</td><td class="mono">0.456</td></tr>
+    <tr><td>MASt3R（自带米制深度）</td><td>auto</td><td class="mono up">48.7 px</td><td class="mono up">79.3%</td><td class="mono up">0.933</td><td class="mono up">0.36m, 2.2°</td><td class="mono up">54.7%</td><td class="mono up">0.740</td></tr>
+    <tr><td>MASt3R（直接回归，不用匹配）</td><td>—</td><td class="mono">53.2 px</td><td class="mono">79.1%</td><td class="mono">0.941</td><td class="mono">0.42m, 3.1°</td><td class="mono">53.0%</td><td class="mono">0.777</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 2。KBR = 自监督单目深度模型 Kick Back &amp; Relax（基准里用来给匹配方法补度量尺度）。两个读法：①「纯匹配」行（尺度借外部 DPT-KITTI，不含任何自己的深度）已经全面超过所有已发表方法——说明提升不只是「深度变准了」；② VCRE AUC 从 0.634（此前最好）到 0.933，论文摘要的「+30 绝对点」就是这个数。直接回归在 Map-free 这规模上打平，但到大场景会崩（§4.4）。</p>
+
+  <p>为什么好成这样？论文在验证集上逐项拆开（表 1）：</p>
+  <table>
+    <tr><th style="width:26%">配置</th><th>匹配什么</th><th>深度来源</th><th class="mono">VCRE 重投影 ↓</th><th class="mono">VCRE AUC ↑</th><th class="mono">位姿旋转中位 (°) ↓</th><th class="mono">位姿 AUC ↑</th></tr>
+    <tr><td>(I) DUSt3R 基线</td><td>3D 点</td><td>DPT-KITTI</td><td class="mono">125.8 px</td><td class="mono">0.704</td><td class="mono">9.4</td><td class="mono">0.344</td></tr>
+    <tr><td>(II) MASt3R</td><td>3D 点</td><td>DPT-KITTI</td><td class="mono">112.0 px</td><td class="mono">0.732</td><td class="mono">3.6</td><td class="mono">0.409</td></tr>
+    <tr><td>(III) MASt3R-M（只训匹配）</td><td>描述子</td><td>DPT-KITTI</td><td class="mono">107.7 px</td><td class="mono">0.744</td><td class="mono">10.8</td><td class="mono">0.382</td></tr>
+    <tr><td>(IV) MASt3R</td><td>描述子</td><td>DPT-KITTI</td><td class="mono">112.9 px</td><td class="mono">0.752</td><td class="mono up">3.0</td><td class="mono">0.435</td></tr>
+    <tr><td>(V) MASt3R</td><td>描述子</td><td>自带（米制）</td><td class="mono up">57.2 px</td><td class="mono up">0.934</td><td class="mono">3.0</td><td class="mono up">0.746</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1（验证集）。四个结论按行号读：① (I)→(II)：同一套匹配方式下，MASt3R 的微调就把位姿旋转误差从 9.4° 压到 3.6°；② (II) vs (IV)：都用自己的网络，描述子匹配全面优于 3D 点匹配（位姿 AUC 0.409 → 0.435）——回归找「附近」，分类找「精确」；③ (III)：只训匹配损失（去掉 3D 回归），重投影还行但旋转中位崩到 10.8°——匹配必须接地在 3D 上；④ (V)：换用网络自带的米制深度，全指标跳一档（VCRE AUC 0.752 → 0.934）——深度和匹配在同一个网络里互相加强。</p>
+
+  <h3><span class="no">4.2</span>相对位姿（CO3Dv2 / RealEstate10K，10 帧 · 45 对）</h3>
+  <p>协议照 PoseDiffusion：10 帧序列上评所有 45 个图对，不用 GT 焦距；用匹配估本质矩阵解相对位姿。只有 MASt3R 和 DUSt3R 是纯成对推理，其余多视图方法一次吃 10 帧（论文表 3 左）：</p>
+  <table>
+    <tr><th>方法</th><th class="mono">CO3Dv2 RRA@15 ↑</th><th class="mono">CO3Dv2 RTA@15 ↑</th><th class="mono">CO3Dv2 mAA(30) ↑</th><th class="mono">RE10K mAA(30) ↑</th></tr>
+    <tr><td>COLMAP + SP+SG（多视图）</td><td class="mono">36.1</td><td class="mono">27.3</td><td class="mono">25.3</td><td class="mono">45.2</td></tr>
+    <tr><td>PixSfM（多视图）</td><td class="mono">33.7</td><td class="mono">32.9</td><td class="mono">30.1</td><td class="mono">49.4</td></tr>
+    <tr><td>PoseDiffusion（多视图）</td><td class="mono">80.5</td><td class="mono">79.8</td><td class="mono">66.5</td><td class="mono">48.0</td></tr>
+    <tr><td>RelPose++（8 视图，仅 RRA）</td><td class="mono">(85.5)</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td></tr>
+    <tr><td>RayDiffusion（8 视图，仅 RRA）</td><td class="mono">(93.3)</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td></tr>
+    <tr><td>DUSt3R-GA（多视图）</td><td class="mono">96.2</td><td class="mono">86.8</td><td class="mono">76.7</td><td class="mono">67.7</td></tr>
+    <tr><td>DUSt3R（成对）</td><td class="mono">94.3</td><td class="mono">88.4</td><td class="mono">77.2</td><td class="mono">61.2</td></tr>
+    <tr><td>MASt3R（成对）</td><td class="mono up">94.6</td><td class="mono up">91.9</td><td class="mono up">81.8</td><td class="mono up">76.4</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 3 左。括号 = 未在该协议（10 视图）上报数，取 8 视图的数对照。要点：成对方法反而全面压住多视图方法（CO3Dv2 里目标小、视角差大，SfM 类直接掉到 30 上下）；RE10K 上 MASt3R 比最好的多视图方法高 8.7 个点、比成对的 DUSt3R 高 15.2 个点；唯一的例外是 RRA@15——DUSt3R-GA 的 96.2 略高，但它的平移和 mAA 都更低。</p>
+
+  <h3><span class="no">4.3</span>稠密重建（DTU，零样本）</h3>
+  <p>把粗到细跑出的全分辨率匹配三角化成点云，去掉几何不一致的杂点——不训练、不微调、匹配时不用 GT 相机（相机只用来把匹配三角化到参考坐标系），和所有 MVS 方法的协议都不一样。指标是标准的精度 / 完整度 / 整体（Chamfer）距离，单位毫米，越低越好：</p>
+  <table>
+    <tr><th>方法</th><th>训练性质</th><th class="mono">精度 ↓</th><th class="mono">完整度 ↓</th><th class="mono">整体 ↓</th></tr>
+    <tr><td>Gipuma（手工）</td><td>—</td><td class="mono">0.283</td><td class="mono">0.873</td><td class="mono">0.578</td></tr>
+    <tr><td>MVSNet</td><td>DTU 上训练</td><td class="mono">0.396</td><td class="mono">0.527</td><td class="mono">0.462</td></tr>
+    <tr><td>CER-MVS</td><td>DTU 上训练</td><td class="mono">0.359</td><td class="mono">0.305</td><td class="mono">0.332</td></tr>
+    <tr><td>GeoMVSNet</td><td>DTU 上训练</td><td class="mono">0.331</td><td class="mono up">0.259</td><td class="mono up">0.295</td></tr>
+    <tr><td>DUSt3R</td><td>零样本</td><td class="mono">2.677</td><td class="mono">0.805</td><td class="mono">1.741</td></tr>
+    <tr><td>MASt3R</td><td>零样本</td><td class="mono up">0.403</td><td class="mono">0.344</td><td class="mono up">0.374</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 3 右。专业训练的方法里 GeoMVSNet 整体 0.295 仍最好；但 MASt3R 在「零样本」组里是唯一能上桌的——比 DUSt3R 降了 4.6 倍，与专门训练的 MVSNet / CER-MVS 同级。附录里还给了一档对照：粗匹配直接三角化（不用 c2f）为 0.652 / 0.592 / 0.622——分辨率就是重建的命。</p>
+
+  <h3><span class="no">4.4</span>视觉定位（Aachen Day-Night / InLoc）</h3>
+  <p>协议是标准定位流水线：查询图 ↔ 检索出的库图做 MASt3R 匹配，库图像素挂着的 3D 点（数据集自带的 SfM 模型）把匹配抬成 2D-3D 对，PnP 求绝对位姿。每组数字是三个阈值下的定位成功率（Aachen：0.25m/2°、0.5m/5°、5m/10°；InLoc：0.25m/10°、0.5m/10°、1m/10°）：</p>
+  <table>
+    <tr><th>方法</th><th class="mono">Aachen 白天</th><th class="mono">Aachen 夜晚</th><th class="mono">InLoc DUC1</th><th class="mono">InLoc DUC2</th></tr>
+    <tr><td>Kapture+R2D2</td><td class="mono">91.3/97.0/99.5</td><td class="mono">78.5/91.6/100</td><td class="mono">41.4/60.1/73.7</td><td class="mono">47.3/67.2/73.3</td></tr>
+    <tr><td>SP+SuperGlue</td><td class="mono">89.8/96.1/99.4</td><td class="mono">77.0/90.6/100</td><td class="mono">49.0/68.7/80.8</td><td class="mono">53.4/77.1/82.4</td></tr>
+    <tr><td>SP+LightGlue</td><td class="mono">90.2/96.0/99.4</td><td class="mono">77.0/91.1/100</td><td class="mono">49.0/68.2/79.3</td><td class="mono">55.0/74.8/79.4</td></tr>
+    <tr><td>LoFTR</td><td class="mono">88.7/95.6/99.0</td><td class="mono">78.5/90.6/99.0</td><td class="mono">47.5/72.2/84.8</td><td class="mono">54.2/74.8/85.5</td></tr>
+    <tr><td>DKM</td><td class="mono">–</td><td class="mono">–</td><td class="mono">51.5/75.3/86.9</td><td class="mono">63.4/82.4/87.8</td></tr>
+    <tr><td>DUSt3R top1</td><td class="mono">72.7/89.6/98.1</td><td class="mono">59.7/80.1/93.2</td><td class="mono">36.4/55.1/66.7</td><td class="mono">27.5/42.7/49.6</td></tr>
+    <tr><td>DUSt3R top20</td><td class="mono">79.4/94.3/99.5</td><td class="mono">74.9/91.1/99.0</td><td class="mono">53.0/74.2/89.9</td><td class="mono">61.8/77.1/84.0</td></tr>
+    <tr><td>MASt3R top1</td><td class="mono">79.6/93.5/98.7</td><td class="mono">70.2/88.0/97.4</td><td class="mono">41.9/64.1/73.2</td><td class="mono">38.9/55.7/62.6</td></tr>
+    <tr><td>MASt3R top20</td><td class="mono">83.4/95.3/99.4</td><td class="mono">76.4/91.6/100</td><td class="mono">55.1/77.8/90.4</td><td class="mono">71.0/84.7/89.3</td></tr>
+    <tr><td>MASt3R top40</td><td class="mono">82.2/93.9/99.5</td><td class="mono">75.4/91.6/100</td><td class="mono up">56.1/79.3/90.9</td><td class="mono up">71.0/87.0/91.6</td></tr>
+    <tr><td>MASt3R 直接回归 top1</td><td class="mono">1.5/4.5/60.7</td><td class="mono">1.6/4.2/47.6</td><td class="mono">13.1/32.3/58.1</td><td class="mono">10.7/26.0/38.2</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 4。InLoc 两列 MASt3R 全部超过已发表方法（DUC2 71.0/87.0/91.6 对 DKM 63.4/82.4/87.8），且 top40 只比 top20 略好——检索图再多收益趋平；Aachen 上跟特征匹配管线互有胜负（白天略低、夜景 76.4/91.6/100 追平最强）。top1 一列说明「单张参考图也能用」——3D 接地的匹配对检索缺陷不敏感。最后一行是反面教材：完全不用匹配、直接回归点图求位姿，在小场景（Map-free）能打，上千张图的大场景直接崩到 1.5%——匹配才是定位的可靠路径。</p>
+
+  <h3><span class="no">4.5</span>消融与速度</h3>
+  <ul class="dots">
+    <li><b>快速互匹配</b>（论文图 2 右 + 附录）：子采样 k=3000 时匹配快 64 倍，VCRE 指标反而升。附录把「为什么升」拆实了：全量互匹配随机抽到同样数量 → 性能崩；按收敛盆地大小有偏抽 → 比全量还好；快速互匹配 ≈ 有偏抽但便宜得多。收益来自「怎么选点」，不是「少选点」。</li>
+    <li><b>粗到细</b>（附录表 5）：Aachen top1 夜景 55.5% → 70.2%（白天 74.9 → 79.6）；top20 夜景 74.3 → 76.4；DTU 整体误差 0.622 → 0.374。图像分辨率就是定位 / 重建的精度上限，c2f 是把这份分辨率要回来的工程手段。</li>
+    <li><b>匹配对象</b>（表 1 的 II vs IV）：3D 点 vs 描述子，描述子全面更好（位姿 AUC 0.409 → 0.435，旋转中位 3.6° → 3.0°）。回归不擅长「精确指对」，分类擅长——这是整个方法的出发点。</li>
+    <li><b>两个损失缺一不可</b>（III vs IV）：只训匹配，重投影看着还行、位姿崩（旋转中位 10.8° 对 3.0°）。3D 回归是匹配的「地基」，不是包袱。</li>
+    <li><b>米制深度</b>（IV vs V）：VCRE AUC 0.752 → 0.934、位姿 AUC 0.435 → 0.746，全靠网络自己输出米制深度，不外挂模型。深度与匹配在同网络里互相加强——最划算的一个增益。</li>
+  </ul>
+</section>
+
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li>匹配是 3D 问题，而且「接回 3D」真能换来精度：只加一个描述子头、两个损失，Map-free 的 VCRE AUC 从 63.4 推到 93.3、InLoc 登顶。匹配的下一个默认路线，很可能就是「在 3D 基座模型上加匹配头」——不是再造一个匹配网络。</li>
+    <li>回归和分类是互补，不是替代：3D 回归让匹配更准（消融 III vs IV），匹配目标让 3D 理解更锐——同一个主干上，两个目标互为对方的地基。丢掉任何一个都会塌一块。</li>
+    <li>稠密匹配的瓶颈在匹配算法本身，不在网络：「找互最近邻」比网络前向还慢；子采样迭代把它降两个数量级，还因为盆地偏置把质量升上去。「怎么选点」比「选多少个点」重要。</li>
+    <li>度量尺度可以是网络的内生属性：14 个数据集里 10 个米制的监督信号，就够让网络直接输出米制几何（IV → V 全指标跳一档）。视觉定位第一次能做到「一个模型进、米制位姿出」。</li>
+    <li>「表示对了，后手都是精修」：从 DUSt3R 权重初始化、50 epoch 微调，就把多个基准的最强成绩翻新——这是点图表示生命力的又一证据。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读代码看出来的）</h3>
+  <ul class="dots">
+    <li>分辨率硬上限 512：更大的图要靠粗到细后处理，每个窗对都要过一次网络，匹配耗时随图面积近似线性增长；论文自己承认 ViT 对训练分辨率之外的尺寸不泛化。</li>
+    <li>双图为主：论文明确只做 binocular；多图靠仓库的 SparseGA（优化方法）拼接，不是网络原生，跨图一致性仍是「优化出来的」——和 DUSt3R 的处境一样。</li>
+    <li>匹配耗时仍是推理链的大头：即使用了快速互匹配，稠密描述子 + 匹配在高分辨率下的成本依然可观；论文没给端到端时延数字。</li>
+    <li>米制尺度是统计性的：输出「像米制」来自训练集的比例（10/14），论文没有报跨域尺度误差（没见过的场景类型会偏多少）；Map-free 上有效不代表到处有效。</li>
+    <li>数据与许可：训练用了 14 个数据集（含不公开的内部数据），Map-free 的许可很严；代码和权重 CC BY-NC-SA 4.0（仅非商用）——复现和落地前先读 CHECKPOINTS_NOTICE。</li>
+    <li>论文与仓库命令有多处出入（τ、匹配权重、epochs、数据集清单，§3.2）：按论文数字复现会对不上发布权重，要照 README 命令来。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向</h3>
+  <ul class="dots">
+    <li>同团队的下一步：MASt3R-SfM（3DV 2025）把匹配直接导进 COLMAP / GLOMAP 式建图流水线——仓库里的 demo_glomap.py 就是雏形；DUNE 骨干版 MASt3R 权重已发布（CVPR 2025）；官方还放了检索模型（训练-free / codebook 两档）专管大场景挑图对。</li>
+    <li>论文自己指的路：把 pointmap 回归当作匹配与几何的统一地基，往更多任务推；c2f 与快速匹配的效率还有余量。</li>
+    <li>本站路线图上的下一站（前馈几何基座路线）：MonST3R（动态场景的点图，arXiv 24.10）、Fast3R（多图一次前馈，CVPR 25）、VGGT（一次输出全部相机参数与点图的通用基座，CVPR 25）……MASt3R 是这条线上「匹配支线」的起点——先有 3D 基座，再把匹配磨成它的强项。</li>
+    <li>社区方向：把 MASt3R 式的稠密匹配当地基，喂给定位、SfM、地图构建等下游；匹配头 + 分类损失这套组合拳已被后续工作反复借用。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= JS 引擎（模板原样）：SVG 工具 + 面板流构建 + 目录 scrollspy ================= */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent){
+  const t = el("text", Object.assign({x:x, y:y, "text-anchor":"middle"}, attrs||{}), parent);
+  t.setAttribute("class", attrs && attrs.class ? attrs.class : "svg-cn");
+  t.textContent = s;
+  return t;
+}
+const CIRCLED = ["①","②","③","④","⑤","⑥","⑦","⑧"];
+function addStep(container, cls, i, title, desc, draw){
+  const card = document.createElement("div");
+  card.className = "stepcard" + (cls ? " "+cls : "");
+  const art = document.createElement("div"); art.className = "art";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 150 116");
+  art.appendChild(svg);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = '<span class="n">'+CIRCLED[i]+'</span>'+title;
+  const d = document.createElement("div"); d.className = "desc"; d.textContent = desc;
+  card.appendChild(art); card.appendChild(lab); card.appendChild(d);
+  container.appendChild(card);
+  draw(svg);
+}
+function arrow(container){
+  const a = document.createElement("div"); a.className = "flowarrow"; a.textContent = "→";
+  container.appendChild(a);
+}
+function tri(x1, y1, x2, y2, color, svg){   // 带手绘三角箭头的连线（迷你面板用）
+  el("line",{x1:x1, y1:y1, x2:x2, y2:y2, stroke:color, "stroke-width":1.6}, svg);
+  const a = Math.atan2(y2-y1, x2-x1);
+  const bx = x2 - 6*Math.cos(a), by = y2 - 6*Math.sin(a);
+  el("path",{d:`M ${x2} ${y2} L ${bx-4*Math.sin(a)} ${by+4*Math.cos(a)} L ${bx+4*Math.sin(a)} ${by-4*Math.cos(a)} z`, fill:color}, svg);
+}
+
+/* ============ ① 描述子头内部 ============ */
+(function(){
+  const root = document.getElementById("desc-flow");
+  if(!root) return;
+  const steps = [
+    ["拼接输入","每个 token 拼接解码器输出 G 与编码器输出 F（768 + 1024 = 1792 维）", s=>{
+      el("rect",{x:12,y:22,width:54,height:26,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(39,39,"G 768",{class:"svg-nota",fill:"#0550ae"}, s);
+      el("rect",{x:12,y:62,width:54,height:26,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(39,79,"F 1024",{class:"svg-nota",fill:"#0550ae"}, s);
+      tri(70,35,88,48,"#818b98", s); tri(70,75,88,62,"#818b98", s);
+      el("rect",{x:90,y:40,width:44,height:32,rx:4,fill:"#0969da"}, s);
+      txt(112,60,"1792",{class:"svg-nota-b",fill:"#ffffff"}, s);
+      txt(75,104,"每个 token 1792 维",{class:"svg-nota"}, s);
+    }],
+    ["两层 MLP","1792 → 7168（GELU）→ 6400，每个 patch token 一次算完", s=>{
+      el("rect",{x:8,y:36,width:34,height:24,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2}, s);
+      txt(25,52,"1792",{class:"svg-nota"}, s);
+      tri(44,48,58,48,"#818b98", s);
+      el("rect",{x:60,y:28,width:42,height:40,rx:4,fill:"#0969da"}, s);
+      txt(81,52,"7168",{class:"svg-nota-b",fill:"#ffffff"}, s);
+      txt(81,18,"GELU",{class:"svg-nota",fill:"#0550ae"}, s);
+      tri(104,48,118,48,"#818b98", s);
+      el("rect",{x:120,y:36,width:26,height:24,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2}, s);
+      txt(133,52,"6400",{class:"svg-nota"}, s);
+      txt(75,92,"隐藏层 4× 宽",{class:"svg-nota"}, s);
+    }],
+    ["每 patch 一次预测","token 的输出 = 本 patch 内 256 个像素 × 25 个数", s=>{
+      for(let i=0;i<4;i++)for(let j=0;j<4;j++)
+        el("rect",{x:33+i*16,y:14+j*16,width:12,height:12,rx:2,fill:"#ddf4ff",stroke:"#0969da","stroke-width":.8}, s);
+      txt(75,98,"256 像素 × 25 维",{class:"svg-nota"}, s);
+    }],
+    ["pixel_shuffle ×16","25 通道重排到像素位置 → 全分辨率 [25,512,512]", s=>{
+      for(let i=0;i<3;i++)for(let j=0;j<3;j++)
+        el("rect",{x:12+i*9,y:40+j*9,width:7,height:7,rx:1.5,fill:"#a5d8ff",stroke:"#0969da","stroke-width":.7}, s);
+      txt(25,88,"25 通道",{class:"svg-nota"}, s);
+      tri(50,58,70,58,"#818b98", s);
+      el("rect",{x:74,y:24,width:60,height:60,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
+      txt(104,52,"512×512",{class:"svg-nota-b",fill:"#0550ae"}, s);
+      txt(104,70,"全分辨率",{class:"svg-nota",fill:"#0550ae"}, s);
+      txt(75,104,"预测即上采样",{class:"svg-nota"}, s);
+    }],
+    ["归一化输出","前 24 维 L2 归一化成描述子；第 25 维是描述子置信度", s=>{
+      el("rect",{x:10,y:30,width:88,height:22,rx:4,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.3}, s);
+      txt(54,45,"D：24 维",{class:"svg-nota",fill:"#a40e26"}, s);
+      el("rect",{x:102,y:30,width:22,height:22,rx:4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.3}, s);
+      txt(113,45,"C",{class:"svg-nota-b",fill:"#5c4400"}, s);
+      txt(75,74,"L2 归一化 → 单位向量",{class:"svg-nota"}, s);
+      txt(75,92,"相似度 = 点积 = 余弦",{class:"svg-nota"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ② 快速互匹配 ============ */
+(function(){
+  const root = document.getElementById("frm-flow");
+  if(!root) return;
+  const steps = [
+    ["种子网格","在图 1 撒 ≈3000 个种子（步长 8 的网格，即 k=3000）", s=>{
+      el("rect",{x:14,y:16,width:60,height:80,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1.2}, s);
+      for(let i=0;i<4;i++)for(let j=0;j<5;j++)
+        el("circle",{cx:22+i*14,cy:26+j*14,r:2,fill:"#1a7f37"}, s);
+      txt(108,50,"k ≈ 3000",{class:"svg-nota-b",fill:"#116329"}, s);
+      txt(108,68,"网格步长 8",{class:"svg-nota"}, s);
+      txt(75,110,"起点：k 个像素",{class:"svg-nota"}, s);
+    }],
+    ["去程最近邻","每个种子在 D² 里找最近邻（点积最大），得到 V", s=>{
+      el("rect",{x:8,y:22,width:44,height:72,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s);
+      el("rect",{x:98,y:22,width:44,height:72,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      const P=[[20,36],[34,54],[24,72],[40,86]]; const Q=[[110,40],[126,58],[112,74],[128,88]];
+      P.forEach((p,i)=>{ el("circle",{cx:p[0],cy:p[1],r:2.5,fill:"#1a7f37"}, s);
+        el("circle",{cx:Q[i][0],cy:Q[i][1],r:2.5,fill:"#0969da"}, s);
+        tri(p[0]+4,p[1],Q[i][0]-4,Q[i][1],"#818b98",s); });
+      txt(75,110,"U → NN → V",{class:"svg-nota"}, s);
+    }],
+    ["回程最近邻","V 再回 D¹ 找最近邻，得到 U′", s=>{
+      el("rect",{x:8,y:22,width:44,height:72,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s);
+      el("rect",{x:98,y:22,width:44,height:72,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      const P=[[20,36],[34,54],[24,72],[40,86]]; const Q=[[110,40],[126,58],[112,74],[128,88]];
+      P.forEach((p,i)=>{ el("circle",{cx:p[0],cy:p[1],r:2.5,fill:"#1a7f37"}, s);
+        el("circle",{cx:Q[i][0],cy:Q[i][1],r:2.5,fill:"#0969da"}, s);
+        tri(Q[i][0]-4,Q[i][1],p[0]+4,p[1],"#0969da",s); });
+      txt(75,110,"V → NN → U′",{class:"svg-nota"}, s);
+    }],
+    ["成环收回","回到起点的 = 互为最近邻，收进匹配表并移出活跃集", s=>{
+      el("circle",{cx:42,cy:48,r:4,fill:"#cf222e"}, s);
+      el("circle",{cx:108,cy:48,r:4,fill:"#0969da"}, s);
+      tri(50,44,100,44,"#0969da", s);
+      tri(100,54,50,54,"#cf222e", s);
+      txt(75,84,"U′=U 即成环",{class:"svg-nota-b"}, s);
+      txt(75,102,"收下 → 不再迭代",{class:"svg-nota"}, s);
+    }],
+    ["迭代修剪","已收敛的移出，剩下的继续；≤10 轮（实测 5~6 轮收敛）", s=>{
+      const counts=[9,6,3,1];
+      counts.forEach((c,i)=>{ for(let j=0;j<c;j++)
+        el("circle",{cx:28+i*30,cy:22+j*9,r:2.2,fill:"#0969da",opacity:1-i*.18}, s); });
+      txt(28,104,"t=1",{class:"svg-nota"}, s); txt(58,104,"t=3",{class:"svg-nota"}, s);
+      txt(88,104,"t=5",{class:"svg-nota"}, s); txt(118,104,"t=10",{class:"svg-nota"}, s);
+      txt(75,18,"活跃点逐轮 → 0",{class:"svg-nota"}, s);
+    }],
+    ["合并输出","图 1、图 2 各撒一轮种子，两批匹配合并去重", s=>{
+      el("rect",{x:10,y:16,width:56,height:30,rx:3,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s);
+      txt(38,35,"I¹ 种子跑",{class:"svg-nota",fill:"#116329"}, s);
+      el("rect",{x:10,y:62,width:56,height:30,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      txt(38,81,"I² 种子跑",{class:"svg-nota",fill:"#0550ae"}, s);
+      tri(68,31,88,50,"#818b98", s); tri(68,77,88,58,"#818b98", s);
+      el("rect",{x:90,y:38,width:52,height:32,rx:3,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.3}, s);
+      txt(116,58,"去重合并",{class:"svg-nota",fill:"#a40e26"}, s);
+      txt(75,110,"→ 匹配表（带置信度）",{class:"svg-nota"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ ③ 粗到细 ============ */
+(function(){
+  const root = document.getElementById("c2f-flow");
+  if(!root) return;
+  const steps = [
+    ["粗匹配","整图先降到 512，跑一遍快速互匹配拿到粗对应", s=>{
+      el("rect",{x:14,y:24,width:52,height:54,rx:4,fill:"#dafbe1",stroke:"#1a7f37","stroke-width":1}, s);
+      el("rect",{x:84,y:24,width:52,height:54,rx:4,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1}, s);
+      [[24,38,92,42],[40,58,108,50],[54,34,120,64],[30,64,96,66]].forEach(m=>{
+        el("line",{x1:m[0],y1:m[1],x2:m[2],y2:m[3],stroke:"#818b98","stroke-width":1.1}, s);
+        el("circle",{cx:m[0],cy:m[1],r:2,fill:"#1a7f37"}, s);
+        el("circle",{cx:m[2],cy:m[3],r:2,fill:"#0969da"}, s); });
+      txt(75,102,"降采样 512 上跑 FRM",{class:"svg-nota"}, s);
+    }],
+    ["切窗","每张大图切成 512 窗：重叠 50%、边长 16 的倍数", s=>{
+      el("rect",{x:20,y:14,width:110,height:84,rx:4,fill:"none",stroke:"#818b98","stroke-width":1.2}, s);
+      for(let i=0;i<2;i++)for(let j=0;j<2;j++)
+        el("rect",{x:22+i*46,y:16+j*42,width:58,height:44,rx:3,fill:"#ddf4ff",opacity:.5,stroke:"#0969da","stroke-width":1,"stroke-dasharray":"4 3"}, s);
+      txt(75,112,"窗长边 512 · 50% 重叠",{class:"svg-nota"}, s);
+    }],
+    ["窗口配对","用粗匹配估每窗在另一图的对应窗（中心 + 尺度）", s=>{
+      el("rect",{x:12,y:30,width:44,height:42,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.3}, s);
+      txt(34,56,"窗 A",{class:"svg-nota",fill:"#0550ae"}, s);
+      tri(60,51,88,51,"#818b98", s);
+      el("rect",{x:92,y:34,width:44,height:42,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.3}, s);
+      txt(114,60,"窗 B",{class:"svg-nota",fill:"#0550ae"}, s);
+      txt(75,98,"粗匹配点：中位中心 + 尺度",{class:"svg-nota"}, s);
+    }],
+    ["贪心选窗","按窗内匹配数逐对选，覆盖 90% 粗匹配即停", s=>{
+      for(let i=0;i<4;i++)for(let j=0;j<3;j++)
+        el("rect",{x:16+i*30,y:12+j*28,width:26,height:24,rx:3,fill:"#ddf4ff",opacity:.3,stroke:"#a5d8ff","stroke-width":1}, s);
+      [[46,12],[76,40],[46,68]].forEach((p,i)=>{
+        el("rect",{x:p[0],y:p[1],width:26,height:24,rx:3,fill:"#0969da",opacity:.85}, s);
+        txt(p[0]+13,p[1]+16,String(i+1),{class:"svg-nota-b",fill:"#ffffff"}, s); });
+      txt(75,112,"少跑窗 · 覆盖全",{class:"svg-nota"}, s);
+    }],
+    ["细匹配 + 映回","每个窗对过网络 + FRM，匹配坐标映回原图合并", s=>{
+      el("rect",{x:8,y:22,width:40,height:34,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2}, s);
+      el("rect",{x:56,y:22,width:40,height:34,rx:3,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.2}, s);
+      tri(50,39,54,39,"#818b98", s);
+      [[16,30,64,30],[26,42,74,36],[38,48,86,46]].forEach(m=>
+        el("line",{x1:m[0],y1:m[1],x2:m[2],y2:m[3],stroke:"#cf222e","stroke-width":1.1}, s));
+      tri(98,39,114,39,"#818b98", s);
+      el("rect",{x:116,y:20,width:26,height:38,rx:3,fill:"#ffebe9",stroke:"#cf222e","stroke-width":1.2}, s);
+      txt(129,44,"原图",{class:"svg-nota",fill:"#a40e26"}, s);
+      txt(75,100,"逐窗对细匹配",{class:"svg-nota"}, s);
+      txt(75,112,"→ 坐标映回原图",{class:"svg-nota"}, s);
+    }],
+  ];
+  steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
+})();
+
+/* ============ 目录 scrollspy ============ */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,11 +1,13 @@
 ---
 name: paper-template
-description: 论文模板——本站每篇论文解读的固定结构与写作规范。写任何新论文解读、或改造旧页之前必读。涵盖：速览卡（§0）结构、逐节解读（§1+）结构、训练/推理双流程图规范、Loss 公式与逐符号解释、shape 与记号锚点、图文符号对应、去 AI 腔要求。触发词：论文模板、写论文解读、加一篇新论文、改速览卡、画训练图/推理图、这篇论文值不值得复现。English: paper-template, the mandated template for every paper-explainer page on this site.
+description: 论文模板——本站每篇论文解读的固定结构与写作规范。写任何新论文解读、或改造旧页之前必读。涵盖：速览卡（§0）结构、逐节解读（§1+）结构、训练/推理双流程图规范、Loss 公式与逐符号解释、shape 与记号锚点、图文符号对应、去 AI 腔要求。触发词：论文模板、写论文解读、生成论文解读、生成某篇论文的解读（如「生成 MASt3R 的论文解读」）、加一篇新论文、改速览卡、画训练图/推理图、这篇论文值不值得复现。English: paper-template, the mandated template for every paper-explainer page on this site.
 ---
 
 # 论文模板（paper-template）
 
 本站每篇论文解读的唯一模板。**黄金样本：`4d-reconstruct/2024-dust3r.html`**——新页照它做；本 skill 与样本冲突时以本 skill 为准，并顺手把样本同步过来。
+
+**动手第一步（强制，不可跳过）**：生成或改造任何解读页之前，必须先完整 Read 一遍黄金样本 `4d-reconstruct/2024-dust3r.html`——把它的 CSS/JS 骨架、§0 速览卡（五条 + 机制图/训练图/推理图 + QA 档案）、§1~§5 的写法**加载进上下文**，页面以它为底做，不凭记忆仿写。正文骨架可直接 `sed -n '1,169p' 4d-reconstruct/2024-dust3r.html` 复用它的 head/CSS（只改 title）。样本是 3D 几何类论文的形态；换论文类型时骨架不变、只换内容与图。
 
 ## 0. 总验收线（先读）
 

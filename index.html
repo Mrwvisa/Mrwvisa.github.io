@@ -125,7 +125,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <span class="mglab" style="left:0;transform:none">2024</span><span class="mglab" style="left:33.33%">2025</span><span class="mglab" style="left:66.66%">2026</span>
           <div class="maxis"></div>
           <div class="mnode up ms read" style="left:6%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DUSt3R <span class="st">★</span></b><i>CVPR 24</i></span></div>
-          <div class="mnode dn" style="left:20%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MASt3R</b><i>ECCV 24</i></span></div>
+          <div class="mnode dn read" style="left:20%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MASt3R</b><i>ECCV 24</i></span></div>
           <div class="mnode up read" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>ICLR 25</i></span></div>
           <div class="mnode dn" style="left:36%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>Fast3R</b><i>CVPR 25</i></span></div>
           <div class="mnode up ms" style="left:43%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VGGT <span class="st">★</span></b><i>CVPR 25 最佳</i></span></div>
@@ -192,6 +192,16 @@ const PAPERS = [
     read: true,   // 已勾（写完即标，源码只读）
     desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
     star: true,
+  },
+  {
+    domain: "前馈式重建", route: "前馈几何基座",
+    title: "MASt3R",
+    full: "Grounding Image Matching in 3D with MASt3R",
+    venue: "ECCV 2024",
+    year: 2024,
+    file: "4d-reconstruct/2024-mast3r.html",
+    read: true,   // 已勾（写完即标，源码只读）
+    desc: "在 DUSt3R 的点图回归旁边加一个显式描述子头，用 InfoNCE 把「看到同一个 3D 点」训成可分类的像素匹配，再配一套快速互匹配算法，匹配的速度和精度一起抬上去",
   },
   {
     domain: "前馈式重建", route: "前馈几何基座",
