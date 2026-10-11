@@ -11,6 +11,7 @@
   --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
   --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
   --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
   --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
   --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
   --c-loss:#cf222e;
@@ -70,7 +71,13 @@ ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
 ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
 ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
 ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
 .mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
 
 /* 公式卡片（GitHub 代码块风） */
 .formula{background:none;border:none;padding:4px 0;margin:14px 0}
@@ -86,6 +93,11 @@ ul.dots li b{color:var(--ink)}
 .callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
 .callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
 .callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
 
 /* 表格（GitHub markdown 风） */
 table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
@@ -144,6 +156,9 @@ details.deep ul{margin:4px 0}
 .arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
 .flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
 
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
 @media(max-width:960px){
   .layout{flex-direction:column}
   .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
@@ -160,7 +175,9 @@ details.deep ul{margin:4px 0}
 <nav class="toc" id="toc">
   <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
   <h3>目 录</h3>
-  <a href="#s0">§0 核心解读</a>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
   <a href="#s1">§1 Motivation</a>
   <a href="#s2">§2 Architecture</a>
   <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
@@ -183,155 +200,284 @@ details.deep ul{margin:4px 0}
 
 <!-- ============ §0 核心解读 ============ -->
 <section id="s0">
-  <h2><span class="no">§0</span>核心解读</h2>
-  <div class="sec-sub">全篇概括：读完这一节，论文的全部核心思想已经到手；后面各节是逐层展开的证据。</div>
+  <h2><span class="no">§0</span>速览卡</h2>
 
-  <p>先看一个现象：把两张照片里的像素全部「拎起来」，放进同一个 3D 空间，会怎么样？如果每个像素都落对了位置，两张照片会自动拼成同一片点云——重叠的部分严丝合缝，不用任何匹配算法。DUSt3R 做的就是这件事：训练一个网络，输入两张图，为<b>每个像素</b>直接回归一个 3D 坐标（点图），并且两张图的点图写在<b>同一个坐标系</b>（图 1 的相机系）里。深度、位姿、内参、像素对应、场景重建，全部从这一个回归目标里长出来。下面的动图把完整逻辑拆成五步走一遍。</p>
+  <h3 id="s0a">核心解读</h3>
 
-  <div class="fig">
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px">
-      <button id="anim-toggle" type="button" style="font:600 12.5px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 12px;cursor:pointer">⏸ 暂停</button>
-      <button id="anim-restart" type="button" style="font:600 12.5px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 12px;cursor:pointer">↻ 重播</button>
-    </div>
-    <svg id="ptmap-anim" viewBox="0 0 1400 540" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div id="anim-cap" style="text-align:center;font-size:13.5px;font-weight:600;color:var(--ink);margin-top:10px;min-height:44px"></div>
-    <div class="figcap">图 0-1 · 点图与对应关系的完整闭环（自动循环播放）：升起 → 同空 → 重合（对应）→ 压短（Loss）→ 输出即重建。左中右三个面板分别是图 1、共享 3D 空间、图 2。</div>
-  </div>
+  <p>先看一个想法：照片里每个像素，都对应场景里一个真实的 3D 点。如果能给每个像素找到它正确的 3D 坐标，一张照片就变成一片点云。DUSt3R 训练一个网络做这件事：输入两张图，给每个像素回归一个 3D 坐标（点图）。关键在监督信号：第二张图点图的答案（GT），是把它的 3D 点用相机位姿变换到第一张图的坐标系里做出来的。网络朝这个目标学，两张点图自然写在同一套坐标系里，同一个物理点落到同一个位置，预测得越准，落得越齐。像素对应从这套坐标系里直接出来，不需要专门的匹配算法。深度、位姿、内参、对应关系、场景重建，都从这一个回归目标里长出来。</p>
 
   <ul class="dots">
-    <li><b>第 1 步 · 升起。</b>图 1 的每个像素各得一个 3D 坐标，合起来就是点图 X<sup>1,1</sup>——一张「图」变成了空间里的一片点。</li>
-    <li><b>第 2 步 · 同空。</b>图 2 的像素也被放进<b>同一个</b>坐标系（图 1 相机系），得到 X<sup>2,1</sup>。这一步是全篇的支点：两幅图从此共享同一套几何，而不是各说各话。</li>
-    <li><b>第 3 步 · 重合，对应关系免费出现。</b>墙上同一个点 P，在图 1 里是像素 i、在图 2 里是像素 j（两张图里位置完全不同）；它在两张点图里的 3D 坐标必须重合，否则两片点拼不出同一面墙。于是 i ↔ j 的对应不需要任何匹配算法——<b>坐标重合即对应</b>，训练全程没有匹配损失、没有对应标签。</li>
-    <li><b>第 4 步 · 压短，这就是 Loss 的全部。</b>GT 点图是免费的：每个数据集本来就带深度图和相机位姿，反投影成点、变换到图 1 相机系即可。训练只做一件事：把每个预测点向它的 GT 点拉近——逐点欧氏距离、乘上置信度、求和，没有别的项。拿不准的像素（天空、只被一张图看到的区域）置信度自动变低、话语权变小，但不许弃权（C &gt; 1），网络被迫在难处也外推。</li>
-    <li><b>第 5 步 · 输出即重建。</b>网络吐出的就是结果本身：每个像素的 3D 坐标，加上该像素自己的颜色，就是一张<b>彩色点云</b>——论文图 3 的重建效果图，就是把 RGB 涂到点图上渲染出来的。要深度，取 Z 通道就是深度图；要位姿，对两张点图做刚体对齐（或再喂一次交换顺序的图对做 PnP）；要完整场景，多张图两两过网络再全局对齐（§2.4）。「重建出了这个场景」不需要额外声明——点图本身就是场景的显式几何。</li>
+    <li><b>目标：</b>深度、位姿、对应关系、三维重建，传统流程里是分开做的好几件事，每件都有自己的流水线；DUSt3R 把它们合成一件：输入两张图，一次前馈，给每个像素回归一个 3D 坐标（点图），两张图的点图写在同一套坐标系里。做法是直接回归：不检测特征、不做匹配、不解几何方程，网络自己从像素学出 3D 坐标。两支解码器逐层交换信息，也是这套格式的要求：第二张图的点图要写进第一张图的坐标系，它就必须参考第一张图的信息（各模块怎么连，见图 0-1）。
+      <div class="fig">
+        <svg viewBox="0 0 1400 430" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="20" y="64" width="130" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="85" y="96" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="85" y="118" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <text x="85" y="138" text-anchor="middle" class="svg-cn" fill="#59636e">场景视图 1</text>
+          <rect x="20" y="252" width="130" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="85" y="284" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="85" y="306" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <text x="85" y="326" text-anchor="middle" class="svg-cn" fill="#59636e">场景视图 2</text>
+
+          <line x1="150" y1="106" x2="203" y2="168" class="arrow"/>
+          <line x1="150" y1="294" x2="203" y2="238" class="arrow"/>
+
+          <!-- 共享编码器 -->
+          <rect x="205" y="140" width="180" height="126" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="295" y="170" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">共享 ViT-L 编码器</text>
+          <text x="295" y="194" text-anchor="middle" class="svg-cn" fill="#59636e">Siamese，同一套权重</text>
+          <text x="295" y="216" text-anchor="middle" class="svg-nota">24 层 · dim 1024</text>
+          <text x="295" y="238" text-anchor="middle" class="svg-nota">→ F¹,F² [1024,1024]</text>
+
+          <line x1="385" y1="170" x2="428" y2="132" class="arrow"/>
+          <line x1="385" y1="236" x2="428" y2="300" class="arrow"/>
+
+          <!-- 双解码器 -->
+          <rect x="430" y="64" width="220" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="540" y="92" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 1（ViT-Base×12）</text>
+          <text x="540" y="116" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
+          <text x="540" y="140" text-anchor="middle" class="svg-nota">dim 768 · 1024 tokens</text>
+          <rect x="430" y="238" width="220" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="540" y="266" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 2（独立权重）</text>
+          <text x="540" y="290" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
+          <text x="540" y="314" text-anchor="middle" class="svg-cn" fill="#59636e">与解码器 1 同源初始化</text>
+
+          <line x1="505" y1="197" x2="505" y2="233" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
+          <line x1="575" y1="235" x2="575" y2="199" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
+          <text x="540" y="221" text-anchor="middle" class="svg-nota" fill="#0550ae">每层互通</text>
+
+          <line x1="650" y1="129" x2="698" y2="129" class="arrow"/>
+          <line x1="650" y1="303" x2="698" y2="303" class="arrow"/>
+
+          <!-- DPT 头 -->
+          <rect x="700" y="64" width="130" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="765" y="94" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 头 1</text>
+          <text x="765" y="118" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
+          <text x="765" y="140" text-anchor="middle" class="svg-nota">refinenet 融合</text>
+          <text x="765" y="162" text-anchor="middle" class="svg-nota">→ [512,512,4]</text>
+          <rect x="700" y="238" width="130" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="765" y="268" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 头 2</text>
+          <text x="765" y="292" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
+          <text x="765" y="314" text-anchor="middle" class="svg-nota">refinenet 融合</text>
+          <text x="765" y="336" text-anchor="middle" class="svg-nota">→ [512,512,4]</text>
+
+          <line x1="830" y1="129" x2="878" y2="129" class="arrow"/>
+          <line x1="830" y1="303" x2="878" y2="303" class="arrow"/>
+
+          <!-- 输出点图 -->
+          <rect x="880" y="64" width="250" height="130" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1005" y="92" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X¹,¹ + 置信度 C¹,¹</text>
+          <text x="1005" y="116" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
+          <text x="1005" y="142" text-anchor="middle" class="svg-cn" fill="#59636e">图像 1 每个像素的 3D 点</text>
+          <text x="1005" y="164" text-anchor="middle" class="svg-cn" fill="#59636e">图像 1 相机坐标系</text>
+          <rect x="880" y="238" width="250" height="130" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1005" y="266" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X²,¹ + 置信度 C²,¹</text>
+          <text x="1005" y="290" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
+          <text x="1005" y="314" text-anchor="middle" class="svg-cn" fill="#59636e">图像 2 每个像素的 3D 点</text>
+          <text x="1005" y="336" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">同样写在图像 1 相机坐标系</text>
+
+          <line x1="1130" y1="129" x2="1168" y2="172" class="arrow"/>
+          <line x1="1130" y1="303" x2="1168" y2="260" class="arrow"/>
+
+          <!-- 右侧：对应关系示意 -->
+          <rect x="1170" y="64" width="210" height="304" rx="8" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-dasharray="6 4"/>
+          <text x="1275" y="94" text-anchor="middle" class="svg-cn" style="font-weight:700">重叠区 = 对应关系</text>
+          <circle cx="1205" cy="140" r="3" fill="#cf222e"/><circle cx="1222" cy="132" r="3" fill="#cf222e"/>
+          <circle cx="1240" cy="146" r="3" fill="#cf222e"/><circle cx="1258" cy="134" r="3" fill="#cf222e"/>
+          <circle cx="1228" cy="158" r="3" fill="#cf222e"/><circle cx="1246" cy="164" r="3" fill="#cf222e"/>
+          <circle cx="1210" cy="166" r="3" fill="#cf222e"/><circle cx="1264" cy="152" r="3" fill="#cf222e"/>
+          <circle cx="1236" cy="178" r="3" fill="#cf222e"/><circle cx="1252" cy="182" r="3" fill="#cf222e"/>
+          <circle cx="1218" cy="186" r="3" fill="#cf222e"/><circle cx="1270" cy="168" r="3" fill="#cf222e"/>
+          <circle cx="1252" cy="196" r="3" fill="#0969da"/><circle cx="1270" cy="186" r="3" fill="#0969da"/>
+          <circle cx="1286" cy="200" r="3" fill="#0969da"/><circle cx="1300" cy="188" r="3" fill="#0969da"/>
+          <circle cx="1262" cy="214" r="3" fill="#0969da"/><circle cx="1280" cy="222" r="3" fill="#0969da"/>
+          <circle cx="1296" cy="212" r="3" fill="#0969da"/><circle cx="1250" cy="230" r="3" fill="#0969da"/>
+          <circle cx="1268" cy="236" r="3" fill="#0969da"/><circle cx="1288" cy="228" r="3" fill="#0969da"/>
+          <circle cx="1304" cy="218" r="3" fill="#0969da"/><circle cx="1244" cy="210" r="3" fill="#0969da"/>
+          <circle cx="1256" cy="188" r="10" fill="none" stroke="#1f2328" stroke-width="1.2" stroke-dasharray="3 2"/>
+          <circle cx="1256" cy="188" r="4.5" fill="#1f2328"/>
+          <text x="1272" y="180" text-anchor="start" class="svg-nota-b">P</text>
+          <circle cx="1212" cy="256" r="3.5" fill="#cf222e"/><text x="1220" y="260" text-anchor="start" class="svg-nota">X¹,¹</text>
+          <circle cx="1278" cy="256" r="3.5" fill="#0969da"/><text x="1286" y="260" text-anchor="start" class="svg-nota">X²,¹</text>
+          <text x="1275" y="288" text-anchor="middle" class="svg-nota-b">像素 i ↔ j 对应 ⟺</text>
+          <text x="1275" y="308" text-anchor="middle" class="svg-nota-b">X¹,¹ᵢ ≈ X²,¹ⱼ</text>
+          <text x="1275" y="336" text-anchor="middle" class="svg-cn" fill="#59636e">无匹配损失、无对应标签</text>
+          <text x="1275" y="356" text-anchor="middle" class="svg-cn" fill="#59636e">对应是回归的几何副产品</text>
+
+          <text x="700" y="418" text-anchor="middle" class="svg-cn" fill="#59636e">唯一的监督：把两张点图回归到 GT（深度图 + 位姿变换到图像 1 相机系构造）——没有匹配项，没有位姿项，没有内参项</text>
+        </svg>
+        <div class="figcap">图 0-1 · DUSt3R 核心机制：两图一次前馈，输出同一坐标系下的两张点图；对应关系 = 3D 坐标重合。shape 取自官方 512 checkpoint 配置。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>输入：</b>图像 I¹、I²，长边缩到 512（训练时随机长宽比，如 512×384，见 §3.2）；训练集 8 个数据集共 850 万对。</li>
+        <li><b>输出：</b>预测点图 X¹,¹（图像 1 每个像素的 3D 点）和 X²,¹（图像 2 的点，也写在图像 1 的相机系），各 [512,512,3]；外加每像素置信度 C，各 [512,512]。</li>
+        <li><b>GT：</b>不用人工标注，来自数据集自带的深度图和位姿：深度图反投影成 3D 点，再变换到图像 1 的相机系，得到两条监督信号 <span class="ovl">X</span><sup>1,1</sup>（图像 1 的点）和 <span class="ovl">X</span><sup>2,1</sup>（图像 2 的点，也写在图像 1 系）。记号说明：X 加横杠表示真值（答案），用来和预测 X 区分——<span class="ovl">X</span><sup>1,1</sup> 就是 X¹,¹ 的答案；上标两个数字分别是「哪张图的点」和「写在谁的坐标系里」。没有深度值的像素用 mask 剔除。</li>
+        <li><b>Loss：</b>逐像素配对来算——X¹,¹ 对 <span class="ovl">X</span><sup>1,1</sup>、X²,¹ 对 <span class="ovl">X</span><sup>2,1</sup>，各算欧氏距离、乘置信度求和，再补一项把置信度校准到合理大小。全程只此一项：没有匹配损失、位姿损失、内参损失。公式和每个变量的含义：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:15px">L = Σ C·ℓ − α·log C，&nbsp; C = 1 + exp(c)，&nbsp; α = 0.2</div>
+            <div class="note">公式里每个符号的含义：<br>
+              <b>X</b>：网络输出的预测点图（X¹,¹、X²,¹，每个像素一个 3D 坐标，各 [512,512,3]）<br>
+              <b><span class="ovl">X</span></b>：真值点图，由数据集自带的深度图 + 位姿构造（<span class="ovl">X</span><sup>1,1</sup>、<span class="ovl">X</span><sup>2,1</sup>）<br>
+              <b>ℓ</b>：预测点和真值点之间的距离，即 ‖X − <span class="ovl">X</span>‖（欧氏距离；两侧先按平均尺度归一，只管形状、不管绝对大小）<br>
+              <b>c、C</b>：置信度——c 是网络输出的原始参数，C = 1 + exp(c) 是损失里加权用的置信度；拿不准的点自动调小，但降不到零<br>
+              <b>α</b>：平衡系数（官方 0.2）<br>
+              完整推导见 §3。</div>
+          </div>
+        </li>
+      </ul>
+      训练从 CroCo v2 的预训练权重出发，那套预训练学的就是「两幅图里哪些内容是一回事」，正好给跨视图对应打底。
+      <div class="fig">
+        <svg viewBox="0 0 1200 264" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="26" width="160" height="58" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="52" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="100" y="72" text-anchor="middle" class="svg-nota">[3,512,H×W]</text>
+          <rect x="20" y="100" width="160" height="58" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="126" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="100" y="146" text-anchor="middle" class="svg-nota">[3,512,H×W]</text>
+          <rect x="220" y="44" width="250" height="96" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="345" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DUSt3R 前馈</text>
+          <text x="345" y="98" text-anchor="middle" class="svg-nota">共享编码器 + 双解码器</text>
+          <text x="345" y="118" text-anchor="middle" class="svg-nota">（结构见图 0-1 · CroCo v2 初始化）</text>
+          <rect x="510" y="44" width="230" height="96" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="625" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">预测点图 X¹,¹ X²,¹</text>
+          <text x="625" y="98" text-anchor="middle" class="svg-nota">[512,512,3] 各一张</text>
+          <text x="625" y="118" text-anchor="middle" class="svg-nota">置信度 C [512,512]</text>
+          <rect x="880" y="44" width="290" height="96" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="1025" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Loss：只有这一项</text>
+          <text x="1025" y="102" text-anchor="middle" class="svg-nota">X¹,¹ ↔ <tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">1,1</tspan><tspan dy="4">，X²,¹ ↔ </tspan><tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">2,1</tspan></text>
+          <text x="1025" y="124" text-anchor="middle" class="svg-nota">逐像素、按 C 加权</text>
+          <rect x="20" y="186" width="160" height="66" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="210" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">数据集</text>
+          <text x="100" y="230" text-anchor="middle" class="svg-nota">8 数据集 · 850 万对</text>
+          <text x="100" y="248" text-anchor="middle" class="svg-nota">自带深度 + 位姿</text>
+          <rect x="220" y="186" width="320" height="66" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="380" y="210" text-anchor="middle" class="svg-cn" style="font-weight:700">GT 构造：<tspan text-decoration="overline">X</tspan> = 真值（不用标注）</text>
+          <text x="380" y="230" text-anchor="middle" class="svg-nota">深度图反投影 → 各自用位姿变换到图像 1 系</text>
+          <text x="380" y="248" text-anchor="middle" class="svg-nota">→ <tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">1,1</tspan><tspan dy="4"> </tspan><tspan text-decoration="overline">X</tspan><tspan dy="-4" font-size="9">2,1</tspan><tspan dy="4"> [512,512,3] + mask [512,512]</tspan></text>
+          <line x1="180" y1="55" x2="216" y2="80" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="180" y1="129" x2="216" y2="104" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="470" y1="92" x2="506" y2="92" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="740" y1="92" x2="876" y2="92" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="180" y1="219" x2="216" y2="219" class="arrow" style="marker-end:url(#ahT)"/>
+          <line x1="540" y1="219" x2="876" y2="128" class="arrow" style="marker-end:url(#ahT)"/>
+          <path d="M1025,44 L1025,14 L345,14 L345,40" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="675" y="32" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播：更新网络权重</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：两张图过网络得到预测点图；GT 由深度图 + 位姿构造；逐点距离回传更新权重（图内只放符号，公式与变量解释见训练条）。shape 为官方 512 配置，输入长边 512、训练时随机长宽比。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>图像 I¹、I²，各 [3,512,512]；不需要任何相机参数。</li>
+        <li><b>输出：</b>一次前馈（约 40ms）得到点图 X¹,¹、X²,¹（各 [512,512,3]）和置信度 C（[512,512]）；配上颜色就是彩色点云（论文图 3）。从它直接读出三样东西：
+          <ul class="sub">
+            <li><b>深度：</b>取 Z 通道，得到深度图 [512,512]。</li>
+            <li><b>位姿：</b>由点图解出——两张点图都写在图像 1 的坐标系里，图像 2 每个像素的 3D 位置已知；把这些 3D 点（X²,¹）、配上它们在图像 2 里的像素坐标和相机内参，就是一个标准 PnP 问题（已知 3D 点和对应像点，反求相机位置），解出相机 2 相对相机 1 的旋转和平移。内参未知也能一起估，精度会降（见 §4）。</li>
+            <li><b>对应关系：</b>坐标重合的像素即对应，不需要匹配网络。</li>
+          </ul>
+        </li>
+        <li><b>后处理：</b>多图重建时，各对分别前馈后做一次全局对齐（调每张图的深度、位姿、焦距，让重叠区域尽量对齐，几百步、秒级），拼成整个场景。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1160 296" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="26" width="160" height="56" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="50" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="100" y="68" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <rect x="20" y="96" width="160" height="56" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="120" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="100" y="138" text-anchor="middle" class="svg-nota">[3,512,512]</text>
+          <rect x="220" y="44" width="220" height="92" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="330" y="74" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">一次前馈</text>
+          <text x="330" y="96" text-anchor="middle" class="svg-nota">约 40ms（H100）</text>
+          <text x="330" y="116" text-anchor="middle" class="svg-nota">结构见图 0-1</text>
+          <rect x="480" y="44" width="230" height="92" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="595" y="74" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">两张点图 X¹,¹ X²,¹</text>
+          <text x="595" y="96" text-anchor="middle" class="svg-nota">[512,512,3] 各一张</text>
+          <text x="595" y="116" text-anchor="middle" class="svg-nota">置信度 C [512,512]</text>
+          <rect x="790" y="10" width="330" height="54" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="955" y="33" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度：取 Z 通道</text>
+          <text x="955" y="51" text-anchor="middle" class="svg-nota">→ 深度图 [512,512]</text>
+          <rect x="790" y="90" width="330" height="54" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="955" y="113" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">位姿：配对 3D 点 + PnP 求解</text>
+          <text x="955" y="131" text-anchor="middle" class="svg-nota">→ 旋转 + 平移（相对位姿）</text>
+          <rect x="790" y="170" width="330" height="54" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="955" y="193" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">对应：坐标重合的像素</text>
+          <text x="955" y="211" text-anchor="middle" class="svg-nota">→ 匹配表，不需要匹配网络</text>
+          <rect x="20" y="240" width="1100" height="46" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="570" y="268" text-anchor="middle" class="svg-nota">多张图重建：两两前馈（每对都走上面这条链）→ 全局对齐后处理（调深度 / 位姿 / 焦距，几百步 · 秒级）→ 拼成整个场景的点云</text>
+          <line x1="180" y1="54" x2="216" y2="80" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="180" y1="124" x2="216" y2="104" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="440" y1="90" x2="476" y2="90" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="710" y1="74" x2="786" y2="38" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="710" y1="90" x2="786" y2="116" class="arrow" style="marker-end:url(#ahI)"/>
+          <line x1="710" y1="106" x2="786" y2="196" class="arrow" style="marker-end:url(#ahI)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：两张图一次前馈得到两张点图，深度 / 位姿 / 对应各有读法；多图重建做一次全局对齐。shape 为官方 512 配置。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定性：</b>把点图渲染出来，就是照片级的彩色重建（论文图 3）。</li>
+        <li><b>定量：</b>所有评测都是零样本跑出来的——多视图位姿超过专门训练的方法（CO3D 66.5 → 76.7）；单目深度与全监督打平（NYUv2 6.50）；多视图重建从 COLMAP 的几分钟缩到 0.13 秒（数字见 §4）。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>换一个好的输出表示，比改进流水线里的模块更管用：点图一个张量装下所有几何输出，特征提取、匹配、几何求解一整族传统模块可以直接省掉，一个回归网络就够。</li>
   </ul>
 
-  <p>五步现象看完了，再把这些现象装回网络里看机器长什么样：两支解码器靠层间交叉注意力互通信息，两个 DPT 头输出同坐标系的点图。</p>
-
-  <div class="fig">
-    <svg viewBox="0 0 1400 430" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
-        <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
-        <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
-      </defs>
-
-      <!-- 输入 -->
-      <rect x="20" y="64" width="130" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
-      <text x="85" y="96" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
-      <text x="85" y="118" text-anchor="middle" class="svg-nota">[3,512,512]</text>
-      <text x="85" y="138" text-anchor="middle" class="svg-cn" fill="#59636e">场景视图 1</text>
-      <rect x="20" y="252" width="130" height="84" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
-      <text x="85" y="284" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
-      <text x="85" y="306" text-anchor="middle" class="svg-nota">[3,512,512]</text>
-      <text x="85" y="326" text-anchor="middle" class="svg-cn" fill="#59636e">场景视图 2</text>
-
-      <line x1="150" y1="106" x2="203" y2="168" class="arrow"/>
-      <line x1="150" y1="294" x2="203" y2="238" class="arrow"/>
-
-      <!-- 共享编码器 -->
-      <rect x="205" y="140" width="180" height="126" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
-      <text x="295" y="170" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">共享 ViT-L 编码器</text>
-      <text x="295" y="194" text-anchor="middle" class="svg-cn" fill="#59636e">Siamese，同一套权重</text>
-      <text x="295" y="216" text-anchor="middle" class="svg-nota">24 层 · dim 1024</text>
-      <text x="295" y="238" text-anchor="middle" class="svg-nota">→ F¹,F² [1024,1024]</text>
-
-      <line x1="385" y1="170" x2="428" y2="132" class="arrow"/>
-      <line x1="385" y1="236" x2="428" y2="300" class="arrow"/>
-
-      <!-- 双解码器 -->
-      <rect x="430" y="64" width="220" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
-      <text x="540" y="92" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 1（ViT-Base×12）</text>
-      <text x="540" y="116" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
-      <text x="540" y="140" text-anchor="middle" class="svg-nota">dim 768 · 1024 tokens</text>
-      <rect x="430" y="238" width="220" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
-      <text x="540" y="266" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">解码器 2（独立权重）</text>
-      <text x="540" y="290" text-anchor="middle" class="svg-nota">self-attn → cross-attn → MLP</text>
-      <text x="540" y="314" text-anchor="middle" class="svg-cn" fill="#59636e">与解码器 1 同源初始化</text>
-
-      <line x1="505" y1="197" x2="505" y2="233" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
-      <line x1="575" y1="235" x2="575" y2="199" stroke="#0969da" stroke-width="2" marker-end="url(#ahb)"/>
-      <text x="540" y="221" text-anchor="middle" class="svg-nota" fill="#0550ae">每层互通</text>
-
-      <line x1="650" y1="129" x2="698" y2="129" class="arrow"/>
-      <line x1="650" y1="303" x2="698" y2="303" class="arrow"/>
-
-      <!-- DPT 头 -->
-      <rect x="700" y="64" width="130" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
-      <text x="765" y="94" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 头 1</text>
-      <text x="765" y="118" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
-      <text x="765" y="140" text-anchor="middle" class="svg-nota">refinenet 融合</text>
-      <text x="765" y="162" text-anchor="middle" class="svg-nota">→ 4 通道</text>
-      <rect x="700" y="238" width="130" height="130" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
-      <text x="765" y="268" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 头 2</text>
-      <text x="765" y="292" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
-      <text x="765" y="314" text-anchor="middle" class="svg-nota">refinenet 融合</text>
-      <text x="765" y="336" text-anchor="middle" class="svg-nota">→ 4 通道</text>
-
-      <line x1="830" y1="129" x2="878" y2="129" class="arrow"/>
-      <line x1="830" y1="303" x2="878" y2="303" class="arrow"/>
-
-      <!-- 输出点图 -->
-      <rect x="880" y="64" width="250" height="130" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
-      <text x="1005" y="92" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X¹,¹ + 置信度 C¹,¹</text>
-      <text x="1005" y="116" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
-      <text x="1005" y="142" text-anchor="middle" class="svg-cn" fill="#59636e">图 1 每个像素的 3D 点</text>
-      <text x="1005" y="164" text-anchor="middle" class="svg-cn" fill="#59636e">图 1 相机坐标系</text>
-      <rect x="880" y="238" width="250" height="130" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
-      <text x="1005" y="266" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X²,¹ + 置信度 C²,¹</text>
-      <text x="1005" y="290" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
-      <text x="1005" y="314" text-anchor="middle" class="svg-cn" fill="#59636e">图 2 每个像素的 3D 点</text>
-      <text x="1005" y="336" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">同样写在图 1 相机坐标系</text>
-
-      <line x1="1130" y1="129" x2="1168" y2="172" class="arrow"/>
-      <line x1="1130" y1="303" x2="1168" y2="260" class="arrow"/>
-
-      <!-- 右侧：对应关系示意 -->
-      <rect x="1170" y="64" width="210" height="304" rx="8" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-dasharray="6 4"/>
-      <text x="1275" y="94" text-anchor="middle" class="svg-cn" style="font-weight:700">重叠区 = 对应关系</text>
-      <circle cx="1205" cy="140" r="3" fill="#cf222e"/><circle cx="1222" cy="132" r="3" fill="#cf222e"/>
-      <circle cx="1240" cy="146" r="3" fill="#cf222e"/><circle cx="1258" cy="134" r="3" fill="#cf222e"/>
-      <circle cx="1228" cy="158" r="3" fill="#cf222e"/><circle cx="1246" cy="164" r="3" fill="#cf222e"/>
-      <circle cx="1210" cy="166" r="3" fill="#cf222e"/><circle cx="1264" cy="152" r="3" fill="#cf222e"/>
-      <circle cx="1236" cy="178" r="3" fill="#cf222e"/><circle cx="1252" cy="182" r="3" fill="#cf222e"/>
-      <circle cx="1218" cy="186" r="3" fill="#cf222e"/><circle cx="1270" cy="168" r="3" fill="#cf222e"/>
-      <circle cx="1252" cy="196" r="3" fill="#0969da"/><circle cx="1270" cy="186" r="3" fill="#0969da"/>
-      <circle cx="1286" cy="200" r="3" fill="#0969da"/><circle cx="1300" cy="188" r="3" fill="#0969da"/>
-      <circle cx="1262" cy="214" r="3" fill="#0969da"/><circle cx="1280" cy="222" r="3" fill="#0969da"/>
-      <circle cx="1296" cy="212" r="3" fill="#0969da"/><circle cx="1250" cy="230" r="3" fill="#0969da"/>
-      <circle cx="1268" cy="236" r="3" fill="#0969da"/><circle cx="1288" cy="228" r="3" fill="#0969da"/>
-      <circle cx="1304" cy="218" r="3" fill="#0969da"/><circle cx="1244" cy="210" r="3" fill="#0969da"/>
-      <circle cx="1256" cy="188" r="10" fill="none" stroke="#1f2328" stroke-width="1.2" stroke-dasharray="3 2"/>
-      <circle cx="1256" cy="188" r="4.5" fill="#1f2328"/>
-      <text x="1272" y="180" text-anchor="start" class="svg-nota-b">P</text>
-      <circle cx="1212" cy="256" r="3.5" fill="#cf222e"/><text x="1220" y="260" text-anchor="start" class="svg-nota">X¹,¹</text>
-      <circle cx="1278" cy="256" r="3.5" fill="#0969da"/><text x="1286" y="260" text-anchor="start" class="svg-nota">X²,¹</text>
-      <text x="1275" y="288" text-anchor="middle" class="svg-nota-b">像素 i ↔ j 对应 ⟺</text>
-      <text x="1275" y="308" text-anchor="middle" class="svg-nota-b">X¹,¹ᵢ ≈ X²,¹ⱼ</text>
-      <text x="1275" y="336" text-anchor="middle" class="svg-cn" fill="#59636e">无匹配损失、无对应标签</text>
-      <text x="1275" y="356" text-anchor="middle" class="svg-cn" fill="#59636e">对应是回归的几何副产品</text>
-
-      <text x="700" y="418" text-anchor="middle" class="svg-cn" fill="#59636e">唯一的监督：把两张点图回归到 GT（深度图 + 位姿变换到图 1 相机系构造）——没有匹配项，没有位姿项，没有内参项</text>
-    </svg>
-    <div class="figcap">图 0-2 · DUSt3R 核心机制：两图一次前馈，输出同一坐标系下的两张点图；对应关系 = 3D 坐标重合。shape 取自官方 512 checkpoint 配置。</div>
-    <div class="legend">
-      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
-      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>编码器 / 解码器</span>
-      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
-      <span><span class="sw line" style="border-color:#818b98"></span>数据流</span>
-      <span><span class="sw" style="background:#ffffff;border:1px dashed #818b98"></span>几何示意</span>
-    </div>
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：深度图、位姿、像素对应，是从点图里直接读出来的吗？</div>
+    <div class="qa-a">A：分开看。深度是读的：参考视图的点图里，Z 坐标就是深度，不用计算。位姿是算的：拿 X²,¹ 的 3D 点、配上图像 2 的像素解一次 PnP，得到两张图之间的旋转和平移。对应关系是几何必然，同一个物理点在共享坐标系里坐标必然重合；但要列出对应点仍要做一次坐标查找，不需要额外训练匹配网络。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：两张点图的坐标为什么会重合？网络里有一个「把两片点拼起来」的目标吗？</div>
+    <div class="qa-a">A：没有。训练里只有一件事：每个像素的预测去逼近 GT。「重合」来自 GT 的做法：第二张图点图的 GT，本身就是用相机位姿把它的 3D 点变换进第一张图的坐标系里构造的，所以同一个物理点的坐标在两个点图里就是同一个点。网络学得越准，输出的重合度就越高。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：推理时，图像之间有「点云融合」这一步吗？最终输出的点云是什么样？</div>
+    <div class="qa-a">A：分两种。单对推理：没有融合操作——一次前馈直接输出两张点图（X¹,¹、X²,¹），两张本来就写在同一个坐标系（图像 1 相机系）里；重叠区同一个物理点由两侧像素各出一个点，坐标相互重合但不合并、不去重，直接叠加渲染就是论文图 3 的彩色点云。多图推理：网络仍然只两两前馈；跨图的统一靠 §2.4 全局对齐（优化）完成——每张图的深度图是共享变量，和世界系位姿、焦距一起求解，解完每张图导出「每像素一个世界系 3D 点」，拼起来才是最终场景点云（每个像素恰好贡献一个点）。所以跨图一致性是优化算出来的，不是网络输出自带的。重叠区的「重复点」不去重：两片坐标本来就该重合，叠在一起看起来就是一片；多图时同一张图被多个图对重复预测的深度，被全局对齐合并成一份（这是唯一的合并操作），而跨图像的重复点不做去重。要「干净」的单层点云得自己做后处理（体素下采样 / TSDF 融合之类），DUSt3R 不含这一步；整个流水线到点云为止，不产出 mesh / 表面——点云本身就是它定义的「重建完成」。</div>
   </div>
 
-  <ul class="dots">
-    <li><b>pointmap 是一站式表示。</b>X ∈ ℝ<sup>W×H×3</sup>，像素与 3D 点一一对应。深度就是 Z 通道；相机位姿是两张点图之间的刚体变换；内参隐含在像素与射线的对应里；像素对应等于坐标重合。几何 3D 视觉的全部输出物，装进一个稠密张量。</li>
-    <li><b>对应关系不是学出来的匹配，是被逼出来的几何。</b>X²,¹ 的监督目标就是「图 2 每个像素的 3D 点，写在图 1 相机系里」。要算对它，网络必须先从图 1 的 token 里搞清楚图 1 的相机与场景，再把自己的像素放进这个共享几何——于是同一物理点在两张点图里的坐标必然重合，对应关系免费得到。训练全程没有匹配损失，没有对应标签。</li>
-    <li><b>共享坐标系是两支通信的根本动力。</b>如果两个输出各用各的相机系，两支各干各的也能交差，交叉注意力就成了摆设；把输出钉在图 1 的坐标系上，图 2 分支必须依赖图 1 的信息，解码器每层的 cross-attn 通道才真正被用起来。</li>
-    <li><b>CroCo 预训练埋了种子。</b>跨视图补全（用图 A 的可见 patch 补图 B 被遮住的 patch）本身就在奖励跨视图对应；DUSt3R 拿 CroCo v2 权重初始化，把预训练学到的「特征空间相关」落成「3D 坐标重合」。</li>
-    <li><b>置信度是无监督长出来的。</b>C = 1 + exp(C̃)，损失 C·ℓ − α·log C 的平衡点是 C* ≈ α/ℓ：每个像素的置信度自动收敛到预测难度的倒数。天空、只有单视图覆盖的外推区，置信度自然偏低。</li>
-    <li><b>多图就是点图版 BA。</b>两两前馈出点图，再做置信度加权的 3D 对齐最小二乘（每张图优化深度、位姿、焦距），几百步迭代、秒级收敛。它最小化的是 3D 对齐误差而不是 2D 重投影误差，所以不需要传统 BA 的整套数值工程。</li>
-    <li><b>一个网络通吃下游。</b>多视图位姿、单目/多目深度、点云配准、稠密重建，全部零样本直接用；逐对前馈约 40ms（H100）。数字见 §4。</li>
-  </ul>
+  <div class="qa">
+    <div class="qa-q">Q：为什么第二张图输出的是 X²,¹（写在图像 1 系），而不是 X²,²（写在它自己的系）？为什么这两个输出就等于重建好了？</div>
+    <div class="qa-a">A：因为各写各的系，两片云彼此不搭界——要拼成场景得先匹配、再求位姿、再配准，等于把传统流水线请回来。DUSt3R 把第二张图直接写进图像 1 的坐标系，于是：对应关系免费（坐标重合即对应）、重建免费（两片直接叠合就是同一场景）、两支解码器的信息交换也从「可选」变成「必须」。监督可行性也没问题：X²,¹ 的 GT 用图像 2 的深度 + 相对位姿变换就能构造。X²,² 并非不存在——交换顺序再跑一次（I², I¹）第一张输出就是它，位姿评估的 PnP 解码会用到；两种写法信息等价，区别只在「拼接和对应是不是提前免费化」。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：Loss 里的 C = 1 + exp(c) 是什么设计？置信度为什么不直接取 0~1？</div>
+    <div class="qa-a">A：C 的物理含义是「这个像素自报的测量精度」（误差尺度的倒数）：网络在预测 3D 坐标之外，为每个像素报一个不确定度 σ，C ≈ 1/σ——C 大 = 自认预测精密、误差范围窄。这个损失式不是拍的，它是「每像素自学噪声尺度」的负对数似然：C·ℓ 是标准化残差（错得多离谱 ÷ 该像素自己的尺度），−α·log C 是「宣称精确」要交的税（分布归一化项）；平衡点 C* = α/ℓ 的含义就是校准——自报的精度必须和真实误差吻合，只有误差小的地方才允许报高精度。它不是概率、也不需要 0~1，取值范围 (1, +∞)：上不封顶（真准就可以极准），下界 1 等于「误差尺度最多 1」——不许把不确定度开到无穷大（那等于弃权，训练里这个像素就不再产生梯度）。c 是回归头自由输出的任意实数（无激活），exp 恒正、加 1 后下界就是 1（c=−10 → C≈1.00005，c=0 → C=2，c=2.2 → C=10）。C 没有任何监督信号，整个分配由损失自身平衡。设计动机：让学习信号自动分给「学得动」的像素——难像素（天空、外推区）降权但不许归零（论文的 forcing the network to extrapolate），且 C 本身在下游有用（图对过滤、全局对齐加权）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：天空像素、只在单张图里可见的点、两图都可见的点——训练时各自经历什么？损失怎么刻画它们？</div>
+    <div class="qa-a">A：三类走同一个公式，没有「如果你是天空就怎样」的规则——只是它们的 ℓ（错量）天然分层，平衡点 C* = α/ℓ（0.2/ℓ）自动给出不同待遇：①两图都可见的重叠点：两张图各有一个像素、各有一份 GT，且两份 GT 坐标是同一个点（构造保证），互相强化，ℓ 小 → C* 大（如 ℓ=0.05 → C≈4），权重高、梯度主要从这里来；②只在单张图可见的点：只有一侧监督，靠上下文外推，ℓ 偏大 → C* 想低于 1、被下界顶到 1，按原价计入（逼外推的落点）；③天空：真实数据集多半没有 GT（深度传感器测不到）→ valid_mask 剔除、不参与训练，推理时拿到的 C 是从相似区域学来的、偏低；若有 GT，ℓ 很大 → 同样顶在 C=1。注意「置信度低」= C 贴着 1（保底一份），不是 0。学得好的直接证据是 C 场的结构：重叠/纹理区明显 >1、天空/外推区贴着 1，等于一张「我知道哪里我知道」的自评图；若没学好，ℓ 到处大 → C 全场贴 1、无区分度。且这张 C 图下游真能用（图对过滤、对齐加权），说明它是有效信息而非装饰。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：难像素的权重被保底在 1，为什么不让它接近 0？这样不会拖累训练吗？</div>
+    <div class="qa-a">A：这是故意的取舍，而且和另一套机制配合使用。关键前提：真实数据集里天空通常没有 GT（深度传感器/重建测不到）→ valid_mask 直接剔除、不参与训练；所以保底 1 罚的不是「真天空」，而是「有 GT 但难」的像素（远小物体、玻璃、暗光、单图覆盖区）——那些恰恰是网络必须努力学的。如果权重允许趋 0，打开的不是「诚实地承认测不准」，而是「凡是我现在学不好的地方都宣布弃权」的捷径——所有暂时学不好的区域会被一起打包扔掉，永远不再进步。保底 1 的含义：可以报「我没把握」（C 贴着 1），但错量照原价计入，逼网络在没证据处也基于上下文外推（forcing the network to extrapolate），重建才不会到处是洞。代价确实存在（难像素占用一部分学习容量），论文选择宁可贵一点也不让网络学会找借口。整套设计是两层配合：没答案的靠数据集层面 mask 掉，有答案但难的靠损失层面保底 1 硬学——惩罚的是「偷懒」，不是「承认不确定」。注意保底 1 不是永久惩罚：难像素的 ℓ 随训练变小、一旦小于 α=0.2，平衡点 C* = α/ℓ 自动升过 1，权重自动变大——等于「保留学习桌位、学好了自动升舱」，给「从难到易」留了正常上升通道。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：既然权重下界焊死在 1、不许弃权，那 confidence 这个维度是不是没什么意义？</div>
+    <div class="qa-a">A：一半对一半错，分三个角色看。①「丢弃垃圾数据」的角色确实被阉了：经典不确定度加权里低权重≈变相忽略，这里不允许——如果只把 C 当「要不要听这个像素」的开关，它确实是废的。②「训练注意力分配」的角色真在起作用：以每个像素自身的难度为单位归一化——好学的像素 ×10 说话、难的 ×1 保底，避免大面积难区按绝对误差主导梯度。③「产出可靠性图」的角色下游真消费：全局对齐给点加权、图对过滤判重叠质量都用它——这只需要 C 的排序有效（难=1、易>1），不需要趋 0，排序就是信息。诚实补充：论文没有「去掉置信度」的消融，「有它比没有强多少」没有直接数字；但②③有据可查，「完全没意义」过了。背景：C·ℓ − α·log C 是学不确定度的标准形态（Kendall & Gal 一类），下界恰恰是为了让它别沦为「丢弃开关」——作者要的是分配 + 校准 + 下游可用。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：推理时怎么用 C「过滤」？α 也参与过滤吗？</div>
+    <div class="qa-a">A：全部是真码，分四层：①每张图的置信度 = 逐对预测的逐像素 max（base_opt.py：图像 i 参与的每一对里取该像素 C 的最大值）——不是平均；②像素级硬筛：get_masks() 就是一行布尔「C > min_conf_thr」，默认阈值 3（demo 滑条 1~20、默认 3.0），点云导出/可视化按它剔除；筛之前还有降级步骤 clean_pointcloud——跨视图对账，穿模/不一致的点 C 夹到 0，mask_sky 时天空也置 0；③图对级打分：edge_conf = mean(Cᵢ) × mean(Cⱼ)（commons.py，乘积），用于 MST 初始化排序——分最高的对先当骨架边，新图沿边做置信度加权的刚体配准（每个点用自己 C 当最小二乘权重）；④优化级加权（非删）：对齐权重 = log(C)（conf='log'）——log(1)=0，所以难像素在优化里的权重恰好归零，训练侧「下界 1」在推理侧完全不影响筛除效果。α 不参与推理（它只活在训练损失里，痕迹只剩 C 学会的刻度）。</div>
+  </div>
 </section>
 
 <!-- ============ §1 Motivation ============ -->
@@ -381,14 +527,14 @@ details.deep ul{margin:4px 0}
   </table>
 
   <h3><span class="no">1.3</span>DUSt3R 是怎么解决的</h3>
-  <p><b>核心思想：选一个信息密度足够高的输出表示，让一个回归目标覆盖所有几何任务。</b>点图 X ∈ ℝ<sup>W×H×3</sup> 给每个像素一个 3D 点坐标：深度是 Z 通道，位姿是两张点图之间的刚体变换，内参隐含在像素与射线的对应里，像素对应等于坐标重合——几何 3D 视觉的全部输出物都装在这一个稠密张量里。</p>
-  <p>网络定义也随之变得干净：两张图 I¹、I² 进一个双分支 Transformer，输出两张点图 X<sup>1,1</sup>、X<sup>2,1</sup> 和对应的置信度图，关键是两张点图都写在图 1 的相机坐标系里。GT 完全由现成数据构造（深度图加相机位姿做一次坐标变换），所以能在 8 个数据集的 850 万图对上全监督训练，不需要任何新标注。</p>
-  <p>架构上刻意不加几何约束：没有相机模型层、没有对极约束、没有三角化模块，先验全部从「训练集里只有几何一致的点图」这一事实中学出来。换来的是网络完全通用，可以直接用 CroCo 跨视图补全的预训练权重初始化——这是它收敛又快又好的隐藏前提。</p>
+  <p><b>核心思想：选一个信息密度足够高的输出表示，让一个回归目标覆盖所有几何任务。</b>点图 X ∈ ℝ<sup>W×H×3</sup> 给每个像素一个 3D 点坐标：深度是 Z 通道，位姿是两张点图之间的刚体变换，内参隐含在像素与射线的对应里，像素对应就是坐标重合：传统流水线要分开求的这些东西，全在点图这一张里。</p>
+  <p>网络定义也随之变得干净：两张图 I¹、I² 进一个双分支 Transformer，输出两张点图 X<sup>1,1</sup>、X<sup>2,1</sup> 和对应的置信度图，关键是两张点图都写在图像 1 的相机坐标系里。GT 完全由现成数据构造（深度图加相机位姿做一次坐标变换），所以能在 8 个数据集的 850 万图对上全监督训练，不需要任何新标注。</p>
+  <p>架构上刻意不加几何约束：没有相机模型层、没有对极约束、没有三角化模块，几何先验完全从数据里学：训练集里的点图本来就是几何一致的，网络只需把这份一致性学会。换来的是网络完全通用，可以直接用 CroCo 跨视图补全的预训练权重初始化——这是它收敛又快又好的隐藏前提。</p>
 
   <h3><span class="no">1.4</span>优点和效果</h3>
   <ul class="dots">
     <li>一个模型同时服务一堆任务：多视图位姿、单目与多视图深度、视觉定位、点云配准、MVS 稠密重建，全部零样本直接推理，不需要按任务微调（论文表 1~4）。</li>
-    <li>对应关系免费：两张点图天然在同一个坐标系里，重叠区坐标重合就是像素对应，全程没有匹配损失和对应标签——特征提取、匹配、RANSAC 这一族模块整体消失。</li>
+    <li>对应关系不用专门学：两张点图天然在同一个坐标系里，重叠区坐标重合就是像素对应，全程没有匹配损失和对应标签——特征提取、匹配、RANSAC 这一族模块整体消失。</li>
     <li>快：逐对前馈约 40ms（H100），多图融合的全局对齐是 3D 空间的最小二乘，秒级收敛；对照 COLMAP 一组图分钟到小时级的重建。</li>
     <li>零样本成绩硬：10 帧多视图位姿 CO3Dv2 mAA 76.7（PoseDiffusion 66.5）、RealEstate10K 67.7（48.0）；多视图深度五个数据集平均 rel 4.73，超过带 GT 位姿的专用方法（论文表 3）。</li>
     <li>分辨率和预训练都生效：224 升到 512、去掉 CroCo 初始化对照明显，NYUv2 零样本 rel 从 14.51（无 CroCo）降到 10.28（224）再到 6.50（512），见 §4 消融。</li>
@@ -461,13 +607,13 @@ details.deep ul{margin:4px 0}
       <text x="845" y="122" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
       <text x="845" y="146" text-anchor="middle" class="svg-nota">dim 1024/768×3</text>
       <text x="845" y="170" text-anchor="middle" class="svg-nota">refinenet 256 融合</text>
-      <text x="845" y="200" text-anchor="middle" class="svg-nota">→ 4 通道</text>
+      <text x="845" y="200" text-anchor="middle" class="svg-nota">→ [512,512,4]</text>
       <rect x="770" y="330" width="150" height="160" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
       <text x="845" y="358" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DPT 回归头 2</text>
       <text x="845" y="382" text-anchor="middle" class="svg-nota">hooks 0/6/9/12</text>
       <text x="845" y="406" text-anchor="middle" class="svg-nota">dim 1024/768×3</text>
       <text x="845" y="430" text-anchor="middle" class="svg-nota">refinenet 256 融合</text>
-      <text x="845" y="460" text-anchor="middle" class="svg-nota">→ 4 通道</text>
+      <text x="845" y="460" text-anchor="middle" class="svg-nota">→ [512,512,4]</text>
 
       <line x1="920" y1="150" x2="968" y2="150" class="arrow" marker-end="url(#ah2)"/>
       <line x1="920" y1="410" x2="968" y2="410" class="arrow" marker-end="url(#ah2)"/>
@@ -476,17 +622,17 @@ details.deep ul{margin:4px 0}
       <rect x="970" y="70" width="270" height="160" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
       <text x="1105" y="100" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X¹,¹ + 置信度 C¹,¹</text>
       <text x="1105" y="128" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
-      <text x="1105" y="156" text-anchor="middle" class="svg-cn" fill="#59636e">图 1 每像素 3D 点（图 1 相机系）</text>
+      <text x="1105" y="156" text-anchor="middle" class="svg-cn" fill="#59636e">图像 1 每像素 3D 点（图像 1 相机系）</text>
       <text x="1105" y="184" text-anchor="middle" class="svg-nota">depth = exp(·) 保正视深度</text>
       <rect x="970" y="330" width="270" height="160" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
       <text x="1105" y="360" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">点图 X²,¹ + 置信度 C²,¹</text>
       <text x="1105" y="388" text-anchor="middle" class="svg-nota">[512,512,3] + [512,512]</text>
-      <text x="1105" y="416" text-anchor="middle" class="svg-cn" fill="#59636e">图 2 每像素 3D 点，同在图 1 相机系</text>
+      <text x="1105" y="416" text-anchor="middle" class="svg-cn" fill="#59636e">图像 2 每像素 3D 点，同在图像 1 相机系</text>
       <text x="1105" y="444" text-anchor="middle" class="svg-nota">pts3d_in_other_view</text>
 
       <!-- GT 监督 -->
       <rect x="960" y="530" width="390" height="74" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
-      <text x="1155" y="558" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">GT 点图：深度图 + 位姿 → 图 1 相机系</text>
+      <text x="1155" y="558" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">GT 点图：深度图 + 位姿 → 图像 1 相机系</text>
       <text x="1155" y="584" text-anchor="middle" class="svg-nota">8 数据集 · 8.5M 图对 · 置信度加权回归（§3）</text>
       <line x1="1030" y1="530" x2="1030" y2="496" class="arrow-c" marker-end="url(#ahr2)"/>
       <path d="M 1240,567 L 1305,567 L 1305,150 L 1246,150" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
@@ -508,7 +654,7 @@ details.deep ul{margin:4px 0}
     <li>编码器是真正共享的 Siamese：代码里 I¹、I² 直接沿 batch 维拼接后过同一个 ViT-Large 再切开（<span class="mono">_encode_image_pairs</span>），两图各自得到 1024 个 token、1024 维。</li>
     <li>解码器是两套权重：dec_blocks2 是 dec_blocks 的深拷贝，加载 CroCo 预训练权重时同源复制、训练中各自更新——「双胞胎」而不是共享。每个块先做本视图 self-attn，再 cross-attn 查询对方分支的全部 token，最后 MLP。</li>
     <li>DPT 回归头从解码器第 0/6/9/12 层钩出多尺度 token，refinenet 逐级融合后输出 4 通道：点图 3 维 + 置信度 1 维。深度分量过 exp 激活，天然保证正视深度。</li>
-    <li>输出口径是「非对称」的来源：head1 给 X<sup>1,1</sup>（图 1 自己的点，图 1 系），head2 给 X<sup>2,1</sup>（图 2 的点，也在图 1 系，代码键名就叫 <span class="mono">pts3d_in_other_view</span>）。</li>
+    <li>「非对称」来自输出的定义：head1 给 X<sup>1,1</sup>（图像 1 自己的点，图像 1 系），head2 给 X<sup>2,1</sup>（图像 2 的点，也在图像 1 系，代码键名 <span class="mono">pts3d_in_other_view</span>）。</li>
     <li>监督只挂在输出端：GT 点图由深度图加位姿做一次坐标变换构造，损失是置信度加权的欧氏距离（§3）。训练时同一对图两种顺序都喂，网络不会偏科「谁当锚点」；已对称的 batch 编码器只算一半，省一半算力。</li>
     <li>多图场景就是两两重复这个前馈（或先检索挑边），再做一次全局对齐（§2.4），不存在第三种网络调用。</li>
   </ul>
@@ -523,11 +669,11 @@ details.deep ul{margin:4px 0}
   <div class="flowrow" id="stereo-flow"></div>
 
   <ul class="dots">
-    <li>「非对称」指输出口径而不是结构：两条支路结构对称，但 head2 的输出写在 view1 的坐标系里（<span class="mono">pts3d_in_other_view</span>），一支「自我定位」、一支「换系投影」，任务并不对称。</li>
+    <li>「非对称」指输出的定义方式，不是结构：两条支路结构对称，但 head2 的输出写在 view1 的坐标系里（<span class="mono">pts3d_in_other_view</span>），一支「自我定位」、一支「换系投影」，任务并不对称。</li>
     <li>解码器两套权重的来历：<span class="mono">dec_blocks2 = deepcopy(dec_blocks)</span>，初始化同一套随机权重；加载 CroCo 预训练 checkpoint 时，若没有 dec_blocks2 前缀的键，就把 dec_blocks 的权重复制一份过去（<span class="mono">load_state_dict</span> 兼容逻辑）。之后训练中两支各自更新，逐渐分工。</li>
     <li>交叉注意力的接线就一行：<span class="mono">blk1(final[::+1], pos1, pos2)</span>、<span class="mono">blk2(final[::-1], pos2, pos1)</span>——参数顺序就是「谁的 token 查询谁」，每个解码块执行 self-attn、cross-attn、MLP 三段。</li>
     <li>位置编码用 RoPE（相对位置），patch 大小 16；ManyAR_PatchEmbed 支持任意长宽比：图像 padding 到 patch 整数倍，<span class="mono">true_shape</span> 记录有效区域，注意力只算有效 token。</li>
-    <li>竖图有个省事的处理：landscape 包装器把竖图转成横图进网络（权重只在横向分辨率上训练过），输出点图再转置回来，等于免费支持任意方向。</li>
+    <li>竖图有个省事的处理：landscape 包装器把竖图转成横图进网络（权重只在横向分辨率上训练过），输出点图再转置回来，竖图也能直接跑。</li>
     <li>给下游留了 freeze 开关（none / mask / encoder），DUSt3R 本体训练用 none 全量更新；后续工作（如 MASt3R）就是冻住 encoder 在这上面加匹配头。</li>
     <li>对称化训练的算力账：每个 batch 同时含 (I¹,I²) 和 (I²,I¹)，<span class="mono">is_symmetrized</span> 检测到后编码器只算一半再 interleave 回来——两份监督、一份编码开销。</li>
   </ul>
@@ -577,7 +723,7 @@ details.deep ul{margin:4px 0}
 
   <div class="formula">
     <div class="fx">
-      ℓ<sub>regr</sub>(v,i) = ‖ X<sup>v,1</sup><sub>i</sub> / z − X̄<sup>v,1</sup><sub>i</sub> / z̄ ‖,&nbsp;&nbsp;&nbsp; z = norm(X<sup>1,1</sup>, X<sup>2,1</sup>)
+      ℓ<sub>regr</sub>(v,i) = ‖ X<sup>v,1</sup><sub>i</sub> / z − <span class="ovl">X</span><sup>v,1</sup><sub>i</sub> / <span class="ovl">z</span> ‖,&nbsp;&nbsp;&nbsp; z = norm(X<sup>1,1</sup>, X<sup>2,1</sup>)
     </div>
     <div class="note">论文 Eq.2/3，v ∈ {1,2}。逐像素欧氏距离（代码 <span class="mono">L21Loss</span>），z 是两张点图所有有效点到原点的平均距离（<span class="mono">norm_mode='avg_dis'</span>），预测和 GT 各自归一后再比。SfM 重建的数据尺度本来就任意，这一步把尺度歧义从损失里拿掉——网络只对「形状」负责，不对绝对尺度负责。</div>
   </div>
@@ -594,29 +740,29 @@ details.deep ul{margin:4px 0}
       <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
 
       <rect x="12" y="20" width="165" height="40" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
-      <text x="95" y="45" text-anchor="middle" class="svg-nota" fill="#116329">GT 点图 X̄（图 1 相机系）</text>
+      <text x="95" y="45" text-anchor="middle" class="svg-nota" fill="#116329">GT 点图 <tspan text-decoration="overline">X</tspan>（图像 1 相机系）</text>
       <rect x="12" y="72" width="165" height="40" rx="6" class="box" fill="#ffebe9" stroke="#cf222e"/>
       <text x="95" y="97" text-anchor="middle" class="svg-nota" fill="#a40e26">预测点图 X¹,¹ / X²,¹</text>
-      <text x="95" y="126" text-anchor="middle" class="svg-nota">深度图 + 位姿 → 图 1 系</text>
+      <text x="95" y="126" text-anchor="middle" class="svg-nota">深度图 + 位姿 → 图像 1 系</text>
 
       <polyline points="177,40 212,40 212,56 226,56" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
       <polyline points="177,92 212,92 212,72 226,72" fill="none" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
 
       <rect x="228" y="38" width="122" height="52" rx="6" class="box" fill="#ffffff" stroke="#818b98" stroke-dasharray="5 4"/>
       <text x="289" y="58" text-anchor="middle" class="svg-nota-b">÷ z 尺度归一</text>
-      <text x="289" y="76" text-anchor="middle" class="svg-nota">z = avg_dis</text>
+      <text x="289" y="76" text-anchor="middle" class="svg-nota">z：平均距离</text>
 
       <line x1="350" y1="64" x2="388" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
 
       <rect x="390" y="38" width="140" height="52" rx="6" class="box" fill="#ffffff" stroke="#818b98"/>
       <text x="460" y="58" text-anchor="middle" class="svg-nota-b">逐点欧氏距离</text>
-      <text x="460" y="76" text-anchor="middle" class="svg-nota">ℓ_regr = ‖·‖</text>
+      <text x="460" y="76" text-anchor="middle" class="svg-nota">ℓ_regr：两点间距离</text>
 
       <line x1="530" y1="64" x2="568" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
 
       <rect x="570" y="38" width="190" height="52" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
-      <text x="665" y="58" text-anchor="middle" class="svg-nota-b" fill="#5c4400">C·ℓ − α·log C</text>
-      <text x="665" y="76" text-anchor="middle" class="svg-nota" fill="#5c4400">C = 1+exp(c) · α = 0.2</text>
+      <text x="665" y="58" text-anchor="middle" class="svg-nota-b" fill="#5c4400">置信度加权（C）</text>
+      <text x="665" y="76" text-anchor="middle" class="svg-nota" fill="#5c4400">C、α 见上式</text>
 
       <line x1="760" y1="64" x2="796" y2="64" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
 
@@ -628,7 +774,7 @@ details.deep ul{margin:4px 0}
   </div>
 
   <ul class="dots">
-    <li>GT 是免费的：深度图按 <span class="mono">X<sub>i,j</sub> = K⁻¹[iD, jD, D]ᵀ</span> 反投影成点图，再统一变换到图 1 相机系（代码 <span class="mono">inv(gt1['camera_pose'])</span> 一行）；valid_mask 剔除无深度像素。合成数据、SfM 重建、深度传感器三种来源的 GT 都走同一条路。</li>
+    <li>GT 不用人工标注：深度图按<span class="mono">X<sub>i,j</sub> = K⁻¹[iD, jD, D]ᵀ</span> 反投影成点图，再统一变换到图像 1 相机系（代码 <span class="mono">inv(gt1['camera_pose'])</span> 一行）；valid_mask 剔除无深度像素。合成数据、SfM 重建、深度传感器三种来源的 GT 都走同一条路。</li>
     <li>整个训练只有这一个损失：没有匹配损失、没有位姿损失、没有内参损失、没有正则项。对应关系、相机参数全部是这个回归目标的隐式产物。</li>
     <li>代码里的 ScaleInv / ShiftInv / ScaleShiftInv 三个变体训练时都没用——它们是测试准则（<span class="mono">Regr3D_ScaleShiftInv(L21, gt_scale=True)</span>，评估时把预测缩放到 GT 尺度再算距离）。</li>
     <li>对称化在损失这一层生效：<span class="mono">symmetrize_batch</span> 让每个 batch 同时含两种顺序，X<sup>1,1</sup> 和 X<sup>2,1</sup> 的角色互换着练，网络对「谁当锚点」不敏感。</li>
@@ -712,7 +858,7 @@ details.deep ul{margin:4px 0}
   <p style="font-size:13px;color:var(--ink3)">跨论文表 1/2/3 汇总的消融：去掉 CroCo 初始化或降低分辨率，三个任务一致变差——预训练和分辨率都是硬贡献，不是锦上添花。</p>
 
   <ul class="dots">
-    <li>MVS 稠密重建（论文表 4，DTU，mm）：不带任何相机先验，精度 2.677 / 完整度 0.805 / 整体 1.741；带 GT 相机的专用 MVS（如 GeoMVSNet 0.295）仍然更强。定位差异就在「要不要相机先验」，DUSt3R 是这条赛道里唯一不带先验参赛的。</li>
+    <li>MVS 稠密重建（论文表 4，DTU，mm）：不带任何相机先验，精度 2.677 / 完整度 0.805 / 整体 1.741；带 GT 相机的专用 MVS（如 GeoMVSNet 0.295）仍然更强。定位差异就在「要不要相机先验」，DUSt3R 是这条赛道里唯一不带相机先验的方法。</li>
     <li>视觉定位（论文表 1，7Scenes + Cambridge）：DUSt3R 512 与 HLoc 这类强特征匹配管线互有胜负，比如 Cambridge K.College 11cm/0.20° 对 HLoc 12cm/0.20°；附录表 6 显示焦距未知时退化明显（G.Court 38cm → 245cm），内参先验仍然值钱。</li>
     <li>帧数不敏感（附录表 5）：3 帧、5 帧、10 帧的 CO3D mAA 分别为 77.5、76.5、76.7，少几帧不塌，说明单对预测本来就稳。</li>
   </ul>
@@ -725,9 +871,9 @@ details.deep ul{margin:4px 0}
   <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
   <ul class="dots">
     <li>「通用架构 + 大数据回归」可以整体替代手工几何流水线：一个不带任何几何约束层的网络，在 8.5M 图对上只练一个回归损失，就把位姿、深度、重建零样本全做了，而且多数指标超过各任务的专用模型——「每个几何任务一个定制网络」的默认设定被打破。</li>
-    <li>表示选择是最高杠杆的创新：点图一个稠密张量装下全部输出物，特征提取、匹配、RANSAC、三角化、BA 一整族模块随之消失。改表示比改模块省事，效果还更通用。</li>
-    <li>对应关系可以是几何副产品：不需要匹配监督，把两张点图钉在同一个坐标系里，坐标重合即对应。CroCo 预训练提供种子、共享坐标系提供压力、交叉注意力提供通道，三者合起来让隐式对应成立。</li>
-    <li>置信度可以无监督地长出来（C* ≈ α/ℓ），并且立刻在下游派上用场：图对过滤、全局对齐加权都靠它。</li>
+    <li>表示选择是最高杠杆的创新：一张点图就把全部几何输出装下了，特征提取、匹配、RANSAC、三角化、BA 一整族模块随之消失。改表示比改模块省事，效果还更通用。</li>
+    <li>对应关系可以是几何副产品：不需要匹配监督，把两张点图钉在同一个坐标系里，坐标重合即对应。它能成立靠三件配套的事：CroCo 预训练打底、共享坐标系把两图绑在一起、解码器层间留了交换信息的路。</li>
+    <li>置信度不需要额外监督（C* ≈ α/ℓ），训练中自然收敛，并立刻在下游派上用场：图对过滤、全局对齐加权都靠它。</li>
     <li>预训练和分辨率都是硬贡献：去掉 CroCo 或降回 224，单目深度、多视图深度、视觉定位三个任务一致变差（§4.3 消融）。</li>
   </ul>
 
@@ -749,6 +895,7 @@ details.deep ul{margin:4px 0}
   </ul>
 </section>
 
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
 </main>
 </div>
 
@@ -830,7 +977,7 @@ function tri(x1, y1, x2, y2, color, svg){   // 带手绘三角箭头的连线（
       el("line",{x1:106,y1:27,x2:116,y2:62,stroke:"#0969da","stroke-width":1.2,opacity:.45}, s);
       txt(75,95,"两图信息在这里互通",{class:"svg-cn",fill:"#59636e"}, s);
     }],
-    ["双头出点图","两支各接 DPT 头：X¹,¹（图1系）与 X²,¹（同在图1系），各带置信度", s=>{
+    ["双头出点图","两支各接 DPT 头：X¹,¹（图像 1 系）与 X²,¹（同在图像 1 系），各带置信度", s=>{
       el("rect",{x:14,y:22,width:52,height:30,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
       txt(40,42,"DPT 头 1",{class:"svg-cn",fill:"#0550ae"}, s);
       el("rect",{x:84,y:22,width:52,height:30,rx:5,fill:"#ddf4ff",stroke:"#0969da","stroke-width":1.4}, s);
@@ -898,7 +1045,7 @@ function tri(x1, y1, x2, y2, color, svg){   // 带手绘三角箭头的连线（
       el("rect",{x:94,y:26,width:36,height:24,rx:4,fill:"#fff8c5",stroke:"#9a6700","stroke-width":1.4}, s);
       txt(112,42,"C (1)",{class:"svg-nota-b",fill:"#5c4400"}, s);
       txt(75,72,"z = exp(x)：正视深度",{class:"svg-nota"}, s);
-      txt(75,90,"C = 1+exp(c) > 1",{class:"svg-nota"}, s);
+      txt(75,90,"置信度 C（恒 > 1）",{class:"svg-nota"}, s);
     }],
   ];
   steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
@@ -965,146 +1112,6 @@ function tri(x1, y1, x2, y2, color, svg){   // 带手绘三角箭头的连线（
     }],
   ];
   steps.forEach((st,i)=>{ if(i>0) arrow(root); addStep(root,"",i,st[0],st[1],st[2]); });
-})();
-
-/* ============ §0 动图：点图对应关系五步闭环 ============ */
-(function(){
-  const svg = document.getElementById("ptmap-anim");
-  const cap = document.getElementById("anim-cap");
-  const btnT = document.getElementById("anim-toggle");
-  const btnR = document.getElementById("anim-restart");
-  if(!svg || !cap || !btnT || !btnR) return;
-
-  const PAL = ["#8ddb8c","#8cb6ff","#f7a8c4","#ffd166","#a5a1ff","#7fe0c3",
-               "#ff9d8a","#96b8f7","#c297ff","#8ce0c0","#f7d76c","#a8d8b9"];
-  const U = 4, V = 3;
-  const i1 = (u,v)=>[95+u*80, 110+v*70];
-  const i2 = (u,v)=>[1310-u*72, 100+v*66+u*16];
-  const p3 = (u,v)=>[560+u*82+v*8, 210+v*62-u*12];
-  const off = (u,v)=>[((u*7+v*13)%9-4)*3.4, ((u*5+v*11)%7-3)*3.4];
-
-  /* ---- 静态骨架：面板 / 坐标轴 / 标签 ---- */
-  el("rect",{x:20,y:48,width:370,height:300,rx:10,fill:"#ffffff",stroke:"#d1d9e0"},svg);
-  el("rect",{x:420,y:48,width:560,height:380,rx:10,fill:"#f6f8fa",stroke:"#d1d9e0"},svg);
-  el("rect",{x:1010,y:48,width:370,height:300,rx:10,fill:"#ffffff",stroke:"#d1d9e0"},svg);
-  txt(205,32,"图 1 · 正面看这面墙",{class:"svg-cn","font-weight":700},svg);
-  txt(700,32,"共享 3D 空间（图 1 相机系）",{class:"svg-cn","font-weight":700},svg);
-  txt(1195,32,"图 2 · 侧面看同一面墙",{class:"svg-cn","font-weight":700},svg);
-  txt(205,330,"每个圆点 = 一个像素",{class:"svg-nota"},svg);
-  txt(1195,330,"同一场景，另一种拍法",{class:"svg-nota"},svg);
-  el("line",{x1:500,y1:395,x2:650,y2:395,stroke:"#818b98","stroke-width":1.6},svg);
-  txt(664,399,"X",{class:"svg-nota",fill:"#59636e"},svg);
-  el("line",{x1:500,y1:395,x2:500,y2:262,stroke:"#818b98","stroke-width":1.6},svg);
-  txt(500,252,"Y",{class:"svg-nota",fill:"#59636e"},svg);
-  el("line",{x1:500,y1:395,x2:588,y2:424,stroke:"#818b98","stroke-width":1.6},svg);
-  txt(604,428,"Z",{class:"svg-nota",fill:"#59636e"},svg);
-  txt(700,420,"原点 = 图 1 相机",{class:"svg-nota"},svg);
-
-  /* ---- 可动元素 ---- */
-  const d1=[], d2=[], l1=[], l2=[], gh=[], ll=[], wf=[];
-  for(let v=0; v<V; v++) for(let u=0; u<U; u++){
-    const c = PAL[(u*3+v)%12];
-    const a = i1(u,v), b = i2(u,v), p = p3(u,v);
-    d1.push(el("circle",{cx:a[0],cy:a[1],r:13,fill:c,stroke:"#d1d9e0","stroke-width":1.2},svg));
-    d2.push(el("circle",{cx:b[0],cy:b[1],r:13,fill:c,stroke:"#d1d9e0","stroke-width":1.2},svg));
-    l1.push(el("circle",{cx:a[0],cy:a[1],r:9,fill:c,stroke:"#cf222e","stroke-width":2,opacity:0},svg));
-    l2.push(el("circle",{cx:b[0],cy:b[1],r:13.5,fill:"none",stroke:"#0969da","stroke-width":2.5,opacity:0},svg));
-    const g = off(u,v);
-    gh.push({e: el("rect",{x:p[0]-4.5,y:p[1]-4.5,width:9,height:9,rx:1.5,fill:"#818b98",
-      transform:`rotate(45 ${p[0]} ${p[1]})`,opacity:0},svg), p:p});
-    ll.push(el("line",{x1:p[0],y1:p[1],x2:p[0]+g[0],y2:p[1]+g[1],stroke:"#cf222e","stroke-width":1.4,opacity:0},svg));
-  }
-  for(let v=0; v<V; v++) for(let u=0; u<U; u++){
-    if(u<U-1){ const a=p3(u,v), b=p3(u+1,v);
-      wf.push(el("line",{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:"#a5d8ff","stroke-width":1.3,opacity:0},svg)); }
-    if(v<V-1){ const a=p3(u,v), b=p3(u,v+1);
-      wf.push(el("line",{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:"#a5d8ff","stroke-width":1.3,opacity:0},svg)); }
-  }
-  const PU=2, PV=1;
-  const Pa = i1(PU,PV), Pb = i2(PU,PV), Pp = p3(PU,PV);
-  const ring = el("circle",{cx:Pp[0],cy:Pp[1],r:16,fill:"none",stroke:"#1f2328","stroke-width":2,opacity:0},svg);
-  const hl1 = el("circle",{cx:Pa[0],cy:Pa[1],r:19,fill:"none",stroke:"#1f2328","stroke-width":2,opacity:0},svg);
-  const hl2 = el("circle",{cx:Pb[0],cy:Pb[1],r:19,fill:"none",stroke:"#1f2328","stroke-width":2,opacity:0},svg);
-  const pl1 = el("line",{x1:Pa[0],y1:Pa[1],x2:Pp[0],y2:Pp[1],stroke:"#1f2328","stroke-width":1.6,"stroke-dasharray":"6 5",opacity:0},svg);
-  const pl2 = el("line",{x1:Pb[0],y1:Pb[1],x2:Pp[0],y2:Pp[1],stroke:"#1f2328","stroke-width":1.6,"stroke-dasharray":"6 5",opacity:0},svg);
-  const lbI = txt(Pa[0],Pa[1]-26,"i",{class:"svg-nota-b"},svg); lbI.setAttribute("opacity",0);
-  const lbJ = txt(Pb[0],Pb[1]-26,"j",{class:"svg-nota-b"},svg); lbJ.setAttribute("opacity",0);
-  const lbP = txt(Pp[0]+78,Pp[1]-22,"X¹,¹ᵢ = X²,¹ⱼ = P",{class:"svg-nota-b",fill:"#a40e26"},svg); lbP.setAttribute("opacity",0);
-  lbP.setAttribute("text-anchor","start");
-  const lbGT = txt(p3(0,1)[0], p3(0,1)[1]-20,"GT",{class:"svg-nota",fill:"#59636e"},svg); lbGT.setAttribute("opacity",0);
-  const stamp1 = txt(700,378,"输出 = 每像素 3D 坐标 + 颜色 = 彩色点云",{class:"svg-cn","font-weight":700,fill:"#116329"},svg); stamp1.setAttribute("opacity",0);
-  const stamp2 = txt(700,400,"Z 通道即深度图 · 两张点图刚体对齐即位姿",{class:"svg-nota",fill:"#116329"},svg); stamp2.setAttribute("opacity",0);
-
-  /* ---- 相位与文案 ---- */
-  const PH = [
-    [0,    "第 1 步 · 升起：图 1 的每个像素得到一个 3D 坐标 —— 点图 X¹,¹，一张图变成空间里的一片点"],
-    [2200, "第 2 步 · 同空：图 2 的像素也进同一个坐标系（图 1 相机系）—— X²,¹，两张图共享同一套几何"],
-    [4400, "第 3 步 · 重合：同一个点 P 在图 1 是像素 i、在图 2 是像素 j，两个 3D 坐标重合 → i ↔ j 对应，不需要任何匹配算法"],
-    [6900, "第 4 步 · 压短（Loss 的全部）：灰菱形是 GT 点（深度图+位姿免费构造），红线是预测到 GT 的距离，训练把每根红线压短；拿不准的像素置信度自动变低"],
-    [9400, "第 5 步 · 输出即重建：每像素 3D 坐标 + 颜色 = 彩色点云；Z 通道即深度图，两张点图刚体对齐即位姿 —— 点图本身就是场景的显式几何"],
-  ];
-  const T_END = 12400, T_HOLD = 13400;
-  const clamp01 = x => Math.max(0, Math.min(1, x));
-  const ease = k => k<.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
-  const lerp = (a,b,k) => [a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k];
-  let curCap = -1;
-
-  function render(t){
-    let ph = 0;
-    for(let i=0;i<PH.length;i++) if(t >= PH[i][0]) ph = i;
-    if(ph !== curCap){ cap.textContent = PH[ph][1]; curCap = ph; }
-    const k1 = clamp01(t/2200), k2 = clamp01((t-2200)/2200), k3 = clamp01((t-4400)/2500);
-    const k4a = clamp01((t-6900)/500), k4b = ease(clamp01((t-7600)/1600)), k5 = clamp01((t-9400)/2200);
-    const shrink = 1 - .88*k4b;                       // Loss 收缩系数
-    const dim4 = 1 - k5;                              // 第 5 步淡出 Loss 元素
-    for(let idx=0; idx<U*V; idx++){
-      const u = idx%U, v = (idx-u)/U;
-      const a = i1(u,v), b = i2(u,v), p = p3(u,v), g = off(u,v);
-      const lag = (u+v)*110;
-      const e1 = ease(clamp01((t-lag)/1540));
-      const e2 = ease(clamp01((t-2200-lag)/1540));
-      const q1 = lerp(a, [p[0]+g[0]*shrink, p[1]+g[1]*shrink], e1);
-      const q2 = lerp(b, [p[0]+g[0]*shrink, p[1]+g[1]*shrink], e2);
-      l1[idx].setAttribute("cx",q1[0]); l1[idx].setAttribute("cy",q1[1]);
-      l2[idx].setAttribute("cx",q2[0]); l2[idx].setAttribute("cy",q2[1]);
-      l1[idx].setAttribute("opacity", clamp01(e1*3)*dim4>.02?clamp01(e1*3)*dim4:0);
-      l2[idx].setAttribute("opacity", clamp01(e2*3)*dim4>.02?clamp01(e2*3)*dim4:0);
-      d1[idx].setAttribute("opacity", 1-.55*e1);
-      d2[idx].setAttribute("opacity", 1-.55*e2);
-      const pulse = 1 + .06*k5*Math.sin(t/140);
-      l1[idx].setAttribute("r", 9*pulse); l2[idx].setAttribute("r", 13.5*pulse);
-      gh[idx].e.setAttribute("opacity", k4a*dim4);
-      ll[idx].setAttribute("x1",q1[0]); ll[idx].setAttribute("y1",q1[1]);
-      ll[idx].setAttribute("x2",p[0]);   ll[idx].setAttribute("y2",p[1]);
-      ll[idx].setAttribute("opacity", .8*k4a*dim4);
-    }
-    wf.forEach(w=> w.setAttribute("opacity", .95*k5));
-    const ringO = k3*(1-k4a)* (0.5+0.5*Math.sin(t/170));
-    ring.setAttribute("opacity", clamp01(ringO));
-    ring.setAttribute("r", 16+5*Math.sin(t/170));
-    hl1.setAttribute("opacity", clamp01(k3*(1-k4a)));
-    hl2.setAttribute("opacity", clamp01(k3*(1-k4a)));
-    pl1.setAttribute("opacity", clamp01(k3*(1-k4a)));
-    pl2.setAttribute("opacity", clamp01(k3*(1-k4a)));
-    [lbI,lbJ,lbP].forEach(e=> e.setAttribute("opacity", clamp01(k3*(1-.5*k4a))));
-    lbGT.setAttribute("opacity", k4a*dim4);
-    stamp1.setAttribute("opacity", k5);
-    stamp2.setAttribute("opacity", k5);
-  }
-
-  let acc = 0, running = true, last = performance.now();
-  function frame(now){
-    if(running) acc += Math.min(now-last, 100);
-    last = now;
-    render(acc % T_HOLD);
-    requestAnimationFrame(frame);
-  }
-  btnT.addEventListener("click", ()=>{
-    running = !running;
-    btnT.textContent = running ? "⏸ 暂停" : "▶ 播放";
-  });
-  btnR.addEventListener("click", ()=>{ acc = 0; running = true; btnT.textContent = "⏸ 暂停"; });
-  requestAnimationFrame(frame);
 })();
 
 /* ============ 目录 scrollspy ============ */

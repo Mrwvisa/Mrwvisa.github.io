@@ -12,6 +12,7 @@
   --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
   --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
   --star:#e3b341; --star-bg:#fff8c5; --star-line:#eac54f;
+  --read:#1a7f37; --read-bg:#dafbe1;
   --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
   --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
 }
@@ -50,7 +51,46 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1
 .star:hover{opacity:1}
 .star.on{opacity:1;color:var(--star)}
 
+/* 已读标记：读完时由源码标（只读展示，不可点击）；已读 = 绿实心 ✓ */
+.rdbtn{position:absolute;top:9px;right:10px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;border:1.5px solid var(--line);border-radius:50%;background:none;color:var(--ink3);opacity:.55;padding:0}
+.rdbtn.on{opacity:1;background:var(--read);border-color:var(--read);color:#fff}
+
 footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.5px;color:var(--ink3);font-family:var(--mono);background:var(--bg);border-top:1px solid var(--line);padding:6px 0}
+
+/* ============ 前馈式路线图（卡片顶部总览，2026-10 新增） ============ */
+.rmap{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px 8px;margin-top:14px}
+.rmap h2{font-size:13.5px;font-weight:600}
+.rmap .rsub{font-size:11px;color:var(--ink3);margin:1px 0 6px}
+.rmap .rsub .st{color:var(--star)}
+.rt{--c:var(--c-enc)}
+.rt2{--c:#8250df}
+.rt3{--c:#1a7f37}
+.rt .rh{display:flex;align-items:baseline;gap:8px}
+.rt .rh b{font-size:12px;font-weight:600;color:var(--c);padding-left:8px;border-left:3px solid var(--c)}
+.rt .rh span{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.mtlw{overflow-x:auto}
+.mtl{position:relative;height:134px;min-width:780px;margin:0 6px}
+.maxis{position:absolute;left:0;right:10px;top:50%;height:2px;background:var(--c);opacity:.7}
+.maxis::after{content:"";position:absolute;right:-9px;top:-4px;border-left:9px solid var(--c);
+  border-top:5px solid transparent;border-bottom:5px solid transparent}
+.mglab{position:absolute;bottom:0;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
+.mnode{position:absolute;top:50%;width:0}
+.mdot{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;
+  background:var(--c);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--c)}
+.mnode.ms .mdot{width:11px;height:11px;left:-5.5px;top:-5.5px}
+.mstem{position:absolute;left:-1px;width:2px;background:var(--c);opacity:.5}
+.mnode.up .mstem{bottom:3px;height:13px}
+.mnode.dn .mstem{top:3px;height:13px}
+.mlab{position:absolute;left:0;transform:translateX(-50%);width:92px;text-align:center}
+.mnode.up .mlab{bottom:19px}
+.mnode.dn .mlab{top:19px}
+.mlab b{display:block;font-size:11px;font-weight:600;color:var(--c);white-space:nowrap}
+.mlab b .st{color:var(--star)}
+.mlab i{display:block;font-style:normal;font-family:var(--mono);font-size:8.5px;color:var(--ink3);white-space:nowrap}
+.mlab u{display:block;text-decoration:none;font-size:8.5px;color:#8250df}
+/* 已读节点：圆点放大成带白勾的实心圆 + 绿光晕（只读展示，由源码标记） */
+.mnode.read .mdot{background:var(--read);width:15px;height:15px;left:-7.5px;top:-7.5px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(26,127,55,.28);z-index:2}
+.mnode.read .mdot::after{content:"✓";color:#fff;font-size:10px;font-weight:700;line-height:1;margin-top:-1px}
 
 /* 窄屏：侧栏折叠为顶部横向条 */
 @media(max-width:900px){
@@ -71,6 +111,61 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
 
   <!-- 右侧：页头 + 按年份分组的论文卡片 -->
   <main class="content">
+
+    <!-- 各领域专属路线图：template 不渲染，renderGroups() 按当前领域注入；
+         新领域要配图就复制一个 template 改 data-domain -->
+    <template class="rmap-tpl" data-domain="前馈式重建">
+      <section class="rmap">
+      <h2>前馈式 3D / 4D 路线图</h2>
+      <div class="rsub">2024 → 2026-10 · <span class="st">★</span> 里程碑 · 只收前馈式（网络直接输出，新场景免逐场景优化）</div>
+
+      <div class="rt">
+        <div class="rh"><b>路线一 · 前馈几何基座</b><span>2024 → 2026</span></div>
+        <div class="mtlw"><div class="mtl">
+          <span class="mglab" style="left:0;transform:none">2024</span><span class="mglab" style="left:33.33%">2025</span><span class="mglab" style="left:66.66%">2026</span>
+          <div class="maxis"></div>
+          <div class="mnode up ms read" style="left:6%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DUSt3R <span class="st">★</span></b><i>CVPR 24</i></span></div>
+          <div class="mnode dn" style="left:20%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MASt3R</b><i>ECCV 24</i></span></div>
+          <div class="mnode up" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>arXiv 24.10</i></span></div>
+          <div class="mnode dn" style="left:36%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>Fast3R</b><i>CVPR 25</i></span></div>
+          <div class="mnode up ms" style="left:43%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VGGT <span class="st">★</span></b><i>CVPR 25 最佳</i></span></div>
+          <div class="mnode dn" style="left:60%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MapAnything</b><i>Meta 25.09</i></span></div>
+          <div class="mnode up" style="left:72%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DepthAnything3</b><i>25.11</i></span></div>
+          <div class="mnode dn" style="left:82%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VGGT-Ω</b><i>CVPR 26</i></span></div>
+        </div></div>
+      </div>
+
+      <div class="rt rt2">
+        <div class="rh"><b>路线二 · 前馈 3D 高斯</b><span>2024 → 2025</span></div>
+        <div class="mtlw"><div class="mtl">
+          <span class="mglab" style="left:0;transform:none">2024</span><span class="mglab" style="left:33.33%">2025</span><span class="mglab" style="left:66.66%">2026</span>
+          <div class="maxis"></div>
+          <div class="mnode up" style="left:8%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>SplatterImage</b><i>CVPR 24</i></span></div>
+          <div class="mnode dn" style="left:18%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>pixelSplat</b><i>CVPR 24</i></span></div>
+          <div class="mnode up ms" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MVSplat <span class="st">★</span></b><i>ECCV 24</i></span></div>
+          <div class="mnode dn" style="left:47%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MVSplat360</b><i>CVPR 25</i></span></div>
+          <div class="mnode up" style="left:55%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>NoPoSplat</b><i>CVPR 25</i></span></div>
+        </div></div>
+      </div>
+
+      <div class="rt rt3">
+        <div class="rh"><b>路线三 · 前馈 4D 高斯</b><span>2024 → 2026</span></div>
+        <div class="mtlw"><div class="mtl">
+          <span class="mglab" style="left:0;transform:none">2024</span><span class="mglab" style="left:33.33%">2025</span><span class="mglab" style="left:66.66%">2026</span>
+          <div class="maxis"></div>
+          <div class="mnode up ms" style="left:10%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>L4GM <span class="st">★</span></b><i>NeurIPS 24</i></span></div>
+          <div class="mnode dn ms read" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DrivingRecon <span class="st">★</span></b><i>arXiv 24.12</i></span></div>
+          <div class="mnode up" style="left:50%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>WorldSplat</b><i>25.09</i></span></div>
+          <div class="mnode dn" style="left:57%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>StreamSplat</b><i>ICLR 26</i></span></div>
+          <div class="mnode up ms" style="left:64%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MoVieS <span class="st">★</span></b><i>CVPR 26</i></span></div>
+          <div class="mnode dn" style="left:70%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DGGT</b><i>CVPR 26</i></span></div>
+          <div class="mnode up" style="left:78%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>ReconDrive</b><i>26.03</i></span></div>
+          <div class="mnode dn ms" style="left:88%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VG3S <span class="st">★</span></b><i>26.07</i><u>⟷ 路线一×三 汇合</u></span></div>
+        </div></div>
+      </div>
+      </section>
+    </template>
+
     <div id="groups"></div>
     <footer>© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
   </main>
@@ -84,16 +179,29 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
 /* domain = 领域（左侧菜单）；route = 技术路线（右侧分组，替换原年份分组）；
-   路线内按年份从近到远排；star: true 的论文默认带星标 */
+   路线内按年份从近到远排；star: true 的论文默认带星标；read: true = 已读完（由作者告知后 Claude 在源码标记，页面只读不可点改） */
 const PAPERS = [
-  // ── 场景级重建（2026-09 新增域）──
+  // ── 路线一 · 前馈几何基座（点图回归；2026-10-11 移入「前馈式重建」域，置数组首位保证路线序）──
   {
-    domain: "场景级重建", route: "前馈泛化重建",
+    domain: "前馈式重建", route: "前馈几何基座",
+    title: "DUSt3R",
+    full: "DUSt3R: Geometric 3D Vision Made Easy",
+    venue: "CVPR 2024",
+    year: 2024,
+    file: "4d-reconstruct/2024-dust3r.html",
+    read: true,   // 已读完（源码标记，页面只读）
+    desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
+    star: true,
+  },
+  // ── 前馈式重建（2026-09 新增域，原名「场景级重建」，2026-10 改名）──
+  {
+    domain: "前馈式重建", route: "前馈 4D 高斯",
     title: "DrivingRecon",
     full: "DrivingRecon: Large 4D Gaussian Reconstruction Model for Autonomous Driving",
     venue: "NeurIPS 2025",
     year: 2025,
     file: "scene-reconstruct/2025-driverecon.html",
+    read: true,   // 已读完（源码标记，页面只读）
     desc: "在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划",
     star: true,
   },
@@ -176,17 +284,6 @@ const PAPERS = [
     desc: "把 3D 占用预测重构为以当前观测为条件的 4D 占用预测，用 Gaussian 世界模型按静态对齐/动态运动/新场景补全三个因子演化场景流",
     star: true,
   },
-  // ── 路线四：点图回归（每像素回归 3D 点，公共坐标系，对应关系免费得到）──
-  {
-    domain: "4D重建", route: "点图回归",
-    title: "DUSt3R",
-    full: "DUSt3R: Geometric 3D Vision Made Easy",
-    venue: "CVPR 2024",
-    year: 2024,
-    file: "4d-reconstruct/2024-dust3r.html",
-    desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
-    star: true,
-  },
   // ── 新领域：自监督预训练（掩码建模路线，MAE 是本站渲染式预训练一脉的源头）──
   {
     domain: "自监督预训练", route: "掩码建模预训练",
@@ -206,6 +303,8 @@ let currentDomain = PAPERS[0]?.domain ?? "全部";
 // 星标：数据里 star:true 为默认；用户点击后存覆盖值（key starOv，{file: bool}）
 const starOv = JSON.parse(localStorage.getItem("starOv") || "{}");
 const isStarred = p => starOv[p.file] !== undefined ? starOv[p.file] : !!p.star;
+// 已读标记：读者读完时告知 Claude，由 Claude 在源码标（PAPERS 加 read: true；路线图节点加 read 类）；
+// 页面只读展示，不提供任何前端切换（2026-10-11 用户定）
 
 function renderToc() {
   const domains = [...new Set(PAPERS.map(p => p.domain))];
@@ -222,14 +321,19 @@ function selectDomain(d) {
 function renderGroups() {
   const list = PAPERS.filter(p => currentDomain === "全部" || p.domain === currentDomain);
   const routes = [...new Set(list.map(p => p.route))];
-  document.getElementById("groups").innerHTML = routes.map(rt => {
+  // 本领域专属路线图（没有配图的领域不显示）
+  const rmapTpl = document.querySelector(`template.rmap-tpl[data-domain="${currentDomain}"]`);
+  const rmap = rmapTpl ? rmapTpl.innerHTML : "";
+  const cards = routes.map(rt => {
     const ps = list.filter(p => p.route === rt).sort((a, b) => b.year - a.year);
     return `
       <section class="year">
         <h2 class="year-title">${rt}<span class="year-count">${ps.length} 篇</span></h2>
         <div class="card-grid">${ps.map(cardHTML).join("")}</div>
       </section>`;
-  }).join("") || `<p style="color:var(--ink3);margin-top:30px">该领域还没有解读。</p>`;
+  }).join("");
+  document.getElementById("groups").innerHTML =
+    rmap + (cards || `<p style="color:var(--ink3);margin-top:30px">该领域还没有解读。</p>`);
 }
 
 function cardHTML(p) {
@@ -238,6 +342,7 @@ function cardHTML(p) {
     <div class="card" onclick="location.href='${p.file}'">
       <button class="star ${on}" title="星标"
               onclick="toggleStar(event, '${p.file}')">★</button>
+      ${p.read ? '<span class="rdbtn on" title="已读">✓</span>' : ""}
       <div class="card-head">
         <span class="p-name" title="${p.full}">${p.title}</span>
         <span class="p-venue">${p.venue}</span>
@@ -255,6 +360,8 @@ function toggleStar(e, file) {
   localStorage.setItem("starOv", JSON.stringify(starOv));
   e.currentTarget.classList.toggle("on", now);
 }
+
+// （前端已读切换已移除：只读标记由源码写入，2026-10-11 用户定）
 
 renderToc();
 renderGroups();
