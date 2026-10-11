@@ -15,7 +15,7 @@
 .layout
 ├── .toc        左侧领域菜单（128px sticky 侧栏，窄屏折叠为顶部横条）——由 PAPERS 的 domain 字段自动生成
 └── .content
-    ├── .year × N    技术路线分组（替换原年份分组；路线内按年份从近到远排）：route-title + card-grid
+    ├── .year × N    技术路线分组（替换原年份分组；卡片严格按时间线从早到晚排，同年保持数组顺序——2026-10-11 用户定，全站规则）：route-title + card-grid
     │   └── .card    卡片：简短论文名（蓝）+ venue 含年份（右，mono）+ 右下角星标 + 英文全称（2行占位）+ 一句话描述
     └── footer
 ```
@@ -39,7 +39,7 @@
 
 ## 数据模型（index.html 顶部 script）
 
-- `PAPERS` 数组，每条字段：`domain`（领域，左侧菜单）、`route`（技术路线，右侧分组，上面三条之一或新路线名）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等，含年份）、`year`（发表年份，路线内排序依据）、`file`（解读页相对路径，`<目录>/<year>-<slug>.html`；目录按页面最早归属的域命名，**不强制与 domain 字段一一对应**——如「前馈式重建」域两篇分处 `scene-reconstruct/` 与 `4d-reconstruct/`）、`desc`（一句话，可选）、`star`（true = 默认星标，可选）
+- `PAPERS` 数组，每条字段：`domain`（领域，左侧菜单）、`route`（技术路线，右侧分组，上面三条之一或新路线名）、`title`（简短名）、`full`（英文全称）、`venue`（CVPR 2024 等，含年份）、`year`（发表年份，路线内**严格按时间线升序**排列的依据：早年在前，同年保持数组顺序；2026-10-11 用户定，全站规则）、`file`（解读页相对路径，`<目录>/<year>-<slug>.html`；目录按页面最早归属的域命名，**不强制与 domain 字段一一对应**——如「前馈式重建」域两篇分处 `scene-reconstruct/` 与 `4d-reconstruct/`）、`desc`（一句话，可选）、`star`（true = 默认星标，可选）
 
 ## 加一篇新论文解读的流程
 
