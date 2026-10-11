@@ -51,7 +51,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1
 .star:hover{opacity:1}
 .star.on{opacity:1;color:var(--star)}
 
-/* 已读标记：读完时由源码标（只读展示，不可点击）；已读 = 绿实心 ✓ */
+/* 已读标记（写完即标，2026-10-11 规则）：解读写完后由源码标（只读展示，不可点击）；已读 = 绿实心 ✓ */
 .rdbtn{position:absolute;top:9px;right:10px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;border:1.5px solid var(--line);border-radius:50%;background:none;color:var(--ink3);opacity:.55;padding:0}
 .rdbtn.on{opacity:1;background:var(--read);border-color:var(--read);color:#fff}
 
@@ -88,7 +88,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
 .mlab b .st{color:var(--star)}
 .mlab i{display:block;font-style:normal;font-family:var(--mono);font-size:8.5px;color:var(--ink3);white-space:nowrap}
 .mlab u{display:block;text-decoration:none;font-size:8.5px;color:#8250df}
-/* 已读节点：圆点放大成带白勾的实心圆 + 绿光晕（只读展示，由源码标记） */
+/* 已读节点（写完即标）：圆点放大成带白勾的实心圆 + 绿光晕（只读展示，由源码标记） */
 .mnode.read .mdot{background:var(--read);width:15px;height:15px;left:-7.5px;top:-7.5px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(26,127,55,.28);z-index:2}
 .mnode.read .mdot::after{content:"✓";color:#fff;font-size:10px;font-weight:700;line-height:1;margin-top:-1px}
 
@@ -126,7 +126,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <div class="maxis"></div>
           <div class="mnode up ms read" style="left:6%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DUSt3R <span class="st">★</span></b><i>CVPR 24</i></span></div>
           <div class="mnode dn" style="left:20%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MASt3R</b><i>ECCV 24</i></span></div>
-          <div class="mnode up" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>ICLR 25</i></span></div>
+          <div class="mnode up read" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MonST3R</b><i>ICLR 25</i></span></div>
           <div class="mnode dn" style="left:36%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>Fast3R</b><i>CVPR 25</i></span></div>
           <div class="mnode up ms" style="left:43%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VGGT <span class="st">★</span></b><i>CVPR 25 最佳</i></span></div>
           <div class="mnode dn" style="left:60%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MapAnything</b><i>Meta 25.09</i></span></div>
@@ -179,7 +179,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
  * 出现新 domain（领域）时左侧菜单自动多一项，无需改布局代码。
  * ============================================================ */
 /* domain = 领域（左侧菜单）；route = 技术路线（右侧分组，替换原年份分组）；
-   路线内严格按时间线从早到晚排（同年保持数组顺序；2026-10-11 用户定，全站规则）；star: true 的论文默认带星标；read: true = 已读完（由作者告知后 Claude 在源码标记，页面只读不可点改） */
+   路线内严格按时间线从早到晚排（同年保持数组顺序；2026-10-11 用户定，全站规则）；star: true 的论文默认带星标；read: true = 已完成打勾（写完即标：解读写完后 Claude 在源码标记，页面只读不可点改；2026-10-11 规则） */
 const PAPERS = [
   // ── 路线一 · 前馈几何基座（点图回归；2026-10-11 移入「前馈式重建」域，置数组首位保证路线序）──
   {
@@ -189,7 +189,7 @@ const PAPERS = [
     venue: "CVPR 2024",
     year: 2024,
     file: "4d-reconstruct/2024-dust3r.html",
-    read: true,   // 已读完（源码标记，页面只读）
+    read: true,   // 已勾（写完即标，源码只读）
     desc: "两张图一次前馈直接回归公共坐标系下的像素级 3D 点图，深度、位姿、内参、对应关系全部变成这一个回归目标的副产品",
     star: true,
   },
@@ -200,6 +200,7 @@ const PAPERS = [
     venue: "ICLR 2025",
     year: 2025,
     file: "4d-reconstruct/2025-monst3r.html",
+    read: true,   // 已勾（写完即标，源码只读）
     desc: "把 DUSt3R 的点图回归改成按时刻预测，冻结编码器、只在四个动态数据集上微调解码器与回归头，让点图表示直接吃下运动；推理端用一个视频专属的全局优化把逐对点图拧成动态点云，位姿、内参、视频深度全从这一个表示里长出来",
     star: true,
   },
@@ -211,7 +212,7 @@ const PAPERS = [
     venue: "NeurIPS 2025",
     year: 2025,
     file: "scene-reconstruct/2025-driverecon.html",
-    read: true,   // 已读完（源码标记，页面只读）
+    read: true,   // 已勾（写完即标，源码只读）
     desc: "在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划",
     star: true,
   },
@@ -313,8 +314,8 @@ let currentDomain = PAPERS[0]?.domain ?? "全部";
 // 星标：数据里 star:true 为默认；用户点击后存覆盖值（key starOv，{file: bool}）
 const starOv = JSON.parse(localStorage.getItem("starOv") || "{}");
 const isStarred = p => starOv[p.file] !== undefined ? starOv[p.file] : !!p.star;
-// 已读标记：读者读完时告知 Claude，由 Claude 在源码标（PAPERS 加 read: true；路线图节点加 read 类）；
-// 页面只读展示，不提供任何前端切换（2026-10-11 用户定）
+// 已读标记（2026-10-11 用户定，写完即标）：一篇解读写完后 Claude 即在源码打双勾——PAPERS 加 read: true（卡片右上角绿 ✓）
+// + 路线图对应节点加 read 类（带勾绿点），两处同时标；页面只读展示，不提供任何前端切换
 
 function renderToc() {
   const domains = [...new Set(PAPERS.map(p => p.domain))];

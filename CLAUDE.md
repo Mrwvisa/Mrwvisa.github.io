@@ -36,6 +36,7 @@
 - 点卡片整卡 → 跳转论文解读页；星标 `★`：数据里 `star:true` 的默认变黄（`--star:#e3b341`），点击切换并存 localStorage 覆盖值（key `starOv`，`{file: bool}`）
 - 点左侧领域 → 过滤右侧（`selectDomain()`）
 - 无页头无个人信息（用户明确要求）：只有菜单 + 卡片 + 一行页脚
+- 已标列表（每写完一篇追加；写完即标新规自 2026-10-11 起）：DUSt3R、DrivingRecon、MonST3R
 
 ## 数据模型（index.html 顶部 script）
 
