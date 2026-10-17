@@ -157,7 +157,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <div class="mnode dn ms read" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DrivingRecon <span class="st">★</span></b><i>arXiv 24.12</i></span></div>
           <div class="mnode up" style="left:50%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>WorldSplat</b><i>25.09</i></span></div>
           <div class="mnode dn" style="left:57%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>StreamSplat</b><i>ICLR 26</i></span></div>
-          <div class="mnode up ms" style="left:64%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MoVieS <span class="st">★</span></b><i>CVPR 26</i></span></div>
+          <div class="mnode up ms read" style="left:64%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MoVieS <span class="st">★</span></b><i>CVPR 26</i></span></div>
           <div class="mnode dn" style="left:70%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DGGT</b><i>CVPR 26</i></span></div>
           <div class="mnode up" style="left:78%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>ReconDrive</b><i>26.03</i></span></div>
           <div class="mnode dn ms" style="left:88%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VG3S <span class="st">★</span></b><i>26.07</i><u>⟷ 路线一×三 汇合</u></span></div>
@@ -257,6 +257,17 @@ const PAPERS = [
     file: "scene-reconstruct/2025-driverecon.html",
     read: true,   // 已勾（写完即标，源码只读）
     desc: "在环视视频上一次前馈直接预测 4D Gaussian 场景的通用大重建模型，免逐场景优化，并可反哺感知、跟踪与规划",
+    star: true,
+  },
+  {
+    domain: "前馈式重建", route: "前馈 4D 高斯",
+    title: "MoVieS",
+    full: "MoVieS: Motion-Aware 4D Dynamic View Synthesis in One Second",
+    venue: "CVPR 2026",
+    year: 2026,
+    file: "scene-reconstruct/2026-movies.html",
+    read: true,   // 已勾（写完即标，源码只读）
+    desc: "把动态场景表示成「会动的 splatter pixel」——每个输入像素一个高斯加一条随时间变化的变形场，一次前馈同时输出外观、几何与运动；渲染、跟踪、场景流、动体分割全从这一个模型里长出来，单场景 0.93 秒",
     star: true,
   },
   // ── 研究构想（2026-10 新增域）──

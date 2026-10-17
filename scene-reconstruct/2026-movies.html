@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoVieS 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 动态 Splatter Pixel 表示</a>
+  <a href="#s23" class="lv2">2.3 主干：DINOv2 + VGGT + 相机/时间 token</a>
+  <a href="#s24" class="lv2">2.4 三个预测头</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>MoVieS：一秒重建动态 4D 场景的「会动的高斯像素」</h1>
+  <div class="meta">MoVieS: Motion-Aware 4D Dynamic View Synthesis in One Second · arXiv 2507.10065 · github.com/chenguolin/MoVieS · 8 数据集 · CVPR 2026</div>
+</div>
+
+<!-- ============ §0 速览卡 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>前面的 L4GM 解决「物体级、静态相机」的 4D；MoVieS 把目标换成<b>场景级、单目、带相机运动的视频</b>：动态世界里的 3D 场景。它的表示叫「dynamic splatter pixel」——每个输入像素对应一个高斯 {x, a}（位置 + 姿态/大小/透明度/颜色共 11 维），再给每个高斯挂一条随时间变化的<b>变形场</b> m(t) = {Δx(t), Δa(t)}：时刻 t 的高斯就是 x+Δx(t)、a+Δa(t)。这个表示把「外观、几何、运动」三件事统一在一组参数里，而且每个高斯天然可追踪——把高斯沿时间推过去，就是 3D 点追踪。网络结构是把 <a href="2025-vggt.html" style="color:var(--c-enc);text-decoration:none">VGGT</a> 当基座：DINOv2 编码每帧、VGGT 的注意力块做帧间交互，再挂三个 DPT 头——深度头（VGGT 初始化）、splatter 头（从零训，带 RGB 捷径）、运动头（时间条件 AdaLN）。整段 posed 视频一次前馈出 4D 高斯，单场景 0.93 秒；渲染新视角、3D 跟踪、场景流、动体分割全从这一个模型里长出来。整套方法概括起来就是：把动态场景表示成「会动的 splatter pixel」——每个输入像素一个高斯加一条随时间变化的变形场，一次前馈同时输出外观、几何与运动；渲染、跟踪、场景流、动体分割全从这一个模型里长出来，单场景 0.93 秒。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>输入一段<b>已标定</b>的单目视频（每帧带相机位姿 P∈SE(3)、内参 K、时间戳 t∈[0,1]——未标定的情况论文留给未来工作），一次前馈输出每个输入像素的动态 splatter pixel：规范空间位置 x∈R³ + 属性 a∈R¹¹（四元数 4 + 尺度 3 + 透明度 1 + RGB 3），外加任意查询时刻 t_q 的变形量 {Δx(t_q), Δa(t_q)}。三件事一起出：新视角渲染（3DGS 光栅化）、3D 点追踪（把高斯推到 t_q）、深度。单场景 0.93 秒（结构见图 0-1）。
+      <div class="fig">
+        <svg viewBox="0 0 1400 480" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="20" y="52" width="180" height="92" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="110" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">Posed 单目视频</text>
+          <text x="110" y="97" text-anchor="middle" class="svg-nota">帧 Iᵢ [3,H,W]</text>
+          <text x="110" y="115" text-anchor="middle" class="svg-nota">位姿 Pᵢ∈SE(3) · 内参 Kᵢ</text>
+          <text x="110" y="133" text-anchor="middle" class="svg-nota">时间戳 tᵢ∈[0,1]</text>
+
+          <!-- 编码 -->
+          <line x1="200" y1="98" x2="246" y2="98" class="arrow"/>
+          <rect x="248" y="40" width="200" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="348" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">每帧独立编码</text>
+          <text x="348" y="88" text-anchor="middle" class="svg-nota">DINOv2 patch 嵌入</text>
+          <text x="348" y="108" text-anchor="middle" class="svg-nota">+ Plücker 射线（像素对齐，加到特征）</text>
+          <text x="348" y="128" text-anchor="middle" class="svg-nota">+ 相机 token（线性层，拼进序列）</text>
+          <text x="348" y="148" text-anchor="middle" class="svg-nota">+ 时间戳 token（正弦编码，拼进序列）</text>
+          <text x="348" y="172" text-anchor="middle" class="svg-nota">→ 每帧 token 序列</text>
+
+          <!-- VGGT -->
+          <line x1="448" y1="110" x2="494" y2="110" class="arrow"/>
+          <rect x="496" y="40" width="220" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="606" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">VGGT 注意力主干</text>
+          <text x="606" y="88" text-anchor="middle" class="svg-nota">24 层帧内/全局交替注意力</text>
+          <text x="606" y="108" text-anchor="middle" class="svg-nota">从 VGGT-1B 全量微调</text>
+          <text x="606" y="130" text-anchor="middle" class="svg-nota">帧间信息交换全在这里</text>
+          <text x="606" y="154" text-anchor="middle" class="svg-nota">→ 共享 token（跨帧上下文 +</text>
+          <text x="606" y="172" text-anchor="middle" class="svg-nota">相机 + 时间信息）</text>
+
+          <!-- 三个头 -->
+          <line x1="716" y1="110" x2="762" y2="110" class="arrow"/>
+          <rect x="764" y="30" width="210" height="72" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="869" y="54" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度头（DPT）</text>
+          <text x="869" y="74" text-anchor="middle" class="svg-nota">VGGT depth_head 初始化</text>
+          <text x="869" y="91" text-anchor="middle" class="svg-nota">→ 每帧深度 D̂ᵢ</text>
+          <rect x="764" y="112" width="210" height="72" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="869" y="136" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">Splatter 头（DPT）</text>
+          <text x="869" y="156" text-anchor="middle" class="svg-nota">从零训练 + RGB 捷径</text>
+          <text x="869" y="173" text-anchor="middle" class="svg-nota">→ 规范空间 x 与属性 a</text>
+          <rect x="764" y="194" width="210" height="86" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="869" y="218" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">运动头（DPT + AdaLN）</text>
+          <text x="869" y="238" text-anchor="middle" class="svg-nota">查询时刻 t_q 正弦编码</text>
+          <text x="869" y="256" text-anchor="middle" class="svg-nota">AdaLN（零初始化）注入</text>
+          <text x="869" y="273" text-anchor="middle" class="svg-nota">→ 变形 Δx(t_q), Δa(t_q)</text>
+
+          <!-- 表示 -->
+          <line x1="974" y1="110" x2="1020" y2="110" class="arrow"/>
+          <rect x="1022" y="40" width="180" height="180" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="1112" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Dynamic Splatter Pixel</text>
+          <text x="1112" y="88" text-anchor="middle" class="svg-nota">x + a（11 维）</text>
+          <text x="1112" y="108" text-anchor="middle" class="svg-nota">+ m(t) = {Δx, Δa}</text>
+          <text x="1112" y="132" text-anchor="middle" class="svg-nota">t 时刻：x+Δx(t), a+Δa(t)</text>
+          <text x="1112" y="156" text-anchor="middle" class="svg-nota">每个输入像素一个</text>
+          <text x="1112" y="180" text-anchor="middle" class="svg-nota">共享首个相机坐标系</text>
+          <text x="1112" y="204" text-anchor="middle" class="svg-nota">→ 可渲染、可追踪</text>
+
+          <!-- 输出 -->
+          <line x1="1202" y1="110" x2="1248" y2="110" class="arrow" marker-end="url(#ahr)"/>
+          <rect x="1250" y="40" width="130" height="180" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1315" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">输出</text>
+          <text x="1315" y="88" text-anchor="middle" class="svg-nota">新视角渲染</text>
+          <text x="1315" y="106" text-anchor="middle" class="svg-nota">3D 点追踪</text>
+          <text x="1315" y="124" text-anchor="middle" class="svg-nota">深度图</text>
+          <text x="1315" y="142" text-anchor="middle" class="svg-nota">场景流（零样本）</text>
+          <text x="1315" y="160" text-anchor="middle" class="svg-nota">动体分割（零样本）</text>
+          <text x="1315" y="184" text-anchor="middle" class="svg-nota">0.93s/场景</text>
+          <text x="1315" y="204" text-anchor="middle" class="svg-nota">免逐场景优化</text>
+
+          <!-- 监督 -->
+          <rect x="764" y="330" width="616" height="86" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+          <text x="1072" y="356" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：深度 GT + 渲染损失 + 运动 GT（按数据集各取所需）</text>
+          <text x="1072" y="380" text-anchor="middle" class="svg-nota">L = 1.0·L_depth + 1.0·L_rendering + 10·L_motion；LPIPS 0.5；运动 = 点级 L1（1）+ 分布损失（10）</text>
+          <text x="1072" y="402" text-anchor="middle" class="svg-nota">8 个数据集：静态（RE10K/TartanAir/MatrixCity）+ 动态（Spring/VKITTI2/…）+ 跟踪（PointOdyssey/DynamicReplica/Stereo4D）</text>
+          <path d="M 1112,286 L 1112,326" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <path d="M 606,290 L 606,372 L 760,372" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <text x="420" y="452" text-anchor="start" class="svg-cn" fill="#59636e">三件事共用一个主干、一次前馈：外观（渲染）、几何（深度/高斯中心）、运动（变形场）互相监督——渲染当代理任务，把稀疏跟踪标注变成稠密运动理解</text>
+        </svg>
+        <div class="figcap">图 0-1 · MoVieS 核心机制：posed 视频 → DINOv2 + 相机/时间 token → VGGT 注意力主干 → 三个头分别出深度、高斯属性、时间条件变形；合起来就是可渲染、可追踪的动态 splatter pixel。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>输入：</b>posed 视频片段：每帧图像 + 位姿 + 内参 + 时间戳；输入帧数可变（默认 5、最少 2），再随机采若干个「查询时刻 t_q」当输出时间戳。分辨率与宽高比也随机（动态 dataloader 支持不同 aspect ratio）。</li>
+        <li><b>输出：</b>三路：每帧深度 D̂；每个输入像素的 splatter pixel（规范空间位置 x、属性 a）；每个 (像素, t_q) 的变形量 Δx(t_q)、Δa(t_q)。</li>
+        <li><b>GT（按数据集各取所需）：</b>8 个来源——静态：RealEstate10K（70K 场景，只有视频）、TartanAir（0.4K，有深度）、MatrixCity（4.5K，有深度）；动态：Spring（0.03K，深度）、VKITTI2（0.1K，深度）、PointOdyssey（0.1K，深度+跟踪）、DynamicReplica（0.5K，深度+跟踪）、Stereo4D（98K，真实，深度+跟踪）。渲染损失所有数据集都给；深度损失只在有深度 GT 的数据集算；运动损失只在有跟踪 GT 的数据集算——「异构数据集 + 各取所需」是这套训练能规模化（170 万级场景）的原因。</li>
+        <li><b>Loss：</b>三项加权和：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:14.5px">L = 1.0·L<sub>depth</sub> + 1.0·L<sub>rendering</sub> + 10·L<sub>motion</sub></div>
+            <div class="note">逐项含义（公式与符号见 §3；代码里与论文一致）：<br>
+              <b>L<sub>depth</sub></b> = Σᵢ ‖Dᵢ − D̂ᵢ‖₂ + ‖∇Dᵢ − ∇D̂ᵢ‖₁——逐帧深度 MSE + 空间梯度 L1（代码多尺度梯度，4 个尺度）；<br>
+              <b>L<sub>rendering</sub></b> = Σᵥ ‖Iᵥ − Îᵥ‖₂ + 0.5·LPIPS(Iᵥ, Îᵥ)——M 个随机相机视角下、对应目标时刻的渲染图与真值帧（视频本身）；<br>
+              <b>L<sub>motion</sub></b> = (1/P)Σ<sub>i∈Ω</sub>‖Δx̂ᵢ − Δxᵢ‖₁ + (1/P²)Σ<sub>(i,j)∈Ω×Ω</sub>10·‖Δx̂ᵢ·Δx̂ⱼᵀ − Δxᵢ·Δxⱼᵀ‖₁——点级 L1（标签 1）+ 分布损失（标签 10）：后者约束「预测的运动向量两两点积」和真值一致，保住每帧内部点与点的相对距离结构；Ω 是有跟踪标注的 P 个可见点。</div>
+          </div>
+        </li>
+      </ul>
+      训练课程分三段（代码/论文一致）：① 静态场景预训练 → ② 动态场景、变化视图数 → ③ 高分辨率微调。优化器：AdamW，lr 4e-4（预训练 VGGT 部分 ×0.1，新增模块全量），betas (0.9,0.95)，weight decay 0.05；cosine + 1000 步 warmup；batch 8/GPU；EMA 0.9999；bf16 + DeepSpeed + 梯度检查点；32 张 H20 约 5 天。新增模块（splatter 头、motion-splat 头、相机/时间嵌入）<b>零初始化</b>，保证起步不破坏预训练权重。
+      <div class="fig">
+        <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="30" width="180" height="76" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="110" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">8 数据集采样</text>
+          <text x="110" y="78" text-anchor="middle" class="svg-nota">静态 3 + 动态 3 + 跟踪 2</text>
+          <text x="110" y="96" text-anchor="middle" class="svg-nota">按数据集取标注</text>
+          <rect x="250" y="30" width="220" height="76" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="360" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">MoVieS 前馈（图 0-1）</text>
+          <text x="360" y="78" text-anchor="middle" class="svg-nota">VGGT 主干 + 三头</text>
+          <text x="360" y="96" text-anchor="middle" class="svg-nota">动态输入帧数 / 分辨率</text>
+          <rect x="520" y="30" width="210" height="76" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="625" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">三路输出 → 渲染</text>
+          <text x="625" y="78" text-anchor="middle" class="svg-nota">深度 / 高斯 / 变形</text>
+          <text x="625" y="96" text-anchor="middle" class="svg-nota">3DGS 光栅化（gsplat）</text>
+          <rect x="780" y="30" width="240" height="76" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="900" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">L_depth + L_rendering + 10·L_motion</text>
+          <text x="900" y="78" text-anchor="middle" class="svg-nota">有深度才算前项、有跟踪才算后项</text>
+          <text x="900" y="96" text-anchor="middle" class="svg-nota">无标注数据集只算渲染</text>
+          <rect x="20" y="190" width="1000" height="76" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="520" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700">三阶段课程</text>
+          <text x="520" y="238" text-anchor="middle" class="svg-nota">① 静态预训练（RE10K/TartanAir/MatrixCity）→ ② 动态场景（变视图数）→ ③ 高分辨率微调</text>
+          <text x="520" y="256" text-anchor="middle" class="svg-nota">32×H20 ≈ 5 天 · AdamW lr 4e-4（预训练部分 ×0.1）· batch 8/GPU · EMA 0.9999 · bf16 + DeepSpeed + 梯度检查点</text>
+          <line x1="200" y1="68" x2="246" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="470" y1="68" x2="516" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="730" y1="68" x2="776" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <path d="M 900,106 L 900,130 L 360,130 L 360,110" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="630" y="124" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播：全量微调（新增模块全量 lr、预训练部分 0.1×）</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：异构数据集按各自标注取损失 → 三阶段课程 → 32×H20 约 5 天。渲染是全局代理任务，把静态视频、深度、稀疏跟踪三类监督拧成一个目标。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>一段 posed 单目视频——帧数可变（最少 2 帧；评测里 DyCheck 用 13 帧、NVIDIA 用 12 帧），每帧要有位姿和内参。<b>不需要</b>任何逐场景优化。</li>
+        <li><b>输出：</b>每个输入像素的 dynamic splatter pixel（规范空间 x + 属性 a + 变形场 m(t)）。三块读法：
+          <ul class="sub">
+            <li><b>新视角渲染：</b>给定任意相机位姿和任意查询时刻 t_q，把 splatter pixel 推到 t_q、用 3DGS 光栅化——一张图里同时换相机和换时间（图 0-3 上）。</li>
+            <li><b>3D 点追踪：</b>同一个 splatter pixel 在不同 t_q 的位置就是它的 3D 轨迹；模型天然给每个像素一条轨迹，不需要额外的跟踪头（图 0-3 中）。</li>
+            <li><b>零样本应用：</b>把世界系的运动向量变换到目标相机坐标系 = <b>场景流</b>；对运动向量的模长做阈值 = <b>动体分割</b>——都没有专门训练（图 0-3 下）。</li>
+          </ul>
+        </li>
+        <li><b>后处理：</b>没有。前馈出表示 → 渲染/追踪都是一次性计算；0.93 秒/场景（对比 MoSca 45 分钟、Shape-of-Motion 10 分钟、Splatter-a-Video 37 分钟）。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1180 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="50" width="170" height="80" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="105" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">posed 单目视频</text>
+          <text x="105" y="98" text-anchor="middle" class="svg-nota">2 帧起 · 评测 12-13 帧</text>
+          <text x="105" y="116" text-anchor="middle" class="svg-nota">位姿 + 内参</text>
+          <rect x="250" y="50" width="200" height="80" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="350" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">一次前馈</text>
+          <text x="350" y="98" text-anchor="middle" class="svg-nota">0.93s / 场景</text>
+          <text x="350" y="116" text-anchor="middle" class="svg-nota">免逐场景优化</text>
+          <rect x="510" y="50" width="220" height="80" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="620" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Dynamic Splatter Pixels</text>
+          <text x="620" y="98" text-anchor="middle" class="svg-nota">x + a + m(t)</text>
+          <text x="620" y="116" text-anchor="middle" class="svg-nota">每个输入像素一个</text>
+          <rect x="790" y="20" width="370" height="56" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="975" y="42" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染：任意相机 + 任意时刻 t_q</text>
+          <text x="975" y="62" text-anchor="middle" class="svg-nota">3DGS 光栅化（gsplat），同时换视角与换时间</text>
+          <rect x="790" y="90" width="370" height="56" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="975" y="112" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">追踪：把同一像素推到不同 t_q</text>
+          <text x="975" y="132" text-anchor="middle" class="svg-nota">→ 3D 点轨迹（TAPVid-3D：EPE 0.2153）</text>
+          <rect x="790" y="170" width="370" height="70" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="975" y="194" text-anchor="middle" class="svg-cn" style="font-weight:700">零样本：场景流 / 动体分割</text>
+          <text x="975" y="214" text-anchor="middle" class="svg-nota">运动向量转到相机系 = 场景流；模长阈值 = 动体 mask</text>
+          <text x="975" y="232" text-anchor="middle" class="svg-nota">没有任务专用训练</text>
+          <line x1="190" y1="90" x2="246" y2="90" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="450" y1="90" x2="506" y2="90" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="730" y1="70" x2="786" y2="48" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="730" y1="90" x2="786" y2="118" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="730" y1="110" x2="786" y2="200" class="arrow" marker-end="url(#ahI)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：posed 视频一次前馈出动态 splatter pixels；渲染、追踪、场景流、动体分割都是这套表示的「读法」，不是额外模型。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定量（新视角）：</b>静态 RE10K：26.98 / 81.75 / 0.111（PSNR/SSIM/LPIPS，SSIM/LPIPS 全场最优；只训静态的变体 27.60 拿 PSNR 第一）；动态 DyCheck：<b>18.46 / 58.87 / 0.3094 三项全 SOTA</b>（MoSca 18.24 / 55.14 / 0.3698）；NVIDIA：19.16 / 51.41 / 0.3152（仅次于 MoSca 的 21.45，但快 45min→0.93s）。</li>
+        <li><b>定量（3D 跟踪，TAPVid-3D）：</b>Aria Digital Twin EPE₃D <b>0.2153</b>（SpatialTracker 0.5413、CoTracker3 0.5614，误差小一半以上）；DriveTrack 0.0472；Panoptic Studio 0.0352 / δ<sup>0.05</sup> 87.88%。</li>
+        <li><b>定性：</b>动态场景的渲染比优化类方法更平滑、伪影更少（MoSca 在稀疏输入 + 新视角/新时刻下容易过拟合到见过的视角，出现尖刺和过饱和）；零样本场景流边缘锐利、动体分割干净（图见论文）。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>把「动态场景」表示成「每个像素一个高斯 + 一条随时间变化的变形场」，就能用一个前馈模型同时拿下外观、几何、运动三件事：渲染当代理任务把稀疏的跟踪标注放大成稠密运动理解，3D 跟踪、场景流、动体分割都成了同一套表示的免费副产品——4D 感知从「每任务一个模型」走向「一个模型多个读法」，而且快两个数量级。</li>
+  </ul>
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：「dynamic splatter pixel」和普通 3DGS / 4DGS 表示有什么本质区别？</div>
+    <div class="qa-a">A：普通 3DGS 是「逐场景优化出来的一团高斯」；4DGS 通常给每个高斯挂一条轨迹或一个形变网络。MoVieS 的 splatter pixel 有三个关键差别：① <b>来源</b>：每个输入像素一个高斯，位置由该像素的深度决定——和 pixelSplat/MVSplat 的像素对齐高斯同源，不是自由浮动的点；② <b>运动</b>：每个高斯额外挂一个时间条件变形场 m(t)={Δx(t),Δa(t)}，t 时刻的高斯就是 x+Δx(t)、a+Δa(t)——「规范空间 + 形变」的经典分解，但这里形变由网络直接回归，不是优化出来的；③ <b>监督</b>：外观/几何/运动三套监督来自不同数据集，渲染是共同代理任务。结果就是一个前馈模型同时具备「渲染」和「逐像素 3D 追踪」两种读法——普通 4DGS 优化方法不具备后者。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：三个头为什么这样分工？深度头为什么要从 VGGT 初始化、splatter 头为什么要从零训？</div>
+    <div class="qa-a">A：目的就是把「几何」和「外观」解耦。深度头负责给 splatter pixel 提供空间基准（中心 = 像素射线 × 深度），几何先验正是 VGGT 最擅长的——所以它的权重直接从 VGGT 的 depth_head 初始化（代码 <span class="mono">load_state_dict(vggt.depth_head.state_dict(), strict=False)</span>）。splatter 头负责颜色/透明度/尺度/旋转，这些是「渲染属性」，与 VGGT 的几何先验关系不大，从零训练更好（代码里还给它加了从输入图像到最后一层卷积的 RGB 捷径，保住高频细节）。运动头则从 VGGT 的 point_head 初始化（点预测的参数分布相近），再挂时间条件。论文消融显示：把三者拆开（而不是像 MVSplat/pixelSplat 用一个头全预测）能更好地利用预训练先验——这是「解耦 + 分别初始化」的设计意图。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：运动头的「时间条件」具体怎么注入？为什么用零初始化的 AdaLN？</div>
+    <div class="qa-a">A：查询时刻 t_q 先做正弦编码（代码 <span class="mono">time_dim=20</span>：sin/cos 各 10 维），过一层线性层产生 <b>scale 和 bias</b>，在 DPT 的卷积特征上做自适应层归一化（<span class="mono">x = x*(1+scale) + bias</span>）——经典 AdaLN。关键细节：这层线性层的权重和 bias 都<b>零初始化</b>，所以训练开始时「时间条件」等于没加（scale=0、bias=0），模型先以纯 3D 的姿态收敛，再逐渐学会用 t_q 调制特征——避免随机初始化的时间嵌入一上来就把预训练特征打乱。同一套零初始化也用在相机 token / 时间 token 的新嵌入上（代码里这些新模块还享受全量学习率，而预训练部分用 0.1× 学习率）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：运动损失为什么要有「分布损失」？单靠点级 L1 不行吗？</div>
+    <div class="qa-a">A：单靠点级 L1 有两个问题：① 跟踪标注是稀疏的（只有部分点有 GT），点级损失只在这些点上有效，网络可能在没标注的区域学出「乱动」；② 只对齐单点位置，不约束「同一帧内点与点的相对结构」，运动场可能整体合理但局部被揉皱。分布损失把「预测运动向量两两点积矩阵」对齐到真值——两两内积编码的是点对之间的相对方向/距离结构，等价于要求「这一帧的运动场整体形状」和真值一致。消融（Aria Digital Twin EPE₃D）：无运动监督 0.7938（且训练震荡、频繁 None 梯度）；只有点级 L1 0.2262；只有分布损失 0.2496；两者结合 <b>0.2153</b>——点级负责绝对位置、分布级负责整体结构，互补。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：相机信息是怎么进网络的？为什么两种方式都要？</div>
+    <div class="qa-a">A：两条路线互补：① <b>Plücker 射线嵌入</b>——把位姿和内参变成每像素一条射线的 6 维表示（像素对齐），降采样后<b>加到</b>图像特征上，告诉网络「每个像素对应的空间射线」；② <b>相机 token</b>——位姿和内参过线性层变一个 token，<b>拼进</b> token 序列，让注意力层能直接读取相机上下文。消融（RE10K PSNR）：无相机 25.56；只有 Plücker 25.81（几乎等于没有）；只有 camera token 26.81；两者都有 <b>27.60</b>。结论：相机 token 提供全局的相机感知（关键），Plücker 提供像素级的几何对齐（补充）——一个从「序列」层面、一个从「特征」层面注入。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：既然主干从 VGGT 初始化，那这项工作是「站在 VGGT 肩膀上」还是「没有 VGGT 也行」？</div>
+    <div class="qa-a">A：论文的消融说得很直白：VGGT 初始化<b>不是必需组件</b>，只是加速收敛。224×224 分辨率、DyCheck 上：VGGT 初始化的版本 2 天到 17.97 dB mPSNR；从零训练的版本 6 天到 16.64 dB 且还没收敛——约 3 倍训练成本差距。这也意味着 MoVieS 的方法论（动态 splatter pixel + 三头 + 多数据集监督）与具体主干解耦；但工程上，VGGT 预训练提供的几何先验对「训练稳定性」（论文特别强调训练不稳）显然是实打实的帮助。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：为什么必须要「posed」视频？没位姿怎么办？</div>
+    <div class="qa-a">A：这是方法边界：输入需要每帧的相机位姿与内参，论文明确把「unposed videos」留给未来工作。原因是三维表示（规范空间、世界系运动）都以相机位姿为锚——没有位姿，splatter pixel 的「规范空间」和跨帧运动都无从定义。工程上可以前置一个位姿估计器：论文在 DAVIS 野外视频上就是用 MegaSaM 估的位姿（仓库也提供了这批预处理视频与位姿）。这和本站「前馈几何基座」路线（DUSt3R/VGGT 直接出位姿）正好可以串联：VGGT 出位姿 → MoVieS 出 4D。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：论文和发布代码有哪些值得注意的出入？</div>
+    <div class="qa-a">A：① <b>颜色表示</b>：论文的属性 a 写的是 RGB（3 维），代码默认 <span class="mono">sh_degree=0</span>——即只有球谐的 DC 项（等价 RGB），没有视角相关的 SH 高阶项；② <b>深度损失</b>：论文公式写 MSE + 梯度 L1，代码的梯度项是<b>多尺度</b>（4 个尺度）；③ <b>置信度</b>：代码有 <span class="mono">depth_conf_alpha / motion_conf_alpha</span>，但默认 0——即没有启用置信度加权，和论文「omitted confidence-aware weighting」一致；④ <b>学习率分配</b>：代码 <span class="mono">lr_mult=0.1</span> 且排除 splatter/motion-splat 头和相机/时间嵌入——预训练部分 0.1×、新增模块全量，论文正文没展开；⑤ <b>额外头</b>：代码里还有一个 <span class="mono">motion_splat_head</span>（以静态高斯属性为 shortcut 预测运动后的属性），论文的「Motion w/o NVS」消融对应的实现；⑥ <b>帧数</b>：训练默认 <span class="mono">num_input_frames=5</span>、最少 2；评测时 DyCheck 用 13 帧、NVIDIA 用 12 帧。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：它的局限和适用边界？</div>
+    <div class="qa-a">A：① 必须 posed（见上）；② 动态数据集上 NVIDIA 的 PSNR 输给 MoSca（19.16 vs 21.45）——MoSca 用静态多视图优化 + 长视频拟合，在「相机抖动大、动态复杂」的场景里仍有优势，MoVieS 赢在泛化与速度；③ RE10K 静态集上「完整动态模型」的 PSNR 略低于「只训静态」的变体（26.98 vs 27.60）——加运动建模对纯静态数据有一点点让步；④ 依赖训练数据标注质量（深度/跟踪 GT 的噪声会进模型）；⑤ 长视频、大场景、极端动态没有专门验证；⑥ 不可编辑（运动由网络输出，不能交互改动作）。</div>
+  </div>
+</section>
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、MoVieS 怎么解。</div>
+
+  <p>真实世界是动态的，但 3D 视觉的大多数模型还是「静态 + 分任务」：单目深度一个模型、新视角合成一个模型、点追踪又一个模型；做 4D 场景重建要么需要多机位视频、要么每个场景优化几十分钟。MoVieS 的问题很直接：<b>能不能用一个前馈模型，从一段普通单目视频里同时产出外观、几何和运动？</b>它的答案是把三件事压进同一个表示：每个输入像素一个高斯（外观 + 几何），每个高斯挂一条随时间变化的变形场（运动）；三个 DPT 头分别预测深度、高斯属性、时间条件变形。渲染是共同代理任务，把静态视频、深度标注、稀疏跟踪标注三类数据拧成一个训练目标——渲染和新视角合成提供稠密监督，跟踪标注负责把「运动」钉在物理上。整套方法概括起来就是：把动态场景表示成「会动的 splatter pixel」——每个输入像素一个高斯加一条随时间变化的变形场，一次前馈同时输出外观、几何与运动；渲染、跟踪、场景流、动体分割全从这一个模型里长出来，单场景 0.93 秒。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>4D 感知任务各自为战</h4>
+      <p>深度、新视角合成、3D 追踪、场景流、动体分割——每个任务都有自己的模型和数据管线，几何先验无法共享；同一段视频被不同模型解读出不一致的 3D 结构。</p>
+      <p>要统一，就得有一个能同时承载「外观、几何、运动」的表示，而且这个表示必须可微、可渲染、可追踪。</p>
+    </div>
+    <div class="card">
+      <h4>动态 4D 的两条老路都有硬伤</h4>
+      <p>优化类（MoSca / Shape-of-Motion / Splatter-a-Video）逐场景拟合，质量可以很高，但要 10~45 分钟/场景，依赖视频分割 mask，稀疏输入下容易过拟合到见过的视角。</p>
+      <p>前馈类此前只解决静态（pixelSplat/MVSplat/DepthSplat）或物体级 4D（L4GM）——场景级、动态、单目、带相机运动的前馈 4D 还是空白。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:20%">路线</th><th style="width:28%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>优化式动态 4D</td>
+      <td class="mono">MoSca / Shape-of-Motion / Splatter-a-Video</td>
+      <td>逐场景优化形变场/高斯轨迹。质量高但要 10~45 分钟，需视频分割 mask 辅助，稀疏输入易过拟合视角。</td>
+    </tr>
+    <tr>
+      <td>前馈静态 3DGS</td>
+      <td class="mono">pixelSplat / MVSplat / DepthSplat</td>
+      <td>稀疏视图一次前馈出高斯，快且泛化好；但假设场景静态，动态物体会被硬拟合成静态几何。</td>
+    </tr>
+    <tr>
+      <td>前馈物体级 4D</td>
+      <td class="mono">L4GM</td>
+      <td>单目视频一次前馈出「会动的物体」；只做抠图后的单物体、静态相机，不是场景级。</td>
+    </tr>
+    <tr>
+      <td>点追踪</td>
+      <td class="mono">CoTracker3 / BootsTAP / SpatialTracker</td>
+      <td>2D 跟踪很成熟；3D 版本依赖单目深度估计反投影，深度噪声直接进 3D 轨迹（EPE 被放大）。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>MoVieS 是怎么解决的</h3>
+  <p><b>核心思想：用一个「可渲染 + 可变形 + 逐像素」的统一表示，把外观、几何、运动变成同一个模型的三种输出；再用渲染当代理任务，把三类异构监督拧到一起。</b>四个决定：</p>
+  <ul class="dots">
+    <li><b>动态 splatter pixel：</b>每个输入像素一个高斯（位置 x + 属性 a），每个高斯挂时间条件变形场 m(t)。渲染 = 推到 t 后光栅化；追踪 = 同一高斯在不同 t 的位置；场景流 = 运动向量换系。表示一次定义，五个任务共享。</li>
+    <li><b>三个解耦的头：</b>深度头（VGGT 初始化，负责几何基准）、splatter 头（从零训 + RGB 捷径，负责外观）、运动头（AdaLN 注入查询时刻，负责动态）。各取所长的初始化，而不是一个头全包。</li>
+    <li><b>渲染当代理任务：</b>任何有视频的数据集都能提供渲染监督；有深度/跟踪 GT 的数据集再额外加对应损失。170 万级场景的异构数据因此可以一起训——这是「前馈 4D」能规模化的关键。</li>
+    <li><b>VGGT 当主干：</b>几何预训练的注意力块 + DINOv2 特征，全量微调；相机用「Plücker + camera token」双路注入，时间用时间戳 token。预训练让训练稳定、收敛快（消融：从零训要 3× 时间）。</li>
+  </ul>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>一个模型五项能力：新视角合成、深度、3D 点追踪、场景流、动体分割——后两者零样本，不需要任务专用训练。</li>
+    <li>场景级动态 4D 前馈：DyCheck 18.46 / 58.87 / 0.3094 三项 SOTA（超过 MoSca 等优化方法）；TAPVid-3D 3D 跟踪 EPE 0.2153，比 SpatialTracker 低一半以上。</li>
+    <li>快两个数量级：0.93 秒/场景（MoSca 45 分钟、Shape-of-Motion 10 分钟、Splatter-a-Video 37 分钟）。</li>
+    <li>泛化：RE10K 静态、DyCheck/NVIDIA 动态、DAVIS 野外（位姿由 MegaSaM 估计）都能跑；说明「学的不是某个数据集，是运动与几何的关系」。</li>
+    <li>工程友好：32 张 H20 训 5 天；推理无需逐场景优化，接 gsplat 渲染。</li>
+  </ul>
+</section>
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（带 shape），再拆表示（2.2）、主干与相机/时间注入（2.3）、三个头（2.4）。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 600" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <rect x="20" y="60" width="170" height="110" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="105" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">输入帧（N 可变）</text>
+      <text x="105" y="108" text-anchor="middle" class="svg-nota">Iᵢ [3,H,W]（如 518²）</text>
+      <text x="105" y="126" text-anchor="middle" class="svg-nota">Pᵢ∈SE(3) · Kᵢ · tᵢ∈[0,1]</text>
+      <text x="105" y="148" text-anchor="middle" class="svg-nota">训练默认 5 帧 · 最少 2</text>
+      <text x="105" y="164" text-anchor="middle" class="svg-nota">分辨率/宽高比随机</text>
+
+      <!-- Token 化 -->
+      <line x1="190" y1="115" x2="236" y2="115" class="arrow"/>
+      <rect x="238" y="46" width="220" height="180" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="348" y="72" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">DINOv2 patch 嵌入</text>
+      <text x="348" y="94" text-anchor="middle" class="svg-nota">ViT-L/14（取自 VGGT-1B）</text>
+      <text x="348" y="114" text-anchor="middle" class="svg-nota">每帧 1369 patch token（518²）</text>
+      <text x="348" y="136" text-anchor="middle" class="svg-nota">+ Plücker 射线嵌入</text>
+      <text x="348" y="156" text-anchor="middle" class="svg-nota">（像素对齐，加进特征图）</text>
+      <text x="348" y="178" text-anchor="middle" class="svg-nota">+ camera token（拼进序列）</text>
+      <text x="348" y="198" text-anchor="middle" class="svg-nota">+ 时间戳 token（正弦，拼进序列）</text>
+      <text x="348" y="216" text-anchor="middle" class="svg-nota">新嵌入零初始化</text>
+
+      <!-- VGGT 主干 -->
+      <line x1="458" y1="115" x2="504" y2="115" class="arrow"/>
+      <rect x="506" y="36" width="250" height="200" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="631" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">VGGT 聚合器（全量微调）</text>
+      <text x="631" y="84" text-anchor="middle" class="svg-nota">24 层帧内 / 全局交替注意力</text>
+      <text x="631" y="104" text-anchor="middle" class="svg-nota">dim 1024 · 16 头</text>
+      <text x="631" y="126" text-anchor="middle" class="svg-nota">输出多层 token 缓存</text>
+      <text x="631" y="146" text-anchor="middle" class="svg-nota">（层 4/11/17/23，帧内+全局拼接 2C=2048）</text>
+      <text x="631" y="172" text-anchor="middle" class="svg-cn" fill="#59636e">帧间、跨相机、跨时间的信息</text>
+      <text x="631" y="190" text-anchor="middle" class="svg-cn" fill="#59636e">都在这 24 层里交换</text>
+      <text x="631" y="214" text-anchor="middle" class="svg-nota">预训练部分 lr ×0.1</text>
+
+      <!-- 三个头 -->
+      <line x1="756" y1="115" x2="802" y2="115" class="arrow"/>
+      <rect x="804" y="36" width="220" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="914" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度头（GSDPT）</text>
+      <text x="914" y="80" text-anchor="middle" class="svg-nota">init 自 VGGT depth_head</text>
+      <text x="914" y="95" text-anchor="middle" class="svg-nota">→ D̂ᵢ [H,W]</text>
+      <rect x="804" y="112" width="220" height="64" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="914" y="136" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">Splatter 头（GSDPT）</text>
+      <text x="914" y="156" text-anchor="middle" class="svg-nota">从零训 · RGB 捷径（3 通道）</text>
+      <text x="914" y="171" text-anchor="middle" class="svg-nota">→ 属性 a（11 维/像素）</text>
+      <rect x="804" y="188" width="220" height="72" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="914" y="212" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">运动头（GSDPT + AdaLN）</text>
+      <text x="914" y="232" text-anchor="middle" class="svg-nota">init 自 VGGT point_head</text>
+      <text x="914" y="251" text-anchor="middle" class="svg-nota">t_q 正弦编码 → AdaLN（零初始化）→ Δx, Δa</text>
+
+      <!-- 表示 -->
+      <line x1="1024" y1="115" x2="1070" y2="115" class="arrow"/>
+      <rect x="1072" y="36" width="150" height="224" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+      <text x="1147" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">Splatter Pixel</text>
+      <text x="1147" y="86" text-anchor="middle" class="svg-nota">x = 深度反投影</text>
+      <text x="1147" y="106" text-anchor="middle" class="svg-nota">a = [q4, s3, α1, rgb3]</text>
+      <text x="1147" y="126" text-anchor="middle" class="svg-nota">m(t_q) = [Δx, Δa]</text>
+      <text x="1147" y="150" text-anchor="middle" class="svg-nota">规范空间 = 首相机系</text>
+      <text x="1147" y="170" text-anchor="middle" class="svg-nota">按平均点距归一化</text>
+      <text x="1147" y="194" text-anchor="middle" class="svg-cn" fill="#59636e">每输入像素一个</text>
+      <text x="1147" y="214" text-anchor="middle" class="svg-cn" fill="#59636e">可渲染 + 可追踪</text>
+
+      <!-- 渲染 -->
+      <line x1="1222" y1="115" x2="1268" y2="115" class="arrow" marker-end="url(#ahr2)"/>
+      <rect x="1270" y="60" width="110" height="160" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1325" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">gsplat</text>
+      <text x="1325" y="108" text-anchor="middle" class="svg-nota">渲染 (相机, t_q)</text>
+      <text x="1325" y="128" text-anchor="middle" class="svg-nota">[3,H,W]</text>
+      <text x="1325" y="152" text-anchor="middle" class="svg-cn" fill="#59636e">>500 FPS 量级</text>
+      <text x="1325" y="172" text-anchor="middle" class="svg-cn" fill="#59636e">0.93s 端到端</text>
+
+      <!-- 监督 -->
+      <rect x="804" y="430" width="576" height="86" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1092" y="456" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督（按数据集）：深度 GT · 渲染真值 · 跟踪 GT</text>
+      <text x="1092" y="480" text-anchor="middle" class="svg-nota">L = 1·L_depth + 1·L_rendering + 10·L_motion</text>
+      <text x="1092" y="500" text-anchor="middle" class="svg-nota">L_depth：4 尺度梯度；L_motion：点级 L1 + 分布损失（§3）</text>
+      <path d="M 1325,220 L 1325,470 L 1380,470" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <path d="M 940,430 L 940,366 L 631,366 L 631,236" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <text x="420" y="530" text-anchor="start" class="svg-cn" fill="#59636e">输出 token 同时喂三个 DPT 头：深度头给几何基准、splatter 头给外观、运动头按 t_q 给变形——三条路共享同一份跨帧特征</text>
+      <text x="420" y="560" text-anchor="start" class="svg-cn" fill="#59636e">推理不需要逐场景优化：一次前馈出 splatter pixels，渲染/追踪/场景流都是后处理层面的「读法」</text>
+    </svg>
+    <div class="figcap">图 2-1 · MoVieS 总流程：DINOv2 编码 + 相机/时间注入 → VGGT 24 层注意力 → 三个 DPT 头 → 动态 splatter pixels → gsplat 渲染。shape 取自发布配置（518 输入、patch 14、dim 1024、sh degree 0）。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>主干 / 预测头</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>表示</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>渲染输出</span>
+      <span><span class="sw dash"></span>监督</span>
+    </div>
+  </div>
+</section>
+<!-- ============ §2.2 表示 ============ -->
+<section id="s22">
+  <h2><span class="no">2.2</span>动态 Splatter Pixel 表示</h2>
+
+  <ul class="dots">
+    <li><b>静态部分 {x, a}：</b>每个输入像素对应一个高斯，位置 x∈R³ 定义在<b>共享的规范空间</b>（首帧相机坐标系）里，其余属性 a∈R¹¹＝旋转四元数 4 + 尺度 3 + 透明度 1 + RGB 3（代码 <span class="mono">sh_degree=0</span>，颜色就是 DC 项的 RGB，不含视角相关球谐；论文的「RGB」与此一致）。</li>
+    <li><b>动态部分 m(t)：</b>每个高斯额外挂一条随查询时刻变化的变形场 m(t)={Δx(t), Δa(t)}，t 时刻的高斯为 x+Δx(t)、a+Δa(t)。Δx 是规范空间里的 3D 位移（世界系表达），Δa 是属性（尺度/旋转/透明度/颜色）的增量。</li>
+    <li><b>为什么这个表示是「统一」的：</b>渲染 = 选一个相机位姿 + 一个 t_q，把高斯推到 t_q 后光栅化；3D 追踪 = 同一个高斯在不同 t_q 的 x+Δx(t_q) 序列；场景流 = Δx 变换到目标相机系；动体分割 = |Δx| 阈值。五个任务读的是同一组参数，不需要给每个任务加头。</li>
+    <li><b>规范化：</b>和 VGGT 一样，用「所有 3D 点到原点平均距离」把场景尺度钉死；深度损失和运动损失里<b>不再做额外归一化</b>，也省掉了 DUST3R/VGGT 的置信度加权（代码里 <span class="mono">depth_conf_alpha=motion_conf_alpha=0</span>）——论文说这是为了训练更稳。</li>
+    <li><b>静态/动态自动区分：</b>在纯静态输入上，预测出的运动自然收敛到接近 0（&lt;1e-3）——模型没有显式的「动/静分类器」，运动头自己学会了「没动就别动」。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 主干 ============ -->
+<section id="s23">
+  <h2><span class="no">2.3</span>主干：DINOv2 + VGGT + 相机/时间 token</h2>
+
+  <ul class="dots">
+    <li><b>视觉编码：</b>每帧独立过 DINOv2 patch 嵌入（ViT-L/14，直接取自 VGGT-1B 的 <span class="mono">aggregator.patch_embed</span>），518×518 输入 → 37×37=1369 个 patch token（dim 1024）。</li>
+    <li><b>相机注入（两路互补）：</b>① <b>Plücker 嵌入</b>：位姿 + 内参 → 每像素 6 维射线，降采样后<b>空间相加</b>到特征图上（像素对齐）；② <b>camera token</b>：位姿 + 内参过线性层变一个 token，<b>拼进</b> token 序列（序列级）。消融（RE10K PSNR）：无相机 25.56 → 只有 Plücker 25.81（几乎没用）→ 只有 camera token 26.81 → 两者都有 27.60。camera token 是主力，Plücker 提供像素级几何补充。</li>
+    <li><b>时间注入：</b>输入帧的时间戳 t_i∈[0,1] 做正弦编码，变成 timestamp token 拼进序列——模型因此知道帧的先后顺序；查询时刻 t_q 则由运动头的 AdaLN 注入（§2.4）。</li>
+    <li><b>VGGT 注意力主干：</b>24 层「帧内 / 全局」交替注意力（dim 1024、16 头），从 VGGT-1B 初始化后<b>全量微调</b>；跨帧、跨相机、跨时间的信息都在这里交换。输出多层 token 缓存（层 4/11/17/23 的「帧内+全局」拼接，2C=2048 维）供三个头使用。</li>
+    <li><b>新模块的处理：</b>camera token、timestamp token、splatter 头、motion-splat 头都是新加的——<b>零初始化</b>（AdaLN 的 scale/bias 也是零），保证训练起步时模型行为与预训练 VGGT 一致；这些新模块用全量学习率，预训练部分用 0.1×（代码 <span class="mono">lr_mult=0.1</span> + 排除名单）。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 三个头 ============ -->
+<section id="s24">
+  <h2><span class="no">2.4</span>三个预测头</h2>
+
+  <ul class="dots">
+    <li><b>深度头（GSDPT）：</b>从缓存 token 出逐帧深度 D̂ [H,W]；权重从 VGGT 的 <span class="mono">depth_head</span> 初始化——几何先验最值钱的部分直接继承。深度乘以像素射线得到 splatter pixel 的中心 x。</li>
+    <li><b>Splatter 头（GSDPT，从零训）：</b>预测每像素的属性 a（四元数 4、尺度 3、透明度 1、颜色 3）。带一条<b>RGB 捷径</b>：把输入图像（3 通道）过一层卷积直接加到头的最后一层输出上，保住高频细节、提高颜色保真度（代码 <span class="mono">shortcut_dim=3</span>）。</li>
+    <li><b>运动头（GSDPT + AdaLN，时间条件）：</b>查询时刻 t_q 做正弦编码（<span class="mono">time_dim=20</span>）→ 线性层产生 scale/bias（<b>零初始化</b>）→ 在 DPT 卷积特征上做 AdaLN（x·(1+scale)+bias）→ 输出 3D 位移 Δx。代码里属性变形 Δa 由一个独立的 <span class="mono">motion_splat_head</span> 预测，shortcut 是静态高斯属性（11 维）——把「运动后的高斯」写成「静态高斯 + 增量」，让运动头只需要学「变化量」。</li>
+    <li><b>三个头的共同点：</b>都是 DPT 风格（多层 token 上采样融合 → 3×3 卷积 → 输出），输入都是 2C=2048 维的缓存 token，输出都对齐到输入分辨率——形状上一致，职责上解耦。</li>
+  </ul>
+</section>
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="sec-sub">记号：D̂/D 为预测/真值深度；Î/I 为渲染/真值图像；Δx̂/Δx 为预测/真值 3D 运动；Ω 为有跟踪标注的可见点集合（共 P 个）。</div>
+
+  <h3><span class="no">3.1</span>三项损失与逐符号解释</h3>
+
+  <div class="formula">
+    <div class="fx" style="font-size:15px">L = 1.0·L<sub>depth</sub> + 1.0·L<sub>rendering</sub> + 10·L<sub>motion</sub></div>
+    <div class="note">论文 Eq.1。三项的量级差靠权重拉平：运动损失压得最重（10），因为它只在稀疏跟踪点上出现、信号最弱；深度和渲染各 1。下面逐项展开。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx" style="font-size:14.5px">L<sub>depth</sub> = Σ<sub>i=1</sub><sup>N</sup> ‖ D<sub>i</sub> − D̂<sub>i</sub> ‖<sub>2</sub> + ‖ ∇D<sub>i</sub> − ∇D̂<sub>i</sub> ‖<sub>1</sub></div>
+    <div class="note">逐帧深度损失：第一项是像素级 MSE，第二项是空间梯度 L1（相邻像素差分，管边缘与平面）。<b>代码细节</b>：梯度项是<b>多尺度</b>的（4 个尺度，每隔 2<sup>s</sup> 像素采样重算），且损失支持置信度加权——但默认 <span class="mono">depth_conf_alpha=0</span>，等价于不加权，和论文「省略 confidence-aware weighting」一致。只用在有深度 GT 的数据集（TartanAir / MatrixCity / Spring / VKITTI2 / PointOdyssey / DynamicReplica / Stereo4D）。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx" style="font-size:14.5px">L<sub>rendering</sub> = Σ<sub>v=1</sub><sup>M</sup> ‖ I<sub>v</sub> − Î<sub>v</sub> ‖<sub>2</sub> + 0.5 · LPIPS(I<sub>v</sub>, Î<sub>v</sub>)</div>
+    <div class="note">在 M 个随机采样的相机视角下，用「目标时刻」的高斯渲染图像 Î<sub>v</sub>，和对应时刻的真值帧 I<sub>v</sub> 比：像素 MSE + 0.5×LPIPS（感知损失）。<b>所有 8 个数据集都提供这一项</b>——它是把「只有视频没有几何标注」的 RE10K 也拉进训练的原因，也是「渲染当代理任务」的具体落地。</div>
+  </div>
+
+  <div class="formula">
+    <div class="fx" style="font-size:13.5px">L<sub>motion</sub> = (1/P) Σ<sub>i∈Ω</sub> 1·‖Δx̂<sub>i</sub> − Δx<sub>i</sub>‖<sub>1</sub> + (1/P²) Σ<sub>(i,j)∈Ω×Ω</sub> 10·‖ Δx̂<sub>i</sub>·Δx̂<sub>j</sub><sup>⊤</sup> − Δx<sub>i</sub>·Δx<sub>j</sub><sup>⊤</sup> ‖<sub>1</sub></div>
+    <div class="note">运动损失 = 点级 + 分布级：<br>
+      <b>第一项（点级，权重 1）</b>：逐点 L1，预测位移对齐真值位移（真值 = 跟踪点在两帧间的 3D 位移）；<br>
+      <b>第二项（分布级，权重 10）</b>：把「预测运动向量两两点积」和「真值运动向量两两点积」对齐——内积编码点对之间的相对方向与距离结构，逼运动场保持帧内几何关系（不是一帧里的点各自乱飞）；<br>
+      <b>Ω、P</b>：有跟踪标注且可见的点集合与点数；<b>Δx̂<sub>i</sub>·Δx̂<sub>j</sub><sup>⊤</sup></b> 是两个 3D 向量的内积（标量）。代码里分布项对最多 1000 个点随机采样算（<span class="mono">motion_dist_sample_number=1000</span>），控制矩阵规模。<br>
+      消融（Aria Digital Twin EPE₃D）：无运动监督 0.7938（训练震荡）→ 只点级 0.2262 → 只分布 0.2496 → 两者 0.2153。</div>
+  </div>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 980 140" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+      <rect x="12" y="24" width="170" height="42" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="97" y="42" text-anchor="middle" class="svg-nota" fill="#116329">posed 视频片段</text>
+      <text x="97" y="59" text-anchor="middle" class="svg-nota" fill="#116329">深度/跟踪 GT（按数据集）</text>
+      <line x1="182" y1="46" x2="220" y2="60" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="222" y="30" width="180" height="52" rx="6" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="312" y="50" text-anchor="middle" class="svg-nota-b" fill="#0550ae">MoVieS 前馈 + gsplat</text>
+      <text x="312" y="68" text-anchor="middle" class="svg-nota" fill="#0550ae">D̂ / Î / Δx̂</text>
+      <line x1="402" y1="56" x2="440" y2="56" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="442" y="22" width="330" height="76" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="607" y="42" text-anchor="middle" class="svg-nota-b" fill="#5c4400">L_depth + L_rendering + 10·L_motion</text>
+      <text x="607" y="60" text-anchor="middle" class="svg-nota" fill="#5c4400">深度：MSE+多尺度梯度；渲染：MSE+0.5 LPIPS</text>
+      <text x="607" y="78" text-anchor="middle" class="svg-nota" fill="#5c4400">运动：点级 L1 + 分布损失</text>
+      <line x1="772" y1="56" x2="810" y2="56" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="812" y="30" width="60" height="52" rx="6" fill="#cf222e"/>
+      <text x="842" y="62" text-anchor="middle" class="svg-nota-b" fill="#ffffff">Σ L</text>
+      <text x="892" y="120" text-anchor="start" class="svg-nota">反向传播：主干 + 三个头（新增模块全量 lr，预训练部分 0.1×）</text>
+    </svg>
+    <div class="figcap">图 3-1 · 损失链路：三路预测对三路监督（按数据集可用性取舍），加权求和后反向传播。</div>
+  </div>
+
+  <h3><span class="no">3.2</span>训练配方速查</h3>
+  <table>
+    <tr><th style="width:24%">项目</th><th>设置</th></tr>
+    <tr><td>数据（8 个来源）</td><td>静态：RealEstate10K（70K 场景，仅视频）· TartanAir（0.4K，深度）· MatrixCity（4.5K，深度）；动态：Spring（0.03K，深度）· VKITTI2（0.1K，深度）· PointOdyssey（0.1K，深度+跟踪）· DynamicReplica（0.5K，深度+跟踪）· Stereo4D（98K，真实，深度+跟踪）</td></tr>
+    <tr><td>课程</td><td class="mono">① 静态预训练 → ② 动态场景（变视图数）→ ③ 高分辨率微调</td></tr>
+    <tr><td>输入帧</td><td class="mono">默认 5 帧、最少 2；动态帧数与宽高比；训练时随机采样输出时间戳</td></tr>
+    <tr><td>优化器</td><td class="mono">AdamW · lr 4e-4 · betas (0.9, 0.95) · wd 0.05 · cosine + 1000 步 warmup</td></tr>
+    <tr><td>学习率分配</td><td class="mono">预训练部分 ×0.1；splatter 头 / motion-splat 头 / 相机与时间嵌入全量</td></tr>
+    <tr><td>batch / 训练时长</td><td class="mono">8 / GPU · 32×H20 ≈ 5 天 · EMA 0.9999</td></tr>
+    <tr><td>工程</td><td class="mono">gsplat 渲染 · DeepSpeed · 梯度检查点 · 梯度累积 · bf16</td></tr>
+  </table>
+</section>
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">新视角合成 + 3D 点追踪两条主评测线；数字照抄论文表 1~3 与消融表。所有方法给相同相机参数以保证公平。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">18.46 <small>mPSNR</small></div><div class="k">DyCheck 动态新视角<br>MoSca 18.24 · Shape-of-Motion 17.96</div></div>
+    <div class="metric"><div class="v">0.2153 <small>EPE₃D</small></div><div class="k">TAPVid-3D · Aria<br>SpatialTracker 0.5413（越低越好）</div></div>
+    <div class="metric"><div class="v">0.93 <small>s</small></div><div class="k">单场景前馈（免优化）<br>MoSca 45 min · Shape-of-Motion 10 min</div></div>
+    <div class="metric"><div class="v">26.98 <small>PSNR</small></div><div class="k">RE10K 静态（动态模型）<br>只训静态变体 27.60</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>新视角合成（静态 + 动态）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">时间/场景</th><th class="mono">RE10K PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th><th class="mono">DyCheck mPSNR↑</th><th class="mono">mSSIM↑</th><th class="mono">mLPIPS↓</th><th class="mono">NVIDIA PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td>DepthSplat</td><td class="mono">0.60s</td><td class="mono">26.57</td><td class="mono">80.06</td><td class="mono">0.124</td><td class="mono">13.83</td><td class="mono">43.64</td><td class="mono">0.3850</td><td class="mono">17.16</td><td class="mono">50.02</td><td class="mono">0.3023</td></tr>
+    <tr><td>GS-LRM†</td><td class="mono">0.57s</td><td class="mono">26.94</td><td class="mono">79.13</td><td class="mono">0.139</td><td class="mono">14.60</td><td class="mono">45.35</td><td class="mono">0.3775</td><td class="mono">17.83</td><td class="mono">49.88</td><td class="mono">0.3265</td></tr>
+    <tr><td>Ours（仅静态预训练）</td><td class="mono">0.84s</td><td class="mono up">27.60</td><td class="mono up">81.25</td><td class="mono up">0.113</td><td class="mono">15.24</td><td class="mono">47.84</td><td class="mono">0.3783</td><td class="mono">18.73</td><td class="mono">50.42</td><td class="mono up">0.2959</td></tr>
+    <tr><td>Splatter-a-Video</td><td class="mono">37 min</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td><td class="mono">13.61</td><td class="mono">31.31</td><td class="mono">0.5706</td><td class="mono">14.39</td><td class="mono">25.38</td><td class="mono">0.5983</td></tr>
+    <tr><td>Shape-of-Motion</td><td class="mono">10 min</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td><td class="mono">17.96</td><td class="mono">56.62</td><td class="mono">0.3463</td><td class="mono">15.30</td><td class="mono">31.69</td><td class="mono">0.5087</td></tr>
+    <tr><td>MoSca</td><td class="mono">45 min</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td><td class="mono">18.24</td><td class="mono">55.14</td><td class="mono">0.3698</td><td class="mono up">21.45</td><td class="mono up">71.23</td><td class="mono up">0.2653</td></tr>
+    <tr><td>MoVieS</td><td class="mono up">0.93s</td><td class="mono">26.98</td><td class="mono up">81.75</td><td class="mono up">0.111</td><td class="mono up">18.46</td><td class="mono up">58.87</td><td class="mono up">0.3094</td><td class="mono">19.16</td><td class="mono">51.41</td><td class="mono">0.3152</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1。† = 作者复现的 GS-LRM。DyCheck 用 covisibility mask 算「m」指标；NVIDIA 用 12 视角 round-robin 输入。MoVieS 在 DyCheck 三项全第一；NVIDIA 上输给 MoSca（19.16 vs 21.45）——MoSca 用逐场景优化 + 长视频拟合，在相机抖动大的场景仍有优势，但慢 45 分钟 vs 0.93 秒。RE10K 上「完整动态模型」比「只训静态」的变体低 0.62 dB：加运动建模对纯静态数据有一点让步。</p>
+
+  <h3><span class="no">4.2</span>3D 点追踪（TAPVid-3D）</h3>
+  <table>
+    <tr><th rowspan="2">方法</th><th colspan="3" style="text-align:center">Aria Digital Twin</th><th colspan="3" style="text-align:center">DriveTrack</th><th colspan="3" style="text-align:center">Panoptic Studio</th></tr>
+    <tr><th class="mono">EPE₃D↓</th><th class="mono">δ³ᴰ<sup>.05</sup>↑</th><th class="mono">δ³ᴰ<sup>.10</sup>↑</th><th class="mono">EPE₃D↓</th><th class="mono">δ³ᴰ<sup>.05</sup>↑</th><th class="mono">δ³ᴰ<sup>.10</sup>↑</th><th class="mono">EPE₃D↓</th><th class="mono">δ³ᴰ<sup>.05</sup>↑</th><th class="mono">δ³ᴰ<sup>.10</sup>↑</th></tr>
+    <tr><td>BootsTAPIR†</td><td class="mono">0.5539</td><td class="mono">17.73%</td><td class="mono">32.97%</td><td class="mono">0.0617</td><td class="mono">55.82%</td><td class="mono">75.66%</td><td class="mono">0.0650</td><td class="mono">69.28%</td><td class="mono">87.95%</td></tr>
+    <tr><td>CoTracker3†</td><td class="mono">0.5614</td><td class="mono">19.88%</td><td class="mono">35.82%</td><td class="mono">0.0637</td><td class="mono">55.30%</td><td class="mono">77.55%</td><td class="mono">0.0617</td><td class="mono">69.27%</td><td class="mono">88.04%</td></tr>
+    <tr><td>SpatialTracker</td><td class="mono">0.5413</td><td class="mono">18.08%</td><td class="mono">38.23%</td><td class="mono">0.0648</td><td class="mono">56.58%</td><td class="mono up">80.67%</td><td class="mono">0.0519</td><td class="mono">72.91%</td><td class="mono">89.86%</td></tr>
+    <tr><td>MoVieS</td><td class="mono up">0.2153</td><td class="mono up">52.05%</td><td class="mono up">71.63%</td><td class="mono up">0.0472</td><td class="mono up">60.63%</td><td class="mono">79.87%</td><td class="mono up">0.0352</td><td class="mono up">87.88%</td><td class="mono up">94.61%</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 2。† = 2D 跟踪器 + 视频深度模型反投影到 3D。Aria 上 EPE 0.2153 对 0.5413——MoVieS 直接在共享世界系预测 3D 位置，不像基线那样先追 2D 再靠深度反投影（深度噪声会直接放大 3D 误差）。</p>
+
+  <h3><span class="no">4.3</span>消融</h3>
+  <table>
+    <tr><th>相机注入（RE10K）</th><th class="mono">PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td>无相机信息</td><td class="mono">25.56</td><td class="mono">74.13</td><td class="mono">0.150</td></tr>
+    <tr><td>只有 Plücker 嵌入</td><td class="mono">25.81</td><td class="mono">74.44</td><td class="mono">0.143</td></tr>
+    <tr><td>只有 camera token</td><td class="mono">26.81</td><td class="mono">78.65</td><td class="mono">0.121</td></tr>
+    <tr><td>两者都有（本文）</td><td class="mono up">27.60</td><td class="mono up">81.25</td><td class="mono up">0.113</td></tr>
+  </table>
+  <table>
+    <tr><th>运动监督（Aria EPE₃D↓）</th><th class="mono">EPE₃D</th><th class="mono">δ³ᴰ<sup>.05</sup>↑</th><th class="mono">δ³ᴰ<sup>.10</sup>↑</th></tr>
+    <tr><td>无运动监督</td><td class="mono">0.7938</td><td class="mono">19.58%</td><td class="mono">32.86%</td></tr>
+    <tr><td>只有点级 L1</td><td class="mono">0.2262</td><td class="mono">48.74%</td><td class="mono">69.93%</td></tr>
+    <tr><td>只有分布损失</td><td class="mono">0.2496</td><td class="mono">45.98%</td><td class="mono">66.87%</td></tr>
+    <tr><td>点级 + 分布（本文）</td><td class="mono up">0.2153</td><td class="mono up">52.05%</td><td class="mono up">71.63%</td></tr>
+  </table>
+  <table>
+    <tr><th>运动 × 渲染（协同）</th><th class="mono">DyCheck mPSNR↑</th><th class="mono">NVIDIA PSNR↑</th><th class="mono">Aria EPE₃D↓</th></tr>
+    <tr><td>NVS w/o motion（只用渲染当代理）</td><td class="mono">15.82</td><td class="mono">18.38</td><td class="mono">0.7938</td></tr>
+    <tr><td>Motion w/o NVS（运动头脱离渲染）</td><td class="mono">16.26</td><td class="mono">18.98</td><td class="mono">0.3801</td></tr>
+    <tr><td>两者联合（本文）</td><td class="mono up">18.46</td><td class="mono up">19.16</td><td class="mono up">0.2153</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 3 与消融表。三组结论：① camera token 是相机条件的主力，Plücker 是像素级补充；② 运动损失的点级与分布级互补（缺一都掉）；③ 渲染与运动互相成全——只用渲染学不会运动（NVS w/o motion 的 EPE 0.79，基本没学到），运动头脱离渲染则几何变糊、NVS 也变差。</p>
+  <ul class="dots">
+    <li><b>VGGT 初始化的价值（收敛速度）：</b>224×224、DyCheck 上，VGGT 初始化 2 天到 17.97 dB mPSNR；从零训练 6 天只到 16.64 dB 且未收敛——约 3× 训练成本。论文强调：预训练不是方法必需，但让「训练特别不稳」的 4D 训练变得可行。</li>
+    <li><b>零样本应用：</b>场景流（运动向量换到目标相机系）边缘锐利；动体分割（|Δx| 阈值）干净——两者都没有专门训练。</li>
+  </ul>
+</section>
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li><b>一个表示可以同时承载三件事：</b>dynamic splatter pixel（每像素一个高斯 + 时间条件变形场）让外观、几何、运动共享一套参数；渲染、3D 追踪、场景流、动体分割都是这套表示的「读法」，不需要为每个任务单独设计模型——4D 感知从「多模型」走向「一模型多读法」。</li>
+    <li><b>渲染是极好的代理任务：</b>任何有视频的数据集都能提供稠密监督，深度/跟踪 GT 只在部分数据集上补充——异构数据因此可以联合训练。这是「前馈 4D」能规模化到 170 万级场景的关键设计。</li>
+    <li><b>场景级动态 4D 前馈可行且快：</b>DyCheck 三项指标超过优化方法，单场景 0.93 秒（快 10~3000 倍）；NVIDIA 上虽不及 MoSca，但泛化与速度优势明显。</li>
+    <li><b>3D 跟踪可以直接在共享世界系做：</b>把「逐像素高斯沿时间推」当作跟踪，EPE 0.2153 远低于 2D 跟踪 + 深度反投影（0.54~0.56）——几何一致性比后处理更值钱。</li>
+    <li><b>零样本能力来自表示：</b>场景流/动体分割没专门训过，直接从运动向量里读出来——说明模型学到的是可迁移的运动物理量，而非任务捷径。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读代码看出来的）</h3>
+  <ul class="dots">
+    <li><b>必须 posed 视频：</b>位姿与内参是表示的锚；未标定视频留给未来工作（工程上可前置 MegaSaM / VGGT 估位姿）。</li>
+    <li><b>动态优化强项场景仍会输：</b>NVIDIA（相机抖动大、动态复杂）MoSca 21.45 vs MoVieS 19.16——逐场景优化在「数据够、算力够」时仍有上限优势；MoVieS 赢在泛化与速度。</li>
+    <li><b>静态纯度有一点让步：</b>RE10K 上完整动态模型 26.98 低于只训静态的变体 27.60——运动建模会分走一点容量。</li>
+    <li><b>依赖标注质量：</b>深度/跟踪 GT 的噪声会进模型；异构数据集的域差靠课程和三阶段训练硬压，训练本身「特别不稳」（论文原话）。</li>
+    <li><b>未验证的边界：</b>长视频、超大场景、极端动态、多物体交互；运动由网络输出，不可编辑、不可交互修改。</li>
+    <li><b>成本：</b>32×H20 × 5 天；推理 0.93 秒虽快，但模型依赖 VGGT-1B 级别主干，显存门槛不低。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向（本站路线图把它们串成了一条线）</h3>
+  <ul class="dots">
+    <li><b>Unposed 4D：</b>把 <a href="../4d-reconstruct/2024-dust3r.html" style="color:var(--c-enc);text-decoration:none">DUSt3R</a> / <a href="2025-vggt.html" style="color:var(--c-enc);text-decoration:none">VGGT</a> 这类几何前端接在 MoVieS 前面，就能处理未标定视频——「几何基座负责位姿、MoVieS 负责 4D 表示」是自然的组合。</li>
+    <li><b>更大规模、更长视频：</b>动态 splatter pixel 的表示与序列长度解耦，扩展到长视频/大场景是工程问题（显存与一致性）。</li>
+    <li><b>与占用/驾驶路线汇合：</b>本站「前馈 4D 高斯」路线上的 <a href="2025-driverecon.html" style="color:var(--c-enc);text-decoration:none">DrivingRecon</a>（环视 4D 高斯）、<a href="2026-vg3s.html" style="color:var(--c-enc);text-decoration:none">VG3S</a>（VGGT 特征接高斯占用）走的是「把动态高斯接到感知/占用」的方向——和 MoVieS「从视频恢复运动」正好互补：一个从视觉重建动态，一个把动态接进语义占用。</li>
+    <li><b>编辑与工具化：</b>当前运动是网络输出；下一步是在表示层做可交互编辑（改轨迹、换材质、拼接场景）——4D 内容创作工具的必经之路。</li>
+    <li><b>与物体级 L4GM 互补：</b><a href="2024-l4gm.html" style="color:var(--c-enc);text-decoration:none">L4GM</a> 解决「抠图后的单物体」，MoVieS 解决「场景级动态」——两级表示覆盖不同粒度，也提示未来可以有「物体 + 场景」联合的 4D 世界模型。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= 目录 scrollspy ================= */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>
