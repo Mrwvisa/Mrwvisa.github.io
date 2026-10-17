@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VG3S 论文解读</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 冻结 VFM 的 token 提取</a>
+  <a href="#s23" class="lv2">2.3 HGFA：三个适配模块</a>
+  <a href="#s24" class="lv2">2.4 高斯解码与体素化</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>VG3S：把前馈几何基座的先验，灌进高斯占用预测</h1>
+  <div class="meta">VG3S: Visual Geometry Grounded Gaussian Splatting for Semantic Occupancy Prediction · arXiv 2603.06210 · 港科大（沈劭劼组）· IROS 2026 · 论文源包（无公开代码）</div>
+</div>
+
+<!-- ============ §0 速览卡 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>3D 语义占用预测是自动驾驶感知的核心任务：把环视图像变成一张带语义的 3D 体素网格。近年高斯路线（GaussianFormer / GaussianFormer-2）用几千到几万个语义高斯表示场景、再 splatting 成体素，省算力、可解释；但它们的图像编码器是「跟占用任务一起从零训」的——3D 监督只有稀疏的占用标签，学不出强几何先验，于是重建出来的物体结构经常是碎的（平面断裂、建筑缺角）。VG3S 的观察是：<b>VGGT / DVGT 这类几何基座在训练时见过海量多视图 3D 数据，冻结起来就自带强跨视图几何先验</b>——直接拿它们的 token 给占用用行不行？不行，通用 token 没有占用任务需要的空间结构和任务对齐。所以 VG3S 在冻结 VFM 和高斯解码器之间插了一个可插拔适配器 HGFA：先按层分组、用学习到的权重融合（GATF），再做任务对齐的残差精炼（TATR），最后重建成多尺度空间金字塔（LSFP）。nuScenes 上 IoU 34.41（比 GaussianFormer-2 的 30.56 相对涨 12.6%）、mIoU 21.52（相对涨 7.5%）；换成 DINOv2 / VGGT / DGGT / DINOv3 / DVGT 五种底座都涨——它是本站路线图上「前馈几何基座 × 前馈 4D 高斯」的汇合点：几何基座提供先验，高斯表示负责占用。整套方法概括起来就是：冻结一个几何基座视觉大模型（VGGT/DVGT 等），用一个可插拔的层次几何特征适配器把它的通用 token 变成占用专用特征，再喂给高斯解码器——高斯占用预测因此拿到了跨视图几何先验，nuScenes IoU 34.41（+12.6%）、mIoU 21.52（+7.5%）。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>输入 6 路环视图像（nuScenes，360°），输出 200×200×16 的语义占用体素网格（100m×100m×8m 范围、0.5m 体素）。场景用 J=25,600 个语义高斯表示（位置 + 协方差 + 不透明度 + 语义 logits），经 Gaussian-to-voxel splatting 变成体素；核心创新不在解码器，而在「怎么把冻结几何基座的特征适配给解码器」——一个可插拔的 HGFA 适配器（结构见图 0-1）。
+      <div class="fig">
+        <svg viewBox="0 0 1400 470" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="20" y="60" width="150" height="96" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">6 路环视图像</text>
+          <text x="95" y="108" text-anchor="middle" class="svg-nota">[6,3,H,W] · 360°</text>
+          <text x="95" y="128" text-anchor="middle" class="svg-nota">nuScenes</text>
+          <text x="95" y="146" text-anchor="middle" class="svg-nota">无需深度/位姿输入</text>
+
+          <!-- 冻结 VFM -->
+          <line x1="170" y1="108" x2="216" y2="108" class="arrow"/>
+          <rect x="218" y="36" width="240" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="338" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">冻结的几何基座 VFM ❄</text>
+          <text x="338" y="84" text-anchor="middle" class="svg-nota">DINO patch 嵌入（L=h·w）</text>
+          <text x="338" y="104" text-anchor="middle" class="svg-nota">+ 1 camera token + 4 register</text>
+          <text x="338" y="124" text-anchor="middle" class="svg-nota">N 个交替注意力块</text>
+          <text x="338" y="144" text-anchor="middle" class="svg-nota">（VGGT/DGGT：帧内+全局；</text>
+          <text x="338" y="162" text-anchor="middle" class="svg-nota">DVGT 另加 temporal）</text>
+          <text x="338" y="180" text-anchor="middle" class="svg-nota">每块拼接各注意力层输出 → D^V</text>
+
+          <!-- HFGA -->
+          <line x1="458" y1="110" x2="504" y2="110" class="arrow"/>
+          <rect x="506" y="30" width="270" height="164" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="641" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">HGFA 适配器（可插拔 · 只训这里）</text>
+          <text x="641" y="78" text-anchor="middle" class="svg-nota">GATF：K=4 组 × M=6 层</text>
+          <text x="641" y="96" text-anchor="middle" class="svg-nota">层间自适应权重（softmax MLP）融合</text>
+          <text x="641" y="116" text-anchor="middle" class="svg-nota">TATR：残差 FFN 任务对齐</text>
+          <text x="641" y="134" text-anchor="middle" class="svg-nota">组特定扩展比 ρ={4,3,2,1.5}</text>
+          <text x="641" y="154" text-anchor="middle" class="svg-nota">LSFP：depthwise conv + SE + PW conv</text>
+          <text x="641" y="172" text-anchor="middle" class="svg-nota">多尺度 τ={4,2,1,0.5} + 2D 位置编码</text>
+          <text x="641" y="188" text-anchor="middle" class="svg-nota">→ 占用专用 token F</text>
+
+          <!-- 解码器 -->
+          <line x1="776" y1="110" x2="822" y2="110" class="arrow"/>
+          <rect x="824" y="36" width="250" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="949" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯解码器</text>
+          <text x="949" y="84" text-anchor="middle" class="svg-nota">view-guided deformable attention</text>
+          <text x="949" y="104" text-anchor="middle" class="svg-nota">4 个 transformer 块</text>
+          <text x="949" y="124" text-anchor="middle" class="svg-nota">J=25,600 个语义高斯</text>
+          <text x="949" y="144" text-anchor="middle" class="svg-nota">位置 + 协方差 + 不透明度</text>
+          <text x="949" y="162" text-anchor="middle" class="svg-nota">+ 语义 logits（16 语义类 + 空）</text>
+          <text x="949" y="180" text-anchor="middle" class="svg-nota">概率叠加 → 占用概率</text>
+
+          <!-- 输出 -->
+          <line x1="1074" y1="110" x2="1120" y2="110" class="arrow" marker-end="url(#ahr)"/>
+          <rect x="1122" y="56" width="258" height="110" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1251" y="82" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">语义占用 [200×200×16]</text>
+          <text x="1251" y="104" text-anchor="middle" class="svg-nota">100m×100m×8m · 0.5m 体素</text>
+          <text x="1251" y="124" text-anchor="middle" class="svg-nota">Gaussian-to-voxel splatting</text>
+          <text x="1251" y="146" text-anchor="middle" class="svg-nota">IoU 34.41 · mIoU 21.52</text>
+
+          <!-- 对比 -->
+          <rect x="824" y="214" width="556" height="56" rx="8" class="box" fill="#f6f8fa" stroke="#818b98" stroke-dasharray="6 4"/>
+          <text x="1102" y="237" text-anchor="middle" class="svg-cn" fill="#59636e">对照：GaussianFormer-2 的编码器是「随任务从零训 + 有限 3D 监督」→ 几何先验弱、结构碎片化</text>
+          <text x="1102" y="257" text-anchor="middle" class="svg-cn" fill="#59636e">VG3S：VFM 全程冻结（省算力、防遗忘），只训 HGFA + 高斯解码器</text>
+
+          <!-- 监督 -->
+          <rect x="824" y="310" width="556" height="74" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+          <text x="1102" y="336" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：SurroundOcc 稠密占用标签</text>
+          <text x="1102" y="360" text-anchor="middle" class="svg-nota">L = λ·CE + β·Lovász-Softmax（论文未给 λ/β 具体值）</text>
+          <path d="M 1251,166 L 1251,336 L 1384,336" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <path d="M 949,328 L 949,290 L 641,290 L 641,198" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <text x="300" y="440" text-anchor="start" class="svg-cn" fill="#59636e">路线图上的「路线一 × 路线三 汇合」：几何基座（VGGT 家族）负责跨视图几何先验，高斯表示负责占用——两者用一个轻量适配器对接</text>
+        </svg>
+        <div class="figcap">图 0-1 · VG3S 核心机制：冻结几何基座 VFM 出多层 token → HGFA 三模块适配成占用专用特征 → 高斯解码器 → Gaussian-to-voxel splatting 出语义占用。shape 取自论文实现细节（K=4、M=6、J=25,600、D=128、体素 200×200×16）。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>输入：</b>nuScenes 6 路环视图像（[6,3,H,W]，360°），不做任何位姿/深度输入；VFM 全程<b>冻结</b>（权重不动），只训练 HGFA 适配器和高斯解码器。</li>
+        <li><b>输出：</b>25,600 个语义高斯（位置、协方差、不透明度、16 类语义 logits）→ Gaussian-to-voxel splatting → 200×200×16 的语义占用网格（每类一个概率，叠加成最终占用）。</li>
+        <li><b>GT：</b>SurroundOcc 提供的稠密语义占用标签（nuScenes 场景，2Hz 标注）；范围 100m×100m×8m、体素 0.5m。17 类（16 个语义类 + 空）。</li>
+        <li><b>Loss：</b>交叉熵 + Lovász-Softmax 两项加权：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:15px">L<sub>total</sub> = λ · L<sub>CE</sub> + β · L<sub>Lovász</sub></div>
+            <div class="note">符号：<b>L<sub>CE</sub></b> 是逐体素/逐类的交叉熵（标准语义分割损失）；<b>L<sub>Lovász</sub></b> 是 Lovász-Softmax 损失（对 IoU 的直接可微近似，专门优化分割的 IoU 指标，缓解类别不平衡）；<b>λ、β</b> 是平衡系数——<b>论文没有给出具体数值</b>，只说与既有占用工作一致（GaussianFormer / TPVFormer 的常用设置）。复现时这是需要自己调的一处。</div>
+          </div>
+        </li>
+      </ul>
+      实现细节（论文 §4.1.3）：HGFA 分 K=4 组、每组 M=6 层；TATR 的组扩展比 ρ = {4, 3, 2, 1.5}（浅层大、深层小）；LSFP 的扩展隐维 D<sup>H</sup> = {768, 512, 384, 256}、空间尺度 τ = {4, 2, 1, 0.5}；解码器 4 个 transformer 块、J=25,600 个高斯、通道 D=128；cosine 学习率 + 500 次迭代线性 warmup、峰值 2e-4；数据增强为图像缩放 + 光度扰动。论文未说明训练硬件与时长（源包中无此信息）。
+      <div class="fig">
+        <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="30" width="190" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="115" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">nuScenes 样本</text>
+          <text x="115" y="78" text-anchor="middle" class="svg-nota">6 路环视图像</text>
+          <text x="115" y="96" text-anchor="middle" class="svg-nota">+ SurroundOcc 占用 GT</text>
+          <rect x="260" y="30" width="210" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="365" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">冻结 VFM ❄（不训练）</text>
+          <text x="365" y="78" text-anchor="middle" class="svg-nota">DINO + 交替注意力</text>
+          <text x="365" y="96" text-anchor="middle" class="svg-nota">多层 token</text>
+          <rect x="520" y="30" width="190" height="78" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="615" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">HGFA（训练）</text>
+          <text x="615" y="78" text-anchor="middle" class="svg-nota">GATF → TATR → LSFP</text>
+          <text x="615" y="96" text-anchor="middle" class="svg-nota">→ 占用专用 token</text>
+          <rect x="760" y="30" width="200" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="860" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯解码器（训练）</text>
+          <text x="860" y="78" text-anchor="middle" class="svg-nota">25,600 高斯 → 体素</text>
+          <text x="860" y="96" text-anchor="middle" class="svg-nota">Gaussian-to-voxel</text>
+          <rect x="760" y="190" width="200" height="70" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="860" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">λ·CE + β·Lovász</text>
+          <text x="860" y="238" text-anchor="middle" class="svg-nota">与占用 GT 逐体素比</text>
+          <rect x="20" y="190" width="690" height="70" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="365" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700">优化配置</text>
+          <text x="365" y="238" text-anchor="middle" class="svg-nota">只更新 HGFA + 解码器 · cosine + 500 步 warmup · 峰值 lr 2e-4 · 图像缩放 + 光度扰动增强</text>
+          <line x1="210" y1="69" x2="256" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="470" y1="69" x2="516" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="710" y1="69" x2="756" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="860" y1="108" x2="860" y2="186" class="arrow" marker-end="url(#ahT)"/>
+          <path d="M 760,225 L 700,225" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <path d="M 615,225 L 615,112" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="615" y="150" text-anchor="middle" class="svg-cn" fill="#a40e26">只回传到这里（VFM 冻结）</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：冻结 VFM 出 token → 只训练 HGFA 与高斯解码器 → 体素化后算 CE + Lovász。VFM 不参与梯度更新，这是「省算力 + 防遗忘」的关键。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>6 路环视图像（nuScenes 相机配置），一次前馈；不需要深度图或额外的几何输入，也不需要逐场景优化。VFM 直接吃图像出 token；解码器沿用 GaussianFormer-2 的 view-guided deformable attention 采样多视图特征（相机标定沿用 nuScenes 设定）。</li>
+        <li><b>输出：</b>200×200×16 的语义占用网格（16 语义类 + 空），可进一步导出检测/规划用的占用查询。单模型一次前向；具体推理时延论文未报告（只报告了精度与训练配置）。</li>
+        <li><b>可插拔性：</b>换 VFM 不用改解码器——论文把 DINOv2 / VGGT / DGGT / DINOv3 / DVGT 五种底座分别插进同一个 HGFA + 解码器，全部稳定超过基线（见 §4.2）。这也是「适配器」设计的核心价值：VFM 在演进，占用框架不用重训。</li>
+        <li><b>后处理：</b>无。Gaussian-to-voxel splatting 直接出体素，不需要额外优化或融合。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1180 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="50" width="170" height="80" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="105" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">6 路环视图像</text>
+          <text x="105" y="98" text-anchor="middle" class="svg-nota">[6,3,H,W]</text>
+          <text x="105" y="116" text-anchor="middle" class="svg-nota">一次前馈</text>
+          <rect x="250" y="50" width="200" height="80" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="350" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">冻结 VFM ❄ + HGFA</text>
+          <text x="350" y="98" text-anchor="middle" class="svg-nota">换底座不用改解码器</text>
+          <text x="350" y="116" text-anchor="middle" class="svg-nota">DINOv2/VGGT/DGGT/DVGT…</text>
+          <rect x="510" y="50" width="200" height="80" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="610" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯解码 + 体素化</text>
+          <text x="610" y="98" text-anchor="middle" class="svg-nota">25,600 高斯</text>
+          <text x="610" y="116" text-anchor="middle" class="svg-nota">Gaussian-to-voxel</text>
+          <rect x="770" y="50" width="220" height="80" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="880" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">语义占用 200×200×16</text>
+          <text x="880" y="98" text-anchor="middle" class="svg-nota">16 语义类 + 空</text>
+          <text x="880" y="116" text-anchor="middle" class="svg-nota">IoU 34.41 · mIoU 21.52</text>
+          <rect x="20" y="180" width="1100" height="56" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="570" y="204" text-anchor="middle" class="svg-cn" style="font-weight:700">部署含义：VFM 是通用资产（冻结复用），HGFA 是任务适配层（小、可训）</text>
+          <text x="570" y="224" text-anchor="middle" class="svg-nota">换更强的几何基座 → 占用精度跟着涨，不用重训整个 backbone——这是路线一「几何基座」与路线三「高斯表示」的接口</text>
+          <line x1="190" y1="90" x2="246" y2="90" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="450" y1="90" x2="506" y2="90" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="710" y1="90" x2="766" y2="90" class="arrow" marker-end="url(#ahI)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：6 路图像 → 冻结 VFM + HGFA → 高斯解码 → 体素占用。VFM 可替换，适配器与解码器保持不变。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定量：</b>nuScenes 验证集：IoU <b>34.41</b>（基线 GaussianFormer-2 30.56，相对 +12.6%）、mIoU <b>21.52</b>（基线 20.02，相对 +7.5%），同时超过体素路线代表 SurroundOcc（31.49 / 20.30）与 OccFormer（31.39 / 19.03）。16 个语义类里 12 类最优——driveable surface 42.42、manmade 17.46、vegetation 25.76、terrain 26.58 等结构性类别提升最明显；car / pedestrian / traffic cone 仍低于部分强基线（见 §4.1 的诚实标注）。</li>
+        <li><b>可替换性：</b>同一套 HGFA + 解码器，换 DINOv2 → IoU 32.34 / mIoU 20.42；VGGT → 33.29 / 21.10；DGGT → 33.37 / 20.81；DINOv3 → 33.20 / 21.36；DVGT → 34.41 / 21.52。全部超过基线 30.56 / 20.02——「几何先验」而不是「更强的图像底座」是主要增益来源（DINOv2 vs VGGT 的对比说明了这一点）。</li>
+        <li><b>定性：</b>对比 GaussianFormer-2，VG3S 的路面更连续（不再断裂）、建筑/人造结构更完整，交叉路口场景的上层建筑和下层结构都能补全（论文图 3）。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>把几何基座「冻结 + 适配」而不是「全量微调」，就能把跨视图几何先验注入高斯占用：一个轻量 HGFA 适配器让 25,600 个高斯的重建结构从碎片化变成连续完整，IoU +12.6%、mIoU +7.5%，且换任何几何 VFM 都成立——路线一（几何基座）与路线三（高斯）由此汇合。</li>
+  </ul>
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：为什么要把 VFM 冻结，而不是像常规做法那样微调？</div>
+    <div class="qa-a">A：三个理由。① <b>算力</b>：VGGT/DVGT 这类基座是 10 亿参数级，全量微调对占用这种下游任务太贵；冻结后只训 HGFA 和解码器，训练成本降一个量级。② <b>防遗忘</b>：论文明确指出全量微调有「灾难性遗忘」风险——基座里宝贵的通用 3D 几何先验会被占用数据的小分布覆盖掉。③ <b>可插拔</b>：冻结意味着 VFM 是一个标准接口，换底座（DINOv2→VGGT→DVGT）不用改解码器，VFM 升级直接受益。并发工作 VG3T 就是全量微调 VGGT 做占用——论文把它作为对照，说明「不微调也能拿到几何先验，而且更省」。代价是：VFM 的通用 token 不能直接用于占用，必须加一个适配器（HGFA）来「翻译」——这正是本文的主要贡献。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：直接拿冻结 VFM 的 token 喂解码器为什么不行？差距有多大？</div>
+    <div class="qa-a">A：VFM token 活在「通用视觉潜空间」里：它们编码的是跨视图对应、深度、结构等通用几何信息，但没有占用任务需要的<b>空间网格结构</b>和<b>任务对齐</b>（哪些 token 该强调、哪些该抑制、如何还原成 h×w 稠密特征）。消融直接量化：把整个 HGFA 换成一个标准 DPT 层，IoU 从 33.29 掉到 30.59、mIoU 从 21.10 掉到 19.31——几乎退回基线 GaussianFormer-2（30.56/20.02）的水平。也就是说：<b>几何先验在 token 里，但需要专门的适配器才能被占用解码器用起来</b>；没有适配器，冻结 VFM 等于白拿。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：HGFA 的三个模块各自解决什么问题？去掉任何一个会怎样？</div>
+    <div class="qa-a">A：按数据流：<b>GATF</b>（分组自适应 token 融合）解决「层太多、信息冗余」——把 N 层分成 K=4 组、每组用 softmax(MLP) 学出层间权重再加权求和，动态抑制冗余几何响应（去掉：IoU −0.77、mIoU −0.67）；<b>TATR</b>（任务对齐 token 精炼）解决「通用特征和占用任务不对齐」——一个轻量残差 FFN（GELU+dropout），并按组给不同扩展比 ρ（浅层大、深层小），把通用特征校准成任务特征（去掉：IoU −0.59、mIoU −0.72）；<b>LSFP</b>（潜空间特征金字塔）解决「token 是序列、没有空间结构和多尺度」——depthwise conv 恢复局部几何、SE 做通道重加权、point-wise conv + 残差、2D 位置编码、τ={4,2,1,0.5} 的多尺度重采样（去掉：IoU −0.72、mIoU −0.77）。三者是「压缩 → 对齐 → 结构化」的串联，缺一不可。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：GATF 为什么要分组？K 为什么取 4？</div>
+    <div class="qa-a">A：VFM 不同层的语义粒度不同：浅层是细粒度几何/纹理，深层是高层语义。直接全层融合会让不同粒度的特征互相稀释。做法是把 N 层（VGGT 是 24+ 层）按「语义粒度相近」切成 K 组（每组 M=N/K 层连续层），组内学权重融合，组间保留层次差异。消融：K=1（不分组）31.45/19.52；K=3 32.66/20.25；K=4 33.29/21.10；K=6 32.57/20.55——K=4 在「结构保真」和「信息压缩」之间最平衡（此时每组 6 层，正好对应浅/中/深几个语义段落）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：论文说「主要增益来自几何先验而不是更强的图像 backbone」，怎么证明的？</div>
+    <div class="qa-a">A：看 VFM 替换表：DINOv2（纯语义自监督，无显式几何训练）32.34/20.42；VGGT（几何多任务预训练）33.29/21.10；DGGT（驾驶域几何微调）33.37/20.81；DINOv3（更强语义）33.20/21.36；DVGT（几何+驾驶域）34.41/21.52。关键对照是 DINOv2 vs VGGT/DGGT：同样走 HGFA，带几何监督的底座明显更高——说明「几何 grounding」是有效成分；而 DINOv3 靠更强语义也能拿到 21.36 mIoU，说明语义能力也有贡献，但两者结合（DVGT）才是最优。更细的结论：几何先验主要提升结构类（driveable/manmade/vegetation/terrain），语义先验主要帮小目标类别。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：为什么高斯表示适合占用预测？25,600 个高斯是怎么变成 200×200×16 体素的？</div>
+    <div class="qa-a">A：占用体素网格有 200×200×16 = 64 万个格子，其中绝大多数是空的；稠密体素方法要对所有格子预测，浪费算力。高斯表示把场景压成 J=25,600 个稀疏基元（每个带位置/协方差/不透明度/语义 logits），只把计算花在可能有东西的地方。Gaussian-to-voxel splatting 的过程：对每个体素中心，计算所有高斯对它的贡献（按马氏距离加权、乘不透明度），概率叠加得到占用概率；语义则按高斯条件类概率做归一化期望。最后取概率阈值 + argmax 得到 200×200×16 的语义占用。25,600 个高斯 vs 64 万体素 = 25 倍的压缩，且每个高斯携带完整协方差，能表达各向异性的结构（墙面、路面）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：复现这篇论文有哪些坑？</div>
+    <div class="qa-a">A：① <b>没有公开代码</b>（截至写页面时只找到 arXiv 源包）；② <b>损失权重 λ、β 论文没给</b>，只说沿用既有占用工作——这是必须自己试的超参；③ 训练硬件、时长、batch size 论文都没写（源包中无此信息）；④ HGFA 的组数、扩展比、尺度因子、隐维都给了，但 token 分组的「按语义粒度」具体怎么切（连续层切分）需要按 K=4、M=6 推断；⑤ VFM 版本与权重（VGGT/DVGT/DGGT 的哪个 checkpoint、输入分辨率）论文未细化，影响可复现性；⑥ 基线 GaussianFormer-2 用了 128 通道特征做公平对比（表里标 *），复现时注意对齐参数量。整体属于「方法清晰、细节欠奉」的论文类型，复现成本不低。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：局限和适用边界？</div>
+    <div class="qa-a">A：① 语义类别不均衡：16 类里 car / pedestrian / traffic cone 仍不如 SurroundOcc / GaussianFormer-2——小目标、细长物体的语义仍是短板；② 依赖 SurroundOcc 稠密占用标签的质量（nuScenes 的占用 GT 本身是「伪标签」性质的稠密化结果）；③ VFM 推理成本：虽然冻结省了训练，但前向仍要跑 10 亿级基座，车端部署需要蒸馏/量化；④ 单帧多视图模型，没有利用时序（相邻帧的运动信息未用）；⑤ 只在 nuScenes 验证，跨数据集（Waymo、Argoverse）未测；⑥ 需要相机标定（view-guided deformable attention 与 nuScenes 相机配置绑定）。适用范围：有环视相机 + 标定的自动驾驶占用预测；把它当「几何基座的即插即用下游」的范式参照，比当「SOTA 占用模型」更有价值。</div>
+  </div>
+</section>
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、VG3S 怎么解。</div>
+
+  <p>3D 语义占用预测要在 64 万个体素格子里同时回答「有没有东西」和「是什么」——稠密、嘈杂、3D 监督昂贵。高斯路线用稀疏基元省算力，但它的图像编码器是「和占用任务一起从零训」的：3D 标签只有 SurroundOcc 这种稀疏稠密化标注，编码器学不到强几何先验，于是重建出的物体结构经常断裂、缺角。与此同时，VGGT/DVGT 这类几何基座在训练时吃了海量多视图 3D 数据，中间 token 本身就编码了跨视图几何一致性——<b>问题是这些先验怎么「借」给占用</b>。全量微调太贵、还可能把先验忘掉；直接用原始 token 又和占用任务对不上。VG3S 的答案是：冻结基座，中间插一个可插拔的层次几何特征适配器（HGFA），把通用 token「压缩→对齐→结构化」成占用专用特征。整套方法概括起来就是：冻结一个几何基座视觉大模型（VGGT/DVGT 等），用一个可插拔的层次几何特征适配器把它的通用 token 变成占用专用特征，再喂给高斯解码器——高斯占用预测因此拿到了跨视图几何先验，nuScenes IoU 34.41（+12.6%）、mIoU 21.52（+7.5%）。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>占用模型的几何瓶颈</h4>
+      <p>环视图像 → 3D 体素是病态的 2D→3D lifting：没有深度真值，只能靠占用标签里隐含的几何。任务专用编码器从零训练，学到的「几何」只是勉强够分类，跨视图一致性差——表现为路面断裂、建筑缺顶、平面碎成片。</p>
+      <p>体素/BEV 方法还对空区域做稠密预测，200×200×16 的网格里大部分是空的，算力浪费严重。</p>
+    </div>
+    <div class="card">
+      <h4>几何基座「看得见、吃不着」</h4>
+      <p>VGGT/DVGT 的 token 里有强几何先验，但它们是为「多视图几何任务」训练的：token 是通用潜变量，没有占用要的空间网格、没有任务对齐、层数多且冗余——直接接解码器效果甚至不如基线。</p>
+      <p>全量微调一个 10 亿参数基座：训练成本高、且会让通用先验被小数据集「覆盖」（灾难性遗忘）——这与「复用基座」的初衷相悖。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:20%">路线</th><th style="width:28%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>体素 / BEV 占用</td>
+      <td class="mono">OccFormer / SurroundOcc / BEVFormer / TPVFormer</td>
+      <td>把多视图特征 lift 到 3D 体素或 BEV/三平面，再稠密预测占用。成熟、精度可；但空区域也全量计算，内存与算力随网格增长，几何结构仍靠有限监督。</td>
+    </tr>
+    <tr>
+      <td>高斯占用</td>
+      <td class="mono">GaussianFormer / GaussianFormer-2</td>
+      <td>用稀疏语义高斯表示场景、Gaussian-to-voxel splatting 出占用，省算力、可解释；但编码器随任务从零训，几何先验弱 → 结构碎片化（本文的直接基线）。</td>
+    </tr>
+    <tr>
+      <td>VFM 全量微调</td>
+      <td class="mono">VG3T</td>
+      <td>把 VGGT 全量微调进占用。能拿到几何先验，但训练极贵、有灾难性遗忘风险，且换底座要重训。</td>
+    </tr>
+    <tr>
+      <td>冻结 + 适配（本文）</td>
+      <td class="mono">VG3S</td>
+      <td>冻结几何基座，只用轻量 HGFA 适配 token。省算力、保先验、可插拔换底座；代价是适配器设计要够好（否则不如基线）。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>VG3S 是怎么解决的</h3>
+  <p><b>核心思想：把几何基座当「冻结的先验引擎」，用一个可训练的轻量适配器把它的多层 token 翻译成占用专用特征。</b>三个决定：</p>
+  <ul class="dots">
+    <li><b>冻结 VFM，只训适配器 + 解码器：</b>VGGT/DVGT 的权重全程不动；计算省一个量级，通用几何先验不会被占用数据覆盖，还能随时换底座（DINOv2/VGGT/DGGT/DINOv3/DVGT 都验证过）。</li>
+    <li><b>HGFA 三段式适配：</b>GATF（分组 + 学习权重，压掉冗余层）、TATR（残差 FFN + 组特定扩展比，做任务对齐）、LSFP（depthwise conv + SE + 多尺度重采样，恢复空间结构与多尺度）。三段各管一件事，消融里缺一都掉。</li>
+    <li><b>解码器沿用 GaussianFormer-2：</b>view-guided deformable attention 采样 + 概率高斯叠加 + Gaussian-to-voxel splatting，J=25,600 个高斯。创新集中在「特征注入」，不是重造解码器——这正是「可插拔」的含义。</li>
+  </ul>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>精度：nuScenes IoU 34.41 / mIoU 21.52，对基线 GaussianFormer-2 相对 +12.6% / +7.5%，超过体素 SOTA SurroundOcc（31.49 / 20.30）。</li>
+    <li>结构质量：路面连续、建筑完整、交叉路口不缺口——几何先验的效果直接体现在结构类（driveable/manmade/vegetation/terrain）上。</li>
+    <li>可插拔：五种 VFM 底座全部稳定超基线；换更强的几何基座，占用精度跟着涨，不用重训整个框架。</li>
+    <li>成本：VFM 冻结，训练只更新小适配器与解码器；基座作为通用资产复用——这是「几何基座 + 下游任务」的范式示范。</li>
+    <li>局限也明确：小目标语义（car/pedestrian/traffic cone）仍不如强基线；单帧多视图、未利用时序；依赖 SurroundOcc 标签与 nuScenes 标定。</li>
+  </ul>
+</section>
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（带 shape），再拆 VFM token 提取（2.2）、HGFA 三模块（2.3）、高斯解码与体素化（2.4）。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 640" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <rect x="20" y="60" width="160" height="90" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="100" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">环视图像 I</text>
+      <text x="100" y="108" text-anchor="middle" class="svg-nota">[S,3,H,W] S=6</text>
+      <text x="100" y="128" text-anchor="middle" class="svg-nota">nuScenes 360°</text>
+      <text x="100" y="144" text-anchor="middle" class="svg-nota">H×W 经 resize</text>
+
+      <!-- VFM -->
+      <line x1="180" y1="105" x2="226" y2="105" class="arrow"/>
+      <rect x="228" y="40" width="250" height="180" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="353" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">冻结 VFM ❄</text>
+      <text x="353" y="88" text-anchor="middle" class="svg-nota">DINO patch 嵌入 → T^img [L,d]</text>
+      <text x="353" y="108" text-anchor="middle" class="svg-nota">+ camera token [1,d]</text>
+      <text x="353" y="128" text-anchor="middle" class="svg-nota">+ register token [4,d]</text>
+      <text x="353" y="148" text-anchor="middle" class="svg-nota">→ T [(1+4+L),d]</text>
+      <text x="353" y="170" text-anchor="middle" class="svg-nota">N 个 AA 块（帧内/全局；</text>
+      <text x="353" y="188" text-anchor="middle" class="svg-nota">DVGT 另有 temporal）</text>
+      <text x="353" y="210" text-anchor="middle" class="svg-nota">每块拼接各注意力层 → D^V=|B|·d</text>
+
+      <!-- tokens -->
+      <line x1="478" y1="130" x2="524" y2="130" class="arrow"/>
+      <rect x="526" y="56" width="190" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="621" y="82" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">多层视觉 token</text>
+      <text x="621" y="104" text-anchor="middle" class="svg-nota">每块取后 L 个图像 token</text>
+      <text x="621" y="124" text-anchor="middle" class="svg-nota">T_j [L, D^V]</text>
+      <text x="621" y="146" text-anchor="middle" class="svg-nota">N 层全收：T={T_j}</text>
+      <text x="621" y="170" text-anchor="middle" class="svg-nota">（VGGT: D^V=2d）</text>
+      <text x="621" y="190" text-anchor="middle" class="svg-nota">含多层几何先验</text>
+
+      <!-- GATF -->
+      <line x1="716" y1="130" x2="762" y2="130" class="arrow"/>
+      <rect x="764" y="36" width="250" height="180" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+      <text x="889" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">GATF：分组自适应融合</text>
+      <text x="889" y="84" text-anchor="middle" class="svg-nota">K=4 组 × M=6 层（连续层）</text>
+      <text x="889" y="104" text-anchor="middle" class="svg-nota">ω = softmax(MLP(G_k))</text>
+      <text x="889" y="124" text-anchor="middle" class="svg-nota">组内层间加权求和 + LN</text>
+      <text x="889" y="146" text-anchor="middle" class="svg-nota">→ T̂_k [L, D^V]</text>
+      <text x="889" y="170" text-anchor="middle" class="svg-nota">动态抑制冗余几何响应</text>
+      <text x="889" y="190" text-anchor="middle" class="svg-nota">保留最有用的层</text>
+
+      <!-- TATR + LSFP -->
+      <line x1="1014" y1="130" x2="1060" y2="130" class="arrow"/>
+      <rect x="1062" y="20" width="318" height="220" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+      <text x="1221" y="46" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">TATR + LSFP</text>
+      <text x="1221" y="68" text-anchor="middle" class="svg-nota">TATR：T̃_k = T̂_k + FFN(T̂_k)</text>
+      <text x="1221" y="86" text-anchor="middle" class="svg-nota">GELU + dropout · 扩展比 ρ={4,3,2,1.5}</text>
+      <text x="1221" y="108" text-anchor="middle" class="svg-nota">LSFP：reshape h×w</text>
+      <text x="1221" y="126" text-anchor="middle" class="svg-nota">depthwise conv → SE → PW conv + 残差</text>
+      <text x="1221" y="144" text-anchor="middle" class="svg-nota">投影 D^H={768,512,384,256} + 2D PE</text>
+      <text x="1221" y="162" text-anchor="middle" class="svg-nota">尺度 τ={4,2,1,0.5} 重采样</text>
+      <text x="1221" y="180" text-anchor="middle" class="svg-nota">→ PW conv 到 D=128</text>
+      <text x="1221" y="202" text-anchor="middle" class="svg-nota">展平拼接 → F [L·Στ², 128]</text>
+      <text x="1221" y="222" text-anchor="middle" class="svg-nota">几何增强的多尺度 token</text>
+
+      <!-- 解码器 -->
+      <rect x="764" y="300" width="332" height="120" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="930" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯解码器（4 个 transformer 块）</text>
+      <text x="930" y="348" text-anchor="middle" class="svg-nota">view-guided deformable attention</text>
+      <text x="930" y="368" text-anchor="middle" class="svg-nota">J=25,600 个语义高斯</text>
+      <text x="930" y="388" text-anchor="middle" class="svg-nota">位置 3 · 协方差（s3+r4）· 不透明度 1 · logits 16</text>
+      <text x="930" y="408" text-anchor="middle" class="svg-nota">概率叠加 → 每个体素的占用概率 / 类别</text>
+
+      <!-- 输出 -->
+      <line x1="1096" y1="360" x2="1142" y2="360" class="arrow" marker-end="url(#ahr2)"/>
+      <rect x="1144" y="300" width="236" height="120" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1262" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">语义占用 V</text>
+      <text x="1262" y="348" text-anchor="middle" class="svg-nota">[200,200,16] · 0.5m 体素</text>
+      <text x="1262" y="368" text-anchor="middle" class="svg-nota">100m×100m×8m</text>
+      <text x="1262" y="390" text-anchor="middle" class="svg-nota">IoU 34.41 / mIoU 21.52</text>
+
+      <!-- tokens→decoder arrow -->
+      <path d="M 1221,240 L 1221,270 L 930,270 L 930,296" fill="none" stroke="#818b98" stroke-width="2" marker-end="url(#ah2)"/>
+
+      <!-- 监督 -->
+      <rect x="764" y="470" width="616" height="76" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1072" y="496" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：SurroundOcc 稠密语义占用</text>
+      <text x="1072" y="520" text-anchor="middle" class="svg-nota">L = λ·CE + β·Lovász-Softmax（λ、β 论文未给）</text>
+      <path d="M 1262,420 L 1262,506 L 1384,506" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <path d="M 930,470 L 930,440" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <text x="380" y="500" text-anchor="start" class="svg-cn" fill="#59636e">只有 HGFA 与解码器参与训练；VFM 全程冻结（❄）——省算力、防遗忘、可换底座</text>
+      <text x="380" y="530" text-anchor="start" class="svg-cn" fill="#59636e">关键 shape：L=h·w 个 patch token；D^V=|B|·d（VGGT 两块拼接=2d）；适配后 D=128；高斯数 J=25,600</text>
+      <text x="380" y="560" text-anchor="start" class="svg-cn" fill="#59636e">消融锚点：去掉 HGFA 换 DPT → 30.59/19.31；三模块逐个去掉各掉 0.6~0.8 IoU（§4.3）</text>
+    </svg>
+    <div class="figcap">图 2-1 · VG3S 总流程：冻结 VFM 出多层 token → GATF 分组融合 → TATR 任务对齐 → LSFP 多尺度结构化 → 高斯解码 → 体素占用。shape 与超参取自论文实现细节。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>VFM / 解码器</span>
+      <span><span class="sw" style="background:var(--c-render-bg);border:1px solid var(--c-render)"></span>HGFA 适配器</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw dash"></span>监督</span>
+    </div>
+  </div>
+</section>
+<!-- ============ §2.2 VFM token 提取 ============ -->
+<section id="s22">
+  <h2><span class="no">2.2</span>冻结 VFM 的 token 提取</h2>
+
+  <ul class="dots">
+    <li><b>形式化：</b>设 VFM 编码器为 E。对每张环视图 I_i，先切成 h×w 个 patch，编码成图像 token T<sup>img</sup>∈R<sup>L×d</sup>（L=h·w，d 为 DINO 维度）；再拼上 1 个 camera token 和 4 个 register token，得到 T∈R<sup>(1+4+L)×d</sup>。E 的权重全程冻结。</li>
+    <li><b>交替注意力块：</b>T 过 N 个 AA（Alternating-Attention）块。每个块里有 |B| 个注意力层：VGGT/DGGT 是 {帧内, 全局} 两层，DVGT 是 {帧内, 全局, 时序} 三层。块内<b>把所有注意力层的输出拼接</b>，得到 T_j∈R<sup>(1+4+L)×D<sup>V</sup></sup>，其中 D<sup>V</sup>=|B|·d（VGGT 就是 2d=2048 维）。</li>
+    <li><b>只留图像 token：</b>camera/register token 是特殊 token（用于身份与相机信息），真正有用的是后 L 个图像 token：T_j∈R<sup>L×D<sup>V</sup></sup>。收集 N 个块得到 T={T_j}<sub>j=1..N</sub>——多层几何先验的集合，这就是 HGFA 的输入。</li>
+    <li><b>为什么这个提取对五种 VFM 都成立：</b>接口统一为「DINO patch token + 若干注意力层 + 多层拼接」；VGGT、DGGT、DVGT 都是这个结构（DVGT 多一层时序注意力，D<sup>V</sup>=3d），DINOv2/v3 则看成只有帧内注意力的退化情形。所以「换 VFM」在代码上只是换 E，HGFA 不用改。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 HGFA ============ -->
+<section id="s23">
+  <h2><span class="no">2.3</span>HGFA：三个适配模块</h2>
+
+  <ul class="dots">
+    <li><b>GATF（分组自适应 token 融合）：</b>把 N 层按「语义粒度相近」切成 K=4 组，每组 M=N/K=6 个连续层：G_k = T<sub>1+(k−1)M</sub> ⊞ … ⊞ T<sub>kM</sub> ∈ R<sup>M×L×D<sup>V</sup></sup>。对每组算层间权重 ω_k = softmax(MLP_k(G_k))（ω_k∈R<sup>M×L</sup>，每个 token 有自己的一组层权重），再加权求和、LayerNorm：T̂_k = LN(Σ<sub>m</sub> ω<sub>k,m</sub> ⊙ G<sub>k,m</sub>)。作用：不是简单平均，而是<b>按 token 动态选择该看哪几层</b>——抑制冗余几何响应，保留最有信息量的层。</li>
+    <li><b>TATR（任务对齐 token 精炼）：</b>残差 FFN：T̃_k = T̂_k + Ψ<sup>FFN</sup><sub>k</sub>(T̂_k)，GELU + dropout。关键设计是<b>组特定扩展比</b> ρ_k={4,3,2,1.5}：浅层组（细粒度几何）给更大扩展，深层组（高层语义）更紧凑。作用：把 VFM 的通用潜空间往占用任务上校准，同时控制算力。</li>
+    <li><b>LSFP（潜空间特征金字塔）：</b>先把 token 恢复成 h×w 网格 F'_k，然后：① depthwise conv 抓局部空间上下文：F''=Φ<sup>DW</sup>(F')；② SE 通道重加权：F'''=σ(Ψ<sup>FC</sup>(ξ(F''))) ⊙ F''（ξ 全局平均池化、σ sigmoid）；③ point-wise conv + 残差：F̂ = F' + Φ<sup>PW</sup>(F''')；④ 投影到组特定隐维 D<sup>H</sup>={768,512,384,256}，加 2D 正弦位置编码；⑤ 按尺度 τ={4,2,1,0.5} 做尺度自适应重采样；⑥ point-wise conv 统一到 D=128。最后展平拼接：F∈R<sup>(L·Στ²)×128</sup>。</li>
+    <li><b>三段的分工一句话总结：</b>GATF 管「哪些层有用」（跨层压缩）、TATR 管「任务要什么」（对齐）、LSFP 管「空间怎么组织」（结构 + 多尺度）。消融：去掉 GATF / TATR / LSFP 分别掉 0.77 / 0.59 / 0.72 IoU（详见 §4.3）。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 解码 ============ -->
+<section id="s24">
+  <h2><span class="no">2.4</span>高斯解码与体素化</h2>
+
+  <ul class="dots">
+    <li><b>高斯参数：</b>每个高斯有位置 m∈R³（按场景范围归一化到 [-1,1]³）、协方差 Σ（尺度 s∈R³ + 旋转四元数 r∈R⁴）、不透明度 a∈[0,1]、语义 logits c∈R<sup>|C|</sup>（16 类）。J=25,600 个高斯，通道维度 D=128，解码器 4 个堆叠 transformer 块。</li>
+    <li><b>view-guided deformable attention：</b>沿用 GaussianFormer-2 的做法——把高斯的参考点投影到多视图特征上，用可变形注意力采样特征来更新高斯参数（相机标定沿用 nuScenes 设定）。这一步是「特征 → 高斯」的桥。</li>
+    <li><b>概率高斯叠加：</b>体素 v 的占用概率 = 1 − Π<sub>i∈J</sub>(1 − a<sub>i</sub>·exp(−½(v−m<sub>i</sub>)<sup>⊤</sup>Σ<sub>i</sub><sup>−1</sup>(v−m<sub>i</sub>))) 一类的高斯贡献聚合（GaussianFormer-2 的概率叠加框架）；语义则按各高斯的类概率加权期望归一化。最终 dense 语义占用 = 占用概率 + 逐类 argmax/期望。</li>
+    <li><b>为什么用高斯而不是稠密体素：</b>体素网格 64 万格、绝大部分为空；25,600 个高斯只把算力放在「有东西」的区域，且每个高斯带完整协方差，能表达各向异性的平面/墙面——结构类指标提升（driveable 42.42、terrain 26.58）正是这个表示的直接收益。</li>
+  </ul>
+</section>
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="sec-sub">记号：V 为体素网格（200×200×16），C 为类别集合（16 语义类 + 空），ŷ<sub>v,c</sub> 为体素 v 属于类 c 的预测概率，y<sub>v,c</sub> 为真值。</div>
+
+  <h3><span class="no">3.1</span>损失与逐符号解释</h3>
+
+  <div class="formula">
+    <div class="fx" style="font-size:15px">L<sub>total</sub> = λ · L<sub>CE</sub> + β · L<sub>Lovász</sub></div>
+    <div class="note">论文 Eq.7。<br>
+      <b>L<sub>CE</sub></b>：逐体素多类交叉熵——把每个体素的预测分布往真值类上拉，是占用/分割的标准项；<br>
+      <b>L<sub>Lovász</sub></b>：Lovász-Softmax 损失——对 IoU 的可微代理（先按误差排序、再对「并集误差」做 Lovász 扩展），直接优化评测指标，能缓解类别不平衡（空体素占绝大多数）；<br>
+      <b>λ、β</b>：两项的平衡系数。论文只说「与既有占用工作一致（GaussianFormer / TPVFormer 的常用设置）」，<b>没有给出具体数值</b>——复现时必须自己调。</div>
+  </div>
+
+  <ul class="dots">
+    <li><b>没有辅助损失：</b>没有深度损失、没有一致性正则、没有 VFM 特征对齐损失——HGFA 与解码器完全由占用标签驱动。几何先验是「已经存在于冻结 VFM」里的，不需要额外监督去教。</li>
+    <li><b>评测指标（论文 §4.1.2）：</b>SC IoU = TP<sub>o</sub>/(TP<sub>o</sub>+FP<sub>o</sub>+FN<sub>o</sub>)（把所有非空体素当一类，只看几何）；SSC mIoU = (1/|C<sub>o</sub>|)Σ<sub>i∈C<sub>o</sub></sub> TP<sub>i</sub>/(TP<sub>i</sub>+FP<sub>i</sub>+FN<sub>i</sub>)（逐语义类 IoU 平均）。</li>
+  </ul>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 980 140" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+      <rect x="12" y="24" width="170" height="42" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="97" y="42" text-anchor="middle" class="svg-nota" fill="#116329">6 路图像 + 占用 GT</text>
+      <text x="97" y="59" text-anchor="middle" class="svg-nota" fill="#116329">（SurroundOcc）</text>
+      <line x1="182" y1="46" x2="220" y2="60" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="222" y="30" width="200" height="52" rx="6" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="322" y="50" text-anchor="middle" class="svg-nota-b" fill="#0550ae">VG3S 前馈 + splatting</text>
+      <text x="322" y="68" text-anchor="middle" class="svg-nota" fill="#0550ae">占用概率 / 逐类 logits</text>
+      <line x1="422" y1="56" x2="460" y2="56" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="462" y="22" width="310" height="76" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="617" y="42" text-anchor="middle" class="svg-nota-b" fill="#5c4400">L = λ·CE + β·Lovász</text>
+      <text x="617" y="60" text-anchor="middle" class="svg-nota" fill="#5c4400">逐体素交叉熵 + IoU 可微代理</text>
+      <text x="617" y="78" text-anchor="middle" class="svg-nota" fill="#5c4400">λ、β 论文未给出具体值</text>
+      <line x1="772" y1="56" x2="810" y2="56" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="812" y="30" width="60" height="52" rx="6" fill="#cf222e"/>
+      <text x="842" y="62" text-anchor="middle" class="svg-nota-b" fill="#ffffff">Σ L</text>
+      <text x="892" y="120" text-anchor="start" class="svg-nota">回传：HGFA + 高斯解码器（VFM 冻结，不更新）</text>
+    </svg>
+    <div class="figcap">图 3-1 · 损失链路：占用预测对 SurroundOcc 标签算 CE + Lovász，梯度只更新适配器与解码器。</div>
+  </div>
+</section>
+
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">nuScenes 验证集（700/150/150 划分），SurroundOcc 稠密标签；数字照抄论文表 1~5。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">34.41 <small>IoU</small></div><div class="k">SC IoU（几何）<br>基线 GaussianFormer-2 30.56（+12.6%）</div></div>
+    <div class="metric"><div class="v">21.52 <small>mIoU</small></div><div class="k">SSC mIoU（语义）<br>基线 20.02（+7.5%）</div></div>
+    <div class="metric"><div class="v">12/16 <small>类</small></div><div class="k">16 个语义类里 12 类最优<br>结构性类别提升最明显</div></div>
+    <div class="metric"><div class="v">5 <small>种底座</small></div><div class="k">DINOv2/VGGT/DGGT/DINOv3/DVGT<br>全部稳定超过基线</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>与 SOTA 对比（nuScenes）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">Venue</th><th class="mono">SC IoU↑</th><th class="mono">SSC mIoU↑</th></tr>
+    <tr><td>MonoScene</td><td class="mono">CVPR 2022</td><td class="mono">23.96</td><td class="mono">7.31</td></tr>
+    <tr><td>BEVFormer</td><td class="mono">ECCV 2022</td><td class="mono">30.50</td><td class="mono">16.75</td></tr>
+    <tr><td>TPVFormer†</td><td class="mono">CVPR 2023</td><td class="mono">30.86</td><td class="mono">17.10</td></tr>
+    <tr><td>OccFormer</td><td class="mono">ICCV 2023</td><td class="mono">31.39</td><td class="mono">19.03</td></tr>
+    <tr><td>SurroundOcc</td><td class="mono">ICCV 2023</td><td class="mono">31.49</td><td class="mono">20.30</td></tr>
+    <tr><td>GaussianFormer</td><td class="mono">ECCV 2024</td><td class="mono">29.83</td><td class="mono">19.10</td></tr>
+    <tr><td>GaussianFormer-2*</td><td class="mono">CVPR 2025</td><td class="mono">30.56</td><td class="mono">20.02</td></tr>
+    <tr><td>VG3S（DVGT 底座）</td><td class="mono">IROS 2026</td><td class="mono up">34.41</td><td class="mono up">21.52</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1（节选主列）。† = 用 SurroundOcc 稠密标注监督；* = 128 通道特征以对齐参数量。VG3S 的 SC IoU 大幅领先（几何结构更完整），mIoU 领先幅度较小（语义小目标仍有短板，见下）。</p>
+
+  <table>
+    <tr><th>类别 IoU（节选）</th><th class="mono">barrier</th><th class="mono">bus</th><th class="mono">car</th><th class="mono">pedestrian</th><th class="mono">traffic cone</th><th class="mono">driveable</th><th class="mono">manmade</th><th class="mono">vegetation</th></tr>
+    <tr><td>SurroundOcc</td><td class="mono">20.59</td><td class="mono">28.06</td><td class="mono up">30.86</td><td class="mono up">14.09</td><td class="mono up">12.06</td><td class="mono">37.29</td><td class="mono">22.77</td><td class="mono">21.86</td></tr>
+    <tr><td>GaussianFormer-2*</td><td class="mono">20.15</td><td class="mono">27.61</td><td class="mono">30.23</td><td class="mono">12.64</td><td class="mono">9.63</td><td class="mono">39.68</td><td class="mono">12.25</td><td class="mono">20.73</td></tr>
+    <tr><td>VG3S</td><td class="mono up">20.78</td><td class="mono up">28.09</td><td class="mono">29.53</td><td class="mono">12.38</td><td class="mono">10.61</td><td class="mono up">42.42</td><td class="mono up">17.46</td><td class="mono up">25.76</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">从论文表 1 节选（完整 16 类见原表；这里刻意同时列出赢的与输的类别，避免只挑好看的数字）。VG3S 在结构性类别（driveable +2.7、manmade +5.2、vegetation +3.9）上大幅领先；但 car（29.53 vs 30.86）、pedestrian（12.38 vs 14.09）、traffic cone（10.61 vs 12.06）仍输给 SurroundOcc——小目标/细长物体的语义仍是短板，几何先验帮不了语义分类。</p>
+  <h3><span class="no">4.2</span>跨 VFM 泛化（同一 HGFA + 解码器）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">VFM 初始化</th><th class="mono">IoU↑</th><th class="mono">mIoU↑</th></tr>
+    <tr><td>GaussianFormer-2（基线）</td><td class="mono">任务专用编码器</td><td class="mono">30.56</td><td class="mono">20.02</td></tr>
+    <tr><td>VG3S-DINOv2</td><td class="mono">DINOv2</td><td class="mono">32.34</td><td class="mono">20.42</td></tr>
+    <tr><td>VG3S-VGGT</td><td class="mono">VGGT</td><td class="mono">33.29</td><td class="mono">21.10</td></tr>
+    <tr><td>VG3S-DGGT</td><td class="mono">DGGT</td><td class="mono">33.37</td><td class="mono">20.81</td></tr>
+    <tr><td>VG3S-DINOv3</td><td class="mono">DINOv3</td><td class="mono">33.20</td><td class="mono">21.36</td></tr>
+    <tr><td>VG3S-DVGT</td><td class="mono">DVGT（驾驶域几何）</td><td class="mono up">34.41</td><td class="mono up">21.52</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 2。关键结论：① 任何底座都超基线——适配器本身有效；② 带几何监督的底座（VGGT/DGGT/DVGT）普遍优于纯语义的 DINOv2，说明「几何先验」是主要增益来源；③ DINOv3 靠更强语义也能拿到 21.36 mIoU，说明语义能力同样重要；④ 几何 + 驾驶域知识兼得的 DVGT 最优。</p>
+
+  <h3><span class="no">4.3</span>HGFA 消融（VGGT 底座）</h3>
+  <table>
+    <tr><th>设置</th><th class="mono">IoU</th><th class="mono">mIoU</th></tr>
+    <tr><td>VG3S-base（HGFA 全开）</td><td class="mono up">33.29</td><td class="mono up">21.10</td></tr>
+    <tr><td>去掉整个 HGFA（换标准 DPT 层）</td><td class="mono">30.59</td><td class="mono">19.31</td></tr>
+    <tr><td>去掉 GATF</td><td class="mono">32.52</td><td class="mono">20.43</td></tr>
+    <tr><td>去掉 TATR</td><td class="mono">32.70</td><td class="mono">20.38</td></tr>
+    <tr><td>去掉 LSFP</td><td class="mono">32.57</td><td class="mono">20.33</td></tr>
+  </table>
+  <table>
+    <tr><th>GATF 分组数 K</th><th class="mono">1</th><th class="mono">3</th><th class="mono">4</th><th class="mono">6</th></tr>
+    <tr><td>IoU</td><td class="mono">31.45</td><td class="mono">32.66</td><td class="mono up">33.29</td><td class="mono">32.57</td></tr>
+    <tr><td>mIoU</td><td class="mono">19.52</td><td class="mono">20.25</td><td class="mono up">21.10</td><td class="mono">20.55</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 3~5。三个模块缺一都掉 0.6~0.8 IoU，说明它们各自解决的是不同问题（压缩/对齐/结构化），不是冗余堆叠；K=4（每组 6 层）在结构保真与信息压缩之间最平衡。注意「去掉整个 HGFA」直接掉到 30.59——与基线 GaussianFormer-2（30.56）几乎一样，等于说「没有适配器，冻结 VFM 白拿」。</p>
+
+  <h3><span class="no">4.4</span>定性结果</h3>
+  <ul class="dots">
+    <li>与 GaussianFormer-2 对比四个场景：前两个场景 VG3S 的路面连续、无明显断裂（基线在远景/稀疏区域容易断）；第三个场景左侧停车场与右侧建筑结构更完整；第四个交叉路口，基线上层建筑缺失、下层结构残缺，VG3S 能补全。</li>
+    <li>结构类（driveable surface、manmade、vegetation、terrain）提升最直观——几何先验主要修「形状」，语义类的提升需要更强的语义底座（如 DINOv3）配合。</li>
+    <li>论文补充了可视化视频（源包外），但未报告推理时延与显存——工程落地需自行测量（VFM 前向是主要开销）。</li>
+  </ul>
+</section>
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li><b>几何基座的先验可以「冻结借用」：</b>不微调 VGGT/DVGT，只用一个轻量 HGFA 适配器，就能把基座的跨视图几何先验注入高斯占用——IoU +12.6%、mIoU +7.5%，同时避免了全量微调的算力与遗忘问题。</li>
+    <li><b>适配器设计有章可循：</b>GATF（跨层压缩）→ TATR（任务对齐）→ LSFP（空间结构化）三段各解决一个明确问题，消融里缺一都掉；「换 DPT 层」直接退回基线，证明适配器不是锦上添花，而是冻结方案成立的前提。</li>
+    <li><b>可插拔性是真实的：</b>五种底座全部超基线，且几何监督的底座优于纯语义底座——这说明接口设计（token + AA 块）是通用的，不是为某一个 VFM 定制。</li>
+    <li><b>路线一 × 路线三的汇合点：</b>几何基座（VGGT 家族）提供「结构正确的先验」，高斯表示提供「稀疏高效的可渲染/可体素化载体」——两者通过一个适配器对接，就是本站路线图上「前馈几何基座 × 前馈 4D 高斯」的接口原型。</li>
+    <li><b>范式价值大于单点 SOTA：</b>「冻结基座 + 下游适配器」让占用框架可以跟着基座一起升级（VGGT → DVGT → 未来 VGGT-Omega），这是比某个数据集上的 2 个点更重要的工程结论。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读者需要知道的）</h3>
+  <ul class="dots">
+    <li><b>语义短板：</b>16 类里 12 类最优，但 car / pedestrian / traffic cone 仍不如 SurroundOcc——几何先验修结构，修不了小目标的语义判别；需要更强的语义底座（DINOv3）或类别重加权来补。</li>
+    <li><b>没有时序：</b>单帧多视图模型，相邻帧的运动/占据变化没有利用；占用预测的时序一致性（预测未来、遮挡推理）不在本文范围——这正是「占用世界模型」路线（本站 4D 重建域）在补的。</li>
+    <li><b>复现门槛：</b>无公开代码；λ/β、训练硬件、batch、VFM checkpoint 细节均未给出；只能按论文的模块与超参自行实现。</li>
+    <li><b>部署成本：</b>VFM 冻结省了训练，但推理仍要跑 10 亿级基座；车端需要蒸馏/量化/剪枝——论文未讨论。</li>
+    <li><b>数据与标定绑定：</b>只在 nuScenes 验证，依赖 SurroundOcc 稠密标签与 nuScenes 相机标定；跨数据集/跨车型泛化未测。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向（本站路线图把它们串成了一条线）</h3>
+  <ul class="dots">
+    <li><b>换更强的几何基座：</b>VGGT → DVGT → VGGT-Omega（CVPR 2026）——按本文的结论，底座越强、几何先验越好，占用精度会跟着涨，而框架不用重训。</li>
+    <li><b>加时序：</b>把 DVGT 的 temporal 注意力或 <a href="2026-movies.html" style="color:var(--c-enc);text-decoration:none">MoVieS</a> 式的动态表示接进来，从「单帧占用」走向「4D 占用预测/世界模型」——对应本站 4D 重建域的「占用世界模型」路线。</li>
+    <li><b>与驾驶 4D 高斯路线汇合：</b><a href="2025-driverecon.html" style="color:var(--c-enc);text-decoration:none">DrivingRecon</a> 用环视视频前馈 4D 高斯、<a href="2024-l4gm.html" style="color:var(--c-enc);text-decoration:none">L4GM</a> 从单目视频出动态高斯——VG3S 的高斯占用解码与它们是同一族表示的两种用法（重建/渲染 vs 占用/感知）。</li>
+    <li><b>下游任务：</b>占用是规划/控制的上游；把 VG3S 的占用接进预测与规划，形成「感知 → 占用 → 规划」闭环，是自动驾驶栈的自然延伸。</li>
+    <li><b>更好的适配器：</b>HGFA 的三段式是手工设计的；未来可以用 NAS/更通用的 adapter（如 LoRA 式低秩适配）替代，进一步降低每个下游任务的适配成本。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= 目录 scrollspy ================= */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>

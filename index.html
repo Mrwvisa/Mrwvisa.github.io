@@ -160,7 +160,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <div class="mnode up ms read" style="left:64%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MoVieS <span class="st">★</span></b><i>CVPR 26</i></span></div>
           <div class="mnode dn" style="left:70%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>DGGT</b><i>CVPR 26</i></span></div>
           <div class="mnode up" style="left:78%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>ReconDrive</b><i>26.03</i></span></div>
-          <div class="mnode dn ms" style="left:88%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VG3S <span class="st">★</span></b><i>26.07</i><u>⟷ 路线一×三 汇合</u></span></div>
+          <div class="mnode dn ms read" style="left:88%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>VG3S <span class="st">★</span></b><i>26.07</i><u>⟷ 路线一×三 汇合</u></span></div>
         </div></div>
       </div>
       </section>
@@ -268,6 +268,17 @@ const PAPERS = [
     file: "scene-reconstruct/2026-movies.html",
     read: true,   // 已勾（写完即标，源码只读）
     desc: "把动态场景表示成「会动的 splatter pixel」——每个输入像素一个高斯加一条随时间变化的变形场，一次前馈同时输出外观、几何与运动；渲染、跟踪、场景流、动体分割全从这一个模型里长出来，单场景 0.93 秒",
+    star: true,
+  },
+  {
+    domain: "前馈式重建", route: "前馈 4D 高斯",
+    title: "VG3S",
+    full: "VG3S: Visual Geometry Grounded Gaussian Splatting for Semantic Occupancy Prediction",
+    venue: "IROS 2026",
+    year: 2026,
+    file: "scene-reconstruct/2026-vg3s.html",
+    read: true,   // 已勾（写完即标，源码只读）
+    desc: "冻结一个几何基座视觉大模型（VGGT/DVGT 等），用一个可插拔的层次几何特征适配器把它的通用 token 变成占用专用特征，再喂给高斯解码器——高斯占用预测因此拿到了跨视图几何先验，nuScenes IoU 34.41（+12.6%）、mIoU 21.52（+7.5%）",
     star: true,
   },
   // ── 研究构想（2026-10 新增域）──
