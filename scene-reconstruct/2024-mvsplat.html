@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVSplat 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 多视图特征与代价体积</a>
+  <a href="#s23" class="lv2">2.3 深度估计与精化</a>
+  <a href="#s24" class="lv2">2.4 高斯参数与渲染</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>MVSplat：用代价体积把前馈 3D 高斯做得又轻又准</h1>
+  <div class="meta">MVSplat: Efficient 3D Gaussian Splatting from Sparse Multi-View Images · arXiv 2403.14627 · github.com/donydchen/mvsplat · ECCV 2024 Oral</div>
+</div>
+
+<!-- ============ §0 速览卡 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>3D Gaussian Splatting（3DGS）把场景表示成一团带位置、形状、透明度、颜色的高斯，渲染快、质量高；但它和 NeRF 一样要逐场景优化——拿到新照片先跑几十分钟优化。前馈式 3DGS 想省掉这一步：看一眼稀疏输入（两张图）就直接输出高斯。上一代代表 pixelSplat 的做法是「从图像特征里回归一个概率深度分布」——但深度这种几何量，靠纯特征回归并不可靠，点云里飘着一堆浮空高斯，必须再补 5 万步带深度正则的微调才能看。MVSplat 换了个思路：<b>不回归深度，做特征匹配</b>。它按传统多视图立体（MVS）的做法构造代价体积：沿深度方向摆 128 个候选面（平面扫描），把另一张图的特征按每个候选深度 warp 过来、和本图的特征算相关——相关值高的深度就是表面所在地。深度从「匹配」里读出来，比从「特征」里猜出来稳得多；其余高斯参数（形状、透明度、颜色）再并行回归。整套方法概括起来就是：用平面扫描构造跨视图代价体积，把高斯中心定位变成特征匹配问题，深度、协方差、颜色一次前馈全部预测出来——只靠光度监督，12M 参数、0.044 秒出 3D 高斯。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>输入 K 张稀疏视图（少到 2 张）+ 对应相机参数（内参 K、旋转 R、平移 t 都要给——这一点和 DUSt3R/VGGT 的免标定路线不同），一次前馈输出 K×H×W 个像素对齐的 3D 高斯（每个像素 1 个，pixelSplat 是 3 个），再用可微光栅化渲染任意新视角。核心要解决的是「高斯中心放哪」：中心错，后面怎么调都救不回来（结构见图 0-1）。
+      <div class="fig">
+        <svg viewBox="0 0 1400 470" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="20" y="40" width="150" height="66" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+          <text x="95" y="88" text-anchor="middle" class="svg-nota">[3,256,256] + 相机 P¹</text>
+          <rect x="20" y="130" width="150" height="60" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="155" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+          <text x="95" y="176" text-anchor="middle" class="svg-nota">[3,256,256] + 相机 P²</text>
+          <rect x="20" y="214" width="150" height="56" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="95" y="238" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">… Iᴷ</text>
+          <text x="95" y="258" text-anchor="middle" class="svg-nota">K 少到 2 张</text>
+
+          <!-- 多视图特征 -->
+          <line x1="170" y1="140" x2="216" y2="140" class="arrow"/>
+          <rect x="218" y="52" width="190" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="313" y="78" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">多视图特征提取</text>
+          <text x="313" y="100" text-anchor="middle" class="svg-nota">ResNet 6 个残差块</text>
+          <text x="313" y="120" text-anchor="middle" class="svg-nota">4× 下采样 → [128,64,64]</text>
+          <text x="313" y="142" text-anchor="middle" class="svg-nota">6 层 Swin 窗口 Transformer</text>
+          <text x="313" y="162" text-anchor="middle" class="svg-nota">每层 self-attn + cross-attn</text>
+          <text x="313" y="184" text-anchor="middle" class="svg-nota">→ 跨视图特征 Fⁱ [128,64,64]</text>
+
+          <!-- 代价体积 -->
+          <line x1="408" y1="140" x2="454" y2="140" class="arrow"/>
+          <rect x="456" y="40" width="240" height="176" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="576" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">代价体积（平面扫描）</text>
+          <text x="576" y="88" text-anchor="middle" class="svg-nota">D=128 个深度候选（逆深度均分）</text>
+          <text x="576" y="108" text-anchor="middle" class="svg-nota">把其它视图特征按候选深度 warp 过来</text>
+          <text x="576" y="128" text-anchor="middle" class="svg-nota">相关 = Fⁱ · F^{j→i} / √C</text>
+          <text x="576" y="148" text-anchor="middle" class="svg-nota">多视图取平均（视图数任意）</text>
+          <text x="576" y="172" text-anchor="middle" class="svg-nota">Cⁱ [64,64,128]</text>
+          <text x="576" y="192" text-anchor="middle" class="svg-nota">→ U-Net 残差精化 → 上采到 256×256</text>
+
+          <!-- 深度估计 -->
+          <line x1="696" y1="140" x2="742" y2="140" class="arrow"/>
+          <rect x="744" y="40" width="212" height="176" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="850" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度估计</text>
+          <text x="850" y="88" text-anchor="middle" class="svg-nota">softmax(Ĉⁱ) → 每个候选深度的概率</text>
+          <text x="850" y="108" text-anchor="middle" class="svg-nota">深度 = Σ 概率 × 候选值（期望）</text>
+          <text x="850" y="130" text-anchor="middle" class="svg-nota">+ 深度精化 U-Net（图 2-1 细讲）</text>
+          <text x="850" y="150" text-anchor="middle" class="svg-nota">→ 每视图深度 Vⁱ [256,256]</text>
+          <text x="850" y="176" text-anchor="middle" class="svg-cn" fill="#59636e">匹配置信度 = max 概率</text>
+          <text x="850" y="196" text-anchor="middle" class="svg-cn" fill="#59636e">（后面拿去算透明度）</text>
+
+          <!-- 高斯 -->
+          <line x1="956" y1="128" x2="1002" y2="128" class="arrow"/>
+          <rect x="1004" y="32" width="200" height="192" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="1104" y="58" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯参数（每像素 1 个）</text>
+          <text x="1104" y="80" text-anchor="middle" class="svg-nota">中心：深度反投影到世界系</text>
+          <text x="1104" y="100" text-anchor="middle" class="svg-nota">形状：scale(3) + 四元数(4)</text>
+          <text x="1104" y="120" text-anchor="middle" class="svg-nota">颜色：SH degree 4（25×3）</text>
+          <text x="1104" y="140" text-anchor="middle" class="svg-nota">透明度：匹配密度经 2 层卷积</text>
+          <text x="1104" y="166" text-anchor="middle" class="svg-cn" fill="#59636e">协方差与 SH 都旋转到世界系</text>
+          <text x="1104" y="186" text-anchor="middle" class="svg-cn" fill="#59636e">代码另有亚像素中心偏移</text>
+          <text x="1104" y="208" text-anchor="middle" class="svg-nota">共 K×H×W 个高斯</text>
+
+          <!-- 输出/渲染 -->
+          <line x1="1204" y1="128" x2="1250" y2="128" class="arrow" marker-end="url(#ahr)"/>
+          <rect x="1252" y="52" width="128" height="152" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1316" y="78" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">可微光栅化</text>
+          <text x="1316" y="100" text-anchor="middle" class="svg-nota">渲染目标视角</text>
+          <text x="1316" y="120" text-anchor="middle" class="svg-nota">[3,256,256]</text>
+          <text x="1316" y="146" text-anchor="middle" class="svg-cn" fill="#59636e">render</text>
+          <text x="1316" y="164" text-anchor="middle" class="svg-cn" fill="#59636e">0.0015s</text>
+          <text x="1316" y="186" text-anchor="middle" class="svg-cn" fill="#59636e">~500 FPS</text>
+
+          <!-- 监督 -->
+          <rect x="744" y="300" width="480" height="70" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+          <text x="984" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：目标视角的真实图像（纯光度）</text>
+          <text x="984" y="350" text-anchor="middle" class="svg-nota">L = L2 + 0.05 · LPIPS（无深度/几何真值）</text>
+          <path d="M 1316,204 L 1316,336 L 1230,336" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <path d="M 900,370 L 900, 260 L 576, 260 L 576, 220" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <text x="470" y="400" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播：从渲染误差一直回传到代价体积与特征提取</text>
+          <text x="470" y="432" text-anchor="middle" class="svg-cn" fill="#59636e">关键点：高斯中心来自「跨视图特征匹配」而不是「从特征回归深度」——匹配是相对量，对特征尺度不敏感，换数据集不容易崩</text>
+        </svg>
+        <div class="figcap">图 0-1 · MVSplat 核心机制：多视图特征 → 平面扫描代价体积 → softmax 出深度 → 反投影成高斯中心；其余高斯参数并行回归。shape 取自官方 256×256 配置（D=128、特征 4× 下采样、每像素 1 个高斯）。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>输入：</b>每个训练样本是一个场景的 6 帧：2 帧当输入（context）、4 帧当监督目标（target）；分辨率 256×256；相机参数已知。batch size 14（14 个场景，即 14×2 张输入图一起过网络）。两帧输入之间的距离在训练中逐渐拉大（沿用 pixelSplat：先从近处帧练起，再逐步拉到远基线）。</li>
+        <li><b>输出：</b>K×H×W 个高斯（每个输入像素 1 个）：中心 μ、透明度 α、协方差 Σ、颜色 c（球谐系数）。</li>
+        <li><b>GT：</b>只有目标视角的 RGB 图像——没有深度真值、没有点云真值。几何质量完全由「渲染出来像不像」逼出来；能逼得出来，靠的就是代价体积提供的匹配线索。</li>
+        <li><b>Loss：</b>光度损失，两项相加：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:15px">L = ‖ Î − I ‖² + 0.05 · LPIPS(Î, I)</div>
+            <div class="note">符号：<b>Î</b> 是渲染出的目标视角图像（[3,256,256]）；<b>I</b> 是对应真值图像；第一项是逐像素 L2（MSE，权重 1.0），第二项是感知损失 LPIPS（权重 0.05，在 VGG 特征空间比距离，管「看起来像不像」）。两项都是整张图一个标量再回传。<br>
+            <b>代码细节：</b>实验配置（config/experiment/re10k.yaml 等）把 LPIPS 设为 <span class="mono">apply_after_step: 0</span>，即从第 0 步就参与；而通用损失配置 config/loss/lpips.yaml 默认是 150K 步后才加——复现论文数字要按实验配置，别按默认损失配置。另外代码里存在一个 depth loss（权重 0.25），但主实验的损失组合是 [mse, lpips]，没有用它。</div>
+          </div>
+        </li>
+      </ul>
+      backbone 用 UniMatch 的预训练权重初始化（仓库默认 checkpoint 文件名带 <span class="mono">gmdepth-scale1-resumeflowthings-scannet</span>，即 GMDepth 版本、在 ScanNet/合成数据上预训练过）。附录消融：随机初始化也能训到 26.01 dB（300K 步）/ 26.29 dB（450K 步），对比 UniMatch 初始化的 26.39 dB——预训练是加速收敛的「外挂」，不是能否工作的前提。
+      <div class="fig">
+        <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="30" width="176" height="76" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="108" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">样本：一个场景 6 帧</text>
+          <text x="108" y="78" text-anchor="middle" class="svg-nota">2 context 输入 + 4 target 监督</text>
+          <text x="108" y="96" text-anchor="middle" class="svg-nota">256×256 · 相机已知</text>
+          <rect x="256" y="30" width="200" height="76" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="356" y="58" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">MVSplat 前馈（图 0-1）</text>
+          <text x="356" y="80" text-anchor="middle" class="svg-nota">代价体积 → 深度 → 高斯</text>
+          <text x="356" y="98" text-anchor="middle" class="svg-nota">12.0M 参数</text>
+          <rect x="516" y="30" width="180" height="76" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="606" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染 4 个目标视角</text>
+          <text x="606" y="78" text-anchor="middle" class="svg-nota">可微光栅化</text>
+          <text x="606" y="96" text-anchor="middle" class="svg-nota">渲染 0.0015s</text>
+          <rect x="756" y="30" width="190" height="76" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="851" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">L2 + 0.05·LPIPS</text>
+          <text x="851" y="78" text-anchor="middle" class="svg-nota">对目标视角真值图像</text>
+          <text x="851" y="96" text-anchor="middle" class="svg-nota">只有光度监督</text>
+          <rect x="20" y="190" width="926" height="76" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="483" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700">训练配方</text>
+          <text x="483" y="238" text-anchor="middle" class="svg-nota">单 A100 · 300K 迭代 · batch 14 场景 · Adam lr 2e-4 · cosine · warmup 2K · 梯度裁剪 0.5 · UniMatch 预训练初始化</text>
+          <text x="483" y="256" text-anchor="middle" class="svg-nota">近/远深度面 1 / 100（DTU 场景用 2.125 / 4.525）；输入帧间距从近到远逐渐拉大</text>
+          <line x1="196" y1="68" x2="252" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="456" y1="68" x2="512" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="696" y1="68" x2="752" y2="68" class="arrow" marker-end="url(#ahT)"/>
+          <path d="M 851,30 L 851,12 L 356,12 L 356,26" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="600" y="18" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播 → 更新特征提取 / 代价体积 / 高斯头</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：2 帧输入 → 前馈出高斯 → 渲染 4 个目标视角 → 与真值图像算 L2+LPIPS → 反向传播。没有几何监督，几何质量靠代价体积的匹配线索和渲染梯度共同塑造。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>K 张稀疏视图（2 张起，可更多）+ 相机参数；分辨率 256×256（模型按这个尺寸训练；换分辨率要重新适配）。相机外参、内参缺一不可——这是它和 DUSt3R/VGGT「免标定」路线的根本区别。</li>
+        <li><b>输出：</b>K×H×W 个 3D 高斯，直接可渲染任意新视角。速度：编码器 0.043 秒（pixelSplat 0.102 秒），光栅化渲染 0.0015 秒（pixelSplat 0.0025 秒），端到端 0.044 秒——约 22 FPS，渲染本身约 500 FPS。导出的高斯还能存成 .ply 给任意 3DGS 渲染器用。</li>
+        <li><b>后处理：</b>没有。前馈出高斯 → 光栅化就是结果；不需要逐场景优化、不需要深度微调（pixelSplat 要额外 5 万步带深度正则的微调才能拿到像样的点云）。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1180 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="40" width="160" height="80" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">2 张输入视图</text>
+          <text x="100" y="88" text-anchor="middle" class="svg-nota">[3,256,256] ×2</text>
+          <text x="100" y="106" text-anchor="middle" class="svg-nota">+ 相机参数</text>
+          <rect x="240" y="40" width="190" height="80" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="335" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">一次前馈</text>
+          <text x="335" y="88" text-anchor="middle" class="svg-nota">编码器 0.043s</text>
+          <text x="335" y="106" text-anchor="middle" class="svg-nota">12.0M 参数</text>
+          <rect x="490" y="40" width="200" height="80" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="590" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">131,072 个高斯</text>
+          <text x="590" y="88" text-anchor="middle" class="svg-nota">2 视图 × 256×256 × 1</text>
+          <text x="590" y="106" text-anchor="middle" class="svg-nota">μ / α / Σ / SH(degree 4)</text>
+          <rect x="750" y="40" width="190" height="80" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="845" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">光栅化渲染</text>
+          <text x="845" y="88" text-anchor="middle" class="svg-nota">0.0015s · ~500 FPS</text>
+          <text x="845" y="106" text-anchor="middle" class="svg-nota">任意新视角</text>
+          <rect x="20" y="190" width="1100" height="76" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="570" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700">端到端 0.044 秒（≈22 FPS）· 对比 pixelSplat：0.104 秒 / 125.4M 参数 / 每像素 3 个高斯</text>
+          <text x="570" y="240" text-anchor="middle" class="svg-nota">训练只有 2 视图，推理可以给更多视图（代价体积对其它视图求平均）；DTU 3 视图 PSNR 14.30，反而比 2 视图更高</text>
+          <line x1="180" y1="80" x2="236" y2="80" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="430" y1="80" x2="486" y2="80" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="690" y1="80" x2="746" y2="80" class="arrow" marker-end="url(#ahI)"/>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：两张图 + 相机参数一次前馈出 131,072 个高斯，光栅化渲染新视角；全程无后处理。数字取自论文表 1 与实现附录（单 A100，256×256）。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定性：</b>重复纹理（窗框）、只在单视图出现的物体（扶手、灯罩）、远景大场景（桥）都没有 pixelSplat 那种明显伪影；导出点云干净——pixelSplat 的点云里大量浮空高斯，要额外微调才勉强能用。</li>
+        <li><b>定量：</b>RE10K 26.39 / 0.869 / 0.128（PSNR/SSIM/LPIPS，三项全 SOTA，pixelSplat 25.89 / 0.858 / 0.142）；ACID 28.25 / 0.843 / 0.144；端到端 0.044 秒、12.0M 参数（pixelSplat 125.4M）。零样本跨数据集：RE10K→ACID 28.15 / 0.841 / 0.147（pixelSplat 27.64 / 0.830 / 0.160），RE10K→DTU 13.94 / 0.473 / 0.385（pixelSplat 12.89 / 0.382 / 0.560）——域差越大赢得越多。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>把「高斯中心放哪」从「从特征回归深度」换成「跨视图特征匹配」，一个传统 MVS 的代价体积就把前馈 3DGS 的几何质量、参数效率、泛化能力同时抬上去：12M 参数、0.044 秒、纯光度监督，还能零样本跨数据集——前馈 3DGS 从此有了一个又轻又强的基线。</li>
+  </ul>
+
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：为什么「用代价体积做匹配」比 pixelSplat「从特征回归概率深度」稳？</div>
+    <div class="qa-a">A：两个层面。① <b>任务难度</b>：回归深度要求网络从单视图特征里「猜」一个连续的几何量，纯特征没有足够的几何约束；代价体积把「这个深度上另一张图的特征和本图像不像」显式算出来，网络只需要学会读相关峰——这是局部匹配问题，比全局回归简单。② <b>分布鲁棒性</b>：相关值是<b>相对量</b>（两个特征的夹角余弦），对特征的绝对尺度不敏感；pixelSplat 的深度来自纯特征聚合，特征分布一变（换数据集、换视图数）预测就漂。消融直接量化了第一点：去掉代价体积（w/o cost volume）PSNR 掉 3.56 dB（26.39→22.83）、LPIPS 涨 0.069（0.128→0.197，相对恶化近 50%）；而论文附录把 pixelSplat 的深度分支换成这个代价体积后，pixelSplat 自己也从 25.89 涨到 26.63——说明「匹配」这一招是通用的，不是绑在 MVSplat 架构上的特技。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：平面扫描具体怎么算？128 个深度候选怎么取？多视图时怎么办？</div>
+    <div class="qa-a">A：对每个视图 i：① 在 <b>逆深度域</b>（视差）里把 near~far 均匀切成 D=128 份，得到候选深度 d₁…d_D（逆深度均匀 = 近处密、远处疏，符合透视精度分布）；② 对其余每个视图 j、每个候选深度 d_m，用相机投影把 j 的特征图按 d_m 的假设立体面 warp 到 i 的像素网格上（可微双线性采样）；③ 相关 = ⟨Fⁱ, F^{j→i}_{d_m}⟩ / √C（点积除以通道数开方做尺度归一）；④ 多视图时把每个 j 的相关图逐像素<b>取平均</b>——所以网络对视图数不变，只需要「其它所有视图」这一个集合。得到的代价体积 Cⁱ 形状 [H/4, W/4, D]（64×64×128），存的就是「每个像素在每个候选深度上的匹配分」。softmax 沿深度维归一 → 每个候选一个概率，深度取<b>期望</b> Σ p_m·d_m（而不是 argmax）——可微、亚像素级、梯度能回传。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：高斯参数都是怎么参数化的？中心之外的那些量从哪来？</div>
+    <div class="qa-a">A：① <b>中心 μ</b>：深度反投影——用相机内参把像素射成世界射线，乘深度（相机系）再转到世界系；代码里每个高斯还有一个学习到的<b>亚像素偏移</b>（2 通道，sigmoid 到 [0,1] 减 0.5，乘一个像素的尺寸），微调中心位置。② <b>尺度 s</b>：3 通道，sigmoid 映射到 [0.5, 15] 的「相对尺度」，再乘当前深度和一个由内参+像素尺寸算出的因子（0.1·K⁻¹·pixel_size 求和）——所以高斯在世界里的实际大小和「这个像素能覆盖多大」耦合，近处小、远处大。③ <b>旋转</b>：4 通道四元数，归一化成单位四元数；协方差 Σ = Rᵀ diag(s²) R 再旋转到世界系。④ <b>颜色</b>：球谐系数 degree 4（每个通道 25 个系数，共 75 个），初始化时高阶项被 mask 压小（先学 DC 颜色，再学视角相关），同样旋转到世界系。⑤ <b>透明度</b>：论文说「从匹配置信度用两层卷积预测」——代码里是深度精化 U-Net 的输出再过一个两层卷积头（to_disparity），输出「深度增量 + 密度 logits」，sigmoid 成密度，再经 map_pdf_to_opacity 映射（默认配置下这个映射是恒等，即透明度≈匹配概率密度/每像素高斯数）。⑥ 每个像素默认 1 个高斯（可调 3 个：PSNR 26.39→26.54，但渲染 0.0015→0.0023 秒）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：只有光度监督，几何为什么不会烂？为什么 pixelSplat 需要额外深度正则微调，MVSplat 不需要？</div>
+    <div class="qa-a">A：因为几何线索被<b>显式放进网络结构</b>里了，不用全靠渲染梯度去「顿悟」。代价体积的相关峰直接指明表面在哪，深度期望把这个峰变成可微的亚像素深度；渲染损失只需要微调「峰准不准、高斯形状合不合适」，不用从零学几何。pixelSplat 的深度来自特征回归，没有这样的结构化先验，渲染损失对几何的约束又弱（不同深度可以渲染出相似图像），所以点云里浮空高斯多，必须靠额外的深度正则和 5 万步微调把几何拉回来。消融也印证：去掉代价体积后，MVSplat 自己也会掉到 22.83 dB——光度监督本身撑不起几何，撑起来的是「匹配线索 + 光度微调」的组合。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：视图数可变是怎么做到的？训练只有 2 视图，测试给 3 视图为什么反而更好？</div>
+    <div class="qa-a">A：两个模块都写成「对其它视图逐个处理再聚合」，天然与视图数无关：代价体积对每个 j 的相关图求平均；Transformer 的 cross-attention 让每个视图 query 其它所有视图（同一套可学习参数，视图数不参与形状）。所以训练时 2 视图，测试 3 视图直接能跑，而且更多视图意味着更多匹配证据，深度更稳：DTU 上 3 视图 PSNR 从 2 视图的 13.94 涨到 14.30。pixelSplat 的 Epipolar Transformer 与纯特征聚合绑定了「2 视图」的训练分布，硬扩展到 3 视图反而掉（12.52 对 12.89）。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：论文和发布代码有哪些出入？复现时注意什么？</div>
+    <div class="qa-a">A：① <b>LPIPS 起始步</b>：论文只说损失是 L2 + 0.05 LPIPS；通用配置 config/loss/lpips.yaml 默认 150K 步后才加 LPIPS，但论文实验配置（config/experiment/*.yaml）改成 apply_after_step: 0——按实验配置复现。② <b>代价体积候选数</b>：config/model/encoder/costvolume.yaml 默认 D=32，实验配置覆盖为 128——论文写的是 128。③ <b>透明度</b>：论文说「从匹配置信度用两层卷积预测」，代码里是深度精化 U-Net 特征接两层卷积输出「深度增量 + 密度 logits」，密度 sigmoid 后经一个（默认恒等的）映射函数变透明度——不是直接拿 max 概率过卷积。④ <b>亚像素偏移</b>：代码里每个高斯中心有学习到的亚像素偏移，论文没提。⑤ batch size：config/main.yaml 默认 4，实验配置 14——论文的 14 对。⑥ 损失里存在一个未启用的 depth loss（权重 0.25），主实验没用。复现时认准 config/experiment/re10k.yaml 这一套覆盖值。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：它的适用边界在哪？和站内 DUSt3R / VGGT 是什么关系？</div>
+    <div class="qa-a">A：边界：必须有相机参数（不能免标定）；分辨率固定 256（更高分辨率要重训/适配，后续 MVSplat360、PanSplat 在补）；数据集只在 RE10K 上训过（场景级室内为主），复杂室外/动态场景未验证；非朗伯面（玻璃、镜面）会失败（论文附录）。和免标定路线的关系：DUSt3R/VGGT 解决「没有相机参数 → 一次性出几何」，MVSplat 解决「有相机参数 → 更快更省地出可渲染高斯」——两者可以串联：先用 VGGT 估位姿，再喂 MVSplat 出高斯。这也正是路线图上「前馈几何基座」与「前馈 3D 高斯」两条线并行的原因：一条管几何与位姿，一条管可渲染表示。</div>
+  </div>
+</section>
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、MVSplat 怎么解。</div>
+
+  <p>3DGS 把场景变成几十万个高斯，光栅化渲染又快又像，是当下最实用的新视角合成表示。但它继承了一个老问题：每个场景都要单独优化——给定一组照片，先跑几十分钟把高斯的位置、形状、颜色拟合出来，才能渲染。前馈式 3DGS 要省掉这一步：输入几张图，网络直接输出高斯。这条路上真正难的不是颜色，而是<b>高斯中心放哪</b>——中心错了，渲染损失再优化也只能把错误几何渲染得好看一点，点云本身是烂的。SplatterImage 用单图回归，只适合物体级（单视图推断完整 3D 本来就病态）；pixelSplat 用双图，但深度是从图像特征里回归一个概率分布——特征回归几何不可靠，点云里浮空高斯成片。MVSplat 的判断是：<b>深度不该「回归」，该「匹配」</b>——这正是传统多视图立体（MVS）的成熟思路，把它搬进前馈网络就行。整套方法概括起来就是：用平面扫描构造跨视图代价体积，把高斯中心定位变成特征匹配问题，深度、协方差、颜色一次前馈全部预测出来——只靠光度监督，12M 参数、0.044 秒出 3D 高斯。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>3DGS 的「逐场景优化税」</h4>
+      <p>3DGS 原版每个场景都要从点云初始化开始，花几十分钟做可微光栅化优化；换一个场景全部重来。实时应用（机器人、AR、数据合成）等不起，也没法把优化搬进在线流程。</p>
+      <p>前馈化能一次训练、处处推理，但把「优化出来的几何」换成「网络直接给的几何」，质量容易掉——这是整条路线的核心矛盾。</p>
+    </div>
+    <div class="card">
+      <h4>高斯中心定位是关键瓶颈</h4>
+      <p>单视图前馈（SplatterImage）只能做物体级：一张图推完整 3D 本身就多解，场景级更不可能。双视图（pixelSplat）把问题降成双目立体，但它从特征回归概率深度——特征没有几何约束，预测的分布不可靠，点云浮空严重。</p>
+      <p>而且这类纯特征方法对特征分布敏感：换个数据集、换个视图数，性能就掉（附录的跨数据集实验直接把差距量化了）。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:20%">路线</th><th style="width:26%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>前馈 NeRF 类</td>
+      <td class="mono">pixelNeRF / MuRF / GPNR / AttnRend</td>
+      <td>从图像特征回归辐射场，再体渲染。质量尚可但渲染慢（0.186~13 秒/张），特征是全局池化的，空间精度有限。</td>
+    </tr>
+    <tr>
+      <td>单视图高斯</td>
+      <td class="mono">SplatterImage</td>
+      <td>U-Net 逐像素回归高斯，单物体重建快且不错；但单视图推断完整 3D 天生多解，场景级一塌糊涂。</td>
+    </tr>
+    <tr>
+      <td>双视图概率高斯</td>
+      <td class="mono">pixelSplat</td>
+      <td>Epipolar Transformer 聚双视图特征，回归每像素概率深度再采样。125M 参数、0.104 秒；几何质量差、浮空高斯多，要额外 5 万步深度正则微调。</td>
+    </tr>
+    <tr>
+      <td>传统多视图立体</td>
+      <td class="mono">MVSNet / UniMatch</td>
+      <td>平面扫描 + 代价体积是几何重建的标准答案，精度高；但逐场景优化、需要稠密视图，不是前馈生成模型。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>MVSplat 是怎么解决的</h3>
+  <p><b>核心思想：把 MVS 的代价体积搬进前馈网络，让高斯中心从「跨视图特征匹配」里来，而不是从「单/双视图特征回归」里来。</b>具体拆成四个决定：</p>
+  <ul class="dots">
+    <li><b>高斯中心 = 匹配出来的深度</b>：平面扫描摆 128 个候选深度，把其它视图的特征 warp 过来算相关，softmax 出概率、取期望得到亚像素深度，再反投影成世界系里的高斯中心。相关峰在哪，表面就在哪——这是「读」出来的几何，不是「猜」出来的。</li>
+    <li><b>其余参数并行回归</b>：尺度、旋转、球谐颜色都由卷积头从「图像特征 + 精化后的代价体积 + 原图」预测；透明度从匹配密度里来。中心定位与表观参数解耦，各自学各自的。</li>
+    <li><b>纯光度监督</b>：训练只用渲染图像与真值图像的 L2 + LPIPS，不用深度/点云真值。几何可信度来自代价体积的结构先验，不靠额外监督硬灌。</li>
+    <li><b>效率优先的结构取舍</b>：特征提取用 Swin 局部窗口注意力（不用 Epipolar Transformer 的极线采样）；代价体积精化用 2D U-Net（不用 3D 卷积）；每个像素只出 1 个高斯（pixelSplat 是 3 个）。三处一起把参数压到 12M、端到端 0.044 秒。</li>
+  </ul>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>质量与效率同时 SOTA：RE10K 26.39 / 0.869 / 0.128、ACID 28.25 / 0.843 / 0.144，参数 12.0M（pixelSplat 125.4M，约 1/10），端到端 0.044 秒（pixelSplat 0.104 秒，约 1/2.4），22 FPS。</li>
+    <li>纯光度监督就出干净几何：不需要 pixelSplat 那种 5 万步深度正则微调；导出的 .ply 点云可直接用。</li>
+    <li>零样本泛化强：RE10K（室内）训的模型直接测 ACID（航拍室外）28.15 / 0.841 / 0.147、DTU（物体）13.94 / 0.473 / 0.385——域差越大赢 pixelSplat 越多；ACID 上的零样本结果甚至略超 pixelSplat 在 ACID 上训练的模型（28.15 vs 28.14）。</li>
+    <li>视图数可变：训练 2 视图、测试 3 视图直接可用，DTU 3 视图 14.30 反而更好。</li>
+    <li>可扩展：后续 MVSplat360（360° 场景、5 视图）、DepthSplat（DL3DV-10K、12 视图）、PanSplat（4K 全景）都是在它上面接着长出来的——本站路线图「前馈 3D 高斯」线上的 MVSplat360 节点就是它的直系后续。</li>
+  </ul>
+</section>
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（模块级、带真实 shape），再拆特征/代价体积（2.2）、深度精化（2.3）、高斯参数与渲染（2.4）。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 输入 -->
+      <rect x="20" y="64" width="150" height="64" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="90" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I¹</text>
+      <text x="95" y="111" text-anchor="middle" class="svg-nota">[3,256,256] + P¹</text>
+      <rect x="20" y="146" width="150" height="64" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="95" y="172" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">图像 I²</text>
+      <text x="95" y="193" text-anchor="middle" class="svg-nota">[3,256,256] + P²</text>
+      <text x="95" y="236" text-anchor="middle" class="svg-cn" fill="#818b98">…（K 张）</text>
+
+      <!-- CNN + Transformer -->
+      <line x1="170" y1="155" x2="216" y2="155" class="arrow"/>
+      <rect x="218" y="52" width="210" height="196" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="323" y="78" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">特征提取</text>
+      <text x="323" y="100" text-anchor="middle" class="svg-nota">ResNet 6 残差块（4× 下采）</text>
+      <text x="323" y="120" text-anchor="middle" class="svg-nota">→ [K,128,64,64]</text>
+      <text x="323" y="144" text-anchor="middle" class="svg-nota">6 层 Transformer</text>
+      <text x="323" y="164" text-anchor="middle" class="svg-nota">每层 self-attn + cross-attn</text>
+      <text x="323" y="184" text-anchor="middle" class="svg-nota">Swin 局部窗口（2×2 切分）</text>
+      <text x="323" y="208" text-anchor="middle" class="svg-nota">cross-attn：每视图 query 其它所有视图</text>
+      <text x="323" y="230" text-anchor="middle" class="svg-nota">→ Fⁱ [K,128,64,64]</text>
+
+      <!-- 代价体积 -->
+      <line x1="428" y1="150" x2="474" y2="150" class="arrow"/>
+      <rect x="476" y="40" width="236" height="220" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="594" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">代价体积（每个视图一份）</text>
+      <text x="594" y="88" text-anchor="middle" class="svg-nota">D=128 个逆深度候选 d₁…d₁₂₈</text>
+      <text x="594" y="108" text-anchor="middle" class="svg-nota">F^{j→i} = warp(Fʲ, Pⁱ, Pʲ, d_m)</text>
+      <text x="594" y="128" text-anchor="middle" class="svg-nota">相关 = ⟨Fⁱ, F^{j→i}⟩ / √C</text>
+      <text x="594" y="150" text-anchor="middle" class="svg-nota">对其它视图求平均 → Cⁱ [64,64,128]</text>
+      <text x="594" y="174" text-anchor="middle" class="svg-nota">U-Net 精化（+Fⁱ 拼接，残差相加）</text>
+      <text x="594" y="194" text-anchor="middle" class="svg-nota">3 个跨视图注意力在最低分辨率</text>
+      <text x="594" y="216" text-anchor="middle" class="svg-nota">上采到全分辨率 Ĉⁱ [256,256,128]</text>
+      <text x="594" y="240" text-anchor="middle" class="svg-nota">softmax → 每个候选深度的概率</text>
+
+      <!-- 深度 -->
+      <line x1="712" y1="150" x2="758" y2="150" class="arrow"/>
+      <rect x="760" y="34" width="220" height="150" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="870" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">深度估计 + 精化</text>
+      <text x="870" y="82" text-anchor="middle" class="svg-nota">Vⁱ = Σ softmax(Ĉⁱ)·d（期望）</text>
+      <text x="870" y="102" text-anchor="middle" class="svg-nota">→ 粗深度 [256,256]</text>
+      <text x="870" y="126" text-anchor="middle" class="svg-nota">精化 U-Net（图像+特征+深度+置信度）</text>
+      <text x="870" y="146" text-anchor="middle" class="svg-nota">4 次下采 · 16× 分辨率注意力</text>
+      <text x="870" y="168" text-anchor="middle" class="svg-nota">→ 残差 Δ视差 → 深度 V̂ⁱ [256,256]</text>
+
+      <!-- 高斯 -->
+      <line x1="980" y1="110" x2="1026" y2="110" class="arrow"/>
+      <rect x="1028" y="34" width="196" height="240" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="1126" y="60" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">高斯参数（1 个/像素）</text>
+      <text x="1126" y="82" text-anchor="middle" class="svg-nota">中心：反投影 V̂ⁱ（+ 亚像素偏移）</text>
+      <text x="1126" y="102" text-anchor="middle" class="svg-nota">尺度：sigmoid[0.5,15]×深度×像素因子</text>
+      <text x="1126" y="122" text-anchor="middle" class="svg-nota">旋转：四元数归一化</text>
+      <text x="1126" y="142" text-anchor="middle" class="svg-nota">颜色：SH degree 4（25×3）</text>
+      <text x="1126" y="162" text-anchor="middle" class="svg-nota">透明度：密度 logits → sigmoid</text>
+      <text x="1126" y="186" text-anchor="middle" class="svg-cn" fill="#59636e">Σ 与 SH 旋转到世界系</text>
+      <text x="1126" y="206" text-anchor="middle" class="svg-cn" fill="#59636e">每像素 85 个回归参数（中心由深度定）</text>
+      <text x="1126" y="228" text-anchor="middle" class="svg-nota">K×256×256 个高斯</text>
+
+      <!-- 渲染 -->
+      <line x1="1224" y1="110" x2="1270" y2="110" class="arrow" marker-end="url(#ahr2)"/>
+      <rect x="1272" y="60" width="108" height="150" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1326" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">光栅化</text>
+      <text x="1326" y="108" text-anchor="middle" class="svg-nota">渲染新视角</text>
+      <text x="1326" y="128" text-anchor="middle" class="svg-nota">[3,256,256]</text>
+      <text x="1326" y="152" text-anchor="middle" class="svg-cn" fill="#59636e">0.0015s</text>
+      <text x="1326" y="172" text-anchor="middle" class="svg-cn" fill="#59636e">~500 FPS</text>
+
+      <!-- 监督 -->
+      <rect x="760" y="470" width="500" height="74" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1010" y="498" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：目标视角真值图像</text>
+      <text x="1010" y="522" text-anchor="middle" class="svg-nota">L = ‖Î−I‖² + 0.05·LPIPS；无深度真值</text>
+      <path d="M 1326,210 L 1326,506 L 1266,506" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <path d="M 880,470 L 880,410 L 594,410 L 594,266" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <text x="370" y="560" text-anchor="start" class="svg-cn" fill="#59636e">反向传播贯穿：光栅化 → 高斯头 → 深度/代价体积 → 多视图特征</text>
+      <text x="370" y="592" text-anchor="start" class="svg-cn" fill="#59636e">核心结构选择：不用 3D 卷积（2D U-Net 精化代价体积）· 不用极线采样（Swin 局部窗口）· 每像素 1 个高斯</text>
+    </svg>
+    <div class="figcap">图 2-1 · MVSplat 前馈总流程：多视图特征 → 逐视图代价体积（平面扫描）→ softmax 期望深度 → 深度精化 → 高斯参数 → 光栅化。shape 取自官方 256×256 配置（D=128、特征 4× 下采样）。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>特征 / 代价体积 / 高斯头</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>输出</span>
+      <span><span class="sw line" style="border-color:#818b98"></span>数据流</span>
+      <span><span class="sw dash"></span>监督 / 训练细节</span>
+    </div>
+  </div>
+
+  <ul class="dots">
+    <li>输入是「图像 + 相机投影矩阵」成对出现：Pⁱ = Kⁱ[Rⁱ|tⁱ]，内参/外参都要；网络不接受无标定输入。</li>
+    <li>特征分辨率固定在 1/4（256→64），代价体积也在 64×64 上算，最后上采回 256×256——精度和显存的折中：128 个深度候选 × 64×64 已经是一张 64×64×128 的三维张量。</li>
+    <li>每个视图一份代价体积（K 份），深度也逐视图预测；高斯参数在 256×256 全分辨率上逐像素出。</li>
+    <li>所有模块都对视图数「无感」：相关对其它视图求平均、cross-attn 对其它视图逐一套用——训练 2 视图，推理给更多也能跑。</li>
+    <li>参数量 12.0M 的构成：大头是 6 层多视图 Transformer 和两个 U-Net；没有 3D 卷积、没有大 ViT backbone——这是它比 pixelSplat 小一个数量级的原因。</li>
+  </ul>
+</section>
+<!-- ============ §2.2 特征与代价体积 ============ -->
+<section id="s22">
+  <h2><span class="no">2.2</span>多视图特征与代价体积</h2>
+
+  <p>这一段是整篇论文的重心：怎么把「两张图 + 相机参数」变成一个能直接读出深度的三维张量。</p>
+
+  <ul class="dots">
+    <li><b>CNN 部分：</b>6 个残差块，前 2 块保持 256×256，后 4 块每 2 块用 stride 2 下一次采样（两次共 4×），输出 [K,128,64,64]。浅、窄、没有大 backbone——分辨率降到 1/4 是后面代价体积能承受 128 个深度候选的前提。</li>
+    <li><b>Transformer 部分：</b>6 个堆叠块，每块 = 一层 self-attention + 一层 cross-attention。用的是 Swin 的<b>局部窗口注意力</b>（特征按 2×2 切窗，窗口内做注意力，逐层交替移位窗口），不是 pixelSplat 的极线采样（Epipolar Transformer）——省掉了沿极线采样这一步，附录测得同样精度下 0.038 秒 vs 0.055 秒。cross-attention 让每个视图 query 其它所有视图，参数与视图数无关。</li>
+    <li><b>代价体积构造（以视图 i 为例）：</b>在逆深度域里取 128 个候选 d_m；对其它每个视图 j，把 Fʲ 按「假设深度 d_m」用相机投影 warp 到视图 i 的像素网格（双线性采样，越界补零）；算相关 ⟨Fⁱ, F^{j→i}_{d_m}⟩/√C（点积除通道数开方）；多个其它视图的相关图<b>逐像素平均</b>；把所有候选堆起来得到 Cⁱ ∈ ℝ<sup>64×64×128</sup>。它编码的就是「每个像素在每个候选深度上，和别的视图有多像」。</li>
+    <li><b>为什么用逆深度：</b>逆深度（视差）的均匀采样在近处更密、远处更疏，和透视投影的精度分布一致；near/far 是 1/100 时，128 个候选在视差尺度上等距。</li>
+    <li><b>代价体积精化：</b>原始相关在弱纹理区不可靠（哪里都不像）。用一个轻量 2D U-Net 精化：输入是「Cⁱ 拼接 Fⁱ」（128+128=256 通道），输出残差 ΔCⁱ 加回原体积；U-Net 通道宽 128，下采 2 次，在 4× 下采样层加一个 self-attention（把不同视图的代价体积摊平后一起注意）；最后用 CNN 上采样器把精化后的体积升到全分辨率 Ĉⁱ ∈ ℝ<sup>256×256×128</sup>。</li>
+    <li><b>消融意义：</b>去掉代价体积（直接回归特征）PSNR 掉 3.56 dB（26.39→22.83）、LPIPS 从 0.128 涨到 0.197；去掉 U-Net 精化掉 0.67 dB（26.12→25.45）。代价体积是「必选件」，U-Net 是「补弱纹理区」的关键增强——没有匹配的区域（单视图可见部分）只能靠 U-Net 把图像细节映射进高斯。</li>
+    <li><b>代码细节：</b>基础配置里 <span class="mono">num_depth_candidates: 32</span>，实验配置（re10k/acid/dtu）覆盖为 <b>128</b>——论文数字对应后者；相关卷积前还会把 Fⁱ 拼进输入通道（论文正文没提，代码里是 concat），精化后又加了一个残差连接 <span class="mono">corr_refine_net(in) + regressor_residual(in)</span>。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 深度估计与精化 ============ -->
+<section id="s23">
+  <h2><span class="no">2.3</span>深度估计与精化</h2>
+
+  <ul class="dots">
+    <li><b>粗深度：</b>沿深度维对 Ĉⁱ 做 softmax，得到每个候选深度的概率 p_m；深度取<b>期望</b> Vⁱ = Σ p_m·d_m（而不是 argmax）。期望的好处：可微、亚像素精度、梯度能回传到整个代价体积；argmax 不可导且只能落在候选格点上。同时把 max p_m 保留下来当「匹配置信度」（这个量后面还要用）。</li>
+    <li><b>深度精化 U-Net：</b>粗深度是 64×64 上采来的，边缘糊、细节差。再过一个轻量 U-Net：输入 = 原图（3 通道）+ 投影后的特征（32 通道）+ 粗深度（1）+ 匹配置信度（1），4 次下采样（5 个层级），在 16× 下采样层加跨视图注意力，输出 2 通道——深度增量 Δ视差 + 密度 logits。细视差 = 粗视差 + Δ，再 clamp 到 [1/far, 1/near]，深度 = 1/细视差。</li>
+    <li><b>为什么这一步值 0.27 dB：</b>26.12（base）→ 26.39（+refine）。代价体积在「只有单视图能看到」的区域没有匹配，粗深度只能瞎猜；精化 U-Net 直接看原图的高频细节，把这些区域的深度往回拉——论文的定性图里，左右两侧单视图区域的改善最明显。</li>
+    <li><b>输出：</b>每视图一张 [256,256] 深度图；配上相机内参/外参就能反投影成世界系点云，直接当高斯中心。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 高斯参数与渲染 ============ -->
+<section id="s24">
+  <h2><span class="no">2.4</span>高斯参数与渲染</h2>
+
+  <ul class="dots">
+    <li><b>每像素 1 个高斯：</b>每个输入像素恰好贡献 1 个高斯（pixelSplat 是 3 个）。2 张 256×256 输入 → 131,072 个高斯。附录消融：改 3 个/像素能涨到 26.54 dB，但渲染从 0.0015 秒涨到 0.0023 秒——为了速度选 1 个。</li>
+    <li><b>中心 μ：</b>像素射线 × 深度（相机系）→ 世界系；代码里额外预测一个 2 通道亚像素偏移（sigmoid 到 [0,1] 再减 0.5，乘像元尺寸），让中心不锁死在像素格点上。论文没提这个细节。</li>
+    <li><b>尺度 s：</b>3 通道，sigmoid 映射到 [0.5, 15] 的「相对尺度」，再乘深度和像素足迹因子（0.1·K⁻¹·pixel_size 求和）——高斯在世界里的绝对大小和「它覆盖的像素在空间中多大」挂钩，近大远小自动成立。</li>
+    <li><b>旋转：</b>4 通道四元数，归一化成单位四元数；协方差 Σ = Rᵀ diag(s²) R（R 由四元数构造），再整体旋转到世界系（相机到世界的旋转）。</li>
+    <li><b>颜色：</b>球谐系数 degree 4（每通道 25 个系数，共 75 个）。初始化时用一个 mask 把高阶项压到 0.1×0.25^degree——先学与视角无关的 DC 颜色，再慢慢学长视角相关项；SH 也按世界系旋转。</li>
+    <li><b>透明度 α：</b>论文写「从匹配 max 概率用两层卷积预测」；代码实际是深度精化 U-Net 的特征接两层卷积（<span class="mono">to_disparity</span>），输出「深度增量 + 密度 logits」，密度 sigmoid 后经 <span class="mono">map_pdf_to_opacity</span> 映射（默认配置 initial=final=0，映射退化为恒等，于是透明度≈密度/每像素高斯数）。每一轮训练里 opacity 的映射函数是固定的，不另加监督。</li>
+    <li><b>渲染：</b>所有高斯送入 3DGS 可微光栅化器，渲染目标视角的 RGB。渲染本身约 0.0015 秒/帧（~500 FPS），端到端 0.044 秒的主要开销在编码器。</li>
+  </ul>
+</section>
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="sec-sub">记号：预测的渲染图 Î，真值目标视角图像 I（都是 [3,256,256]）。整个训练只有光度监督。</div>
+
+  <h3><span class="no">3.1</span>损失与逐符号解释</h3>
+
+  <div class="formula">
+    <div class="fx" style="font-size:15px">L = ‖ Î − I ‖² + 0.05 · LPIPS(Î, I)</div>
+    <div class="note">论文 Eq.6，两项相加：<br>
+      <b>Î</b>：用前馈预测的高斯渲染出的目标视角图像（可微光栅化）；<br>
+      <b>I</b>：目标视角的真值 RGB 图像；<br>
+      <b>‖·‖²</b>：逐像素 L2（MSE），权重 1.0——管数值和结构；<br>
+      <b>LPIPS(·,·)</b>：感知损失（把两张图送进 VGG 提特征，在特征空间算加权距离），权重 <b>0.05</b>——管「看起来像不像」；LPIPS 的梯度侧重纹理与语义，会把高斯往「视觉上合理」的方向推。<br>
+      训练时每个场景有 2 个输入视图、4 个目标视图，损失在 4 张渲染图上平均。</div>
+  </div>
+
+  <ul class="dots">
+    <li><b>没有几何项：</b>没有深度损失、没有点云损失、没有匹配损失。几何完全靠「代价体积的结构先验 + 渲染梯度」撑起来——这是它能只用现成视频数据集（只有 RGB）训练的原因。</li>
+    <li><b>代码里的 LPIPS 时间表：</b>通用损失配置里 LPIPS 默认 <span class="mono">apply_after_step: 150_000</span>（先只练 L2，后期再加感知项）；但论文的实验配置全部覆盖成 <span class="mono">0</span>——从第 0 步就加。复现论文数字请用实验配置。</li>
+    <li><b>未使用的 depth loss：</b>仓库里有一个现成的深度损失（权重 0.25），主实验没有启用；它只在想用稠密深度真值时才有意义。</li>
+  </ul>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 960 140" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+      <rect x="14" y="26" width="170" height="46" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="99" y="45" text-anchor="middle" class="svg-nota" fill="#116329">2 输入视图 + 相机参数</text>
+      <text x="99" y="62" text-anchor="middle" class="svg-nota" fill="#116329">（context views）</text>
+      <rect x="14" y="88" width="170" height="42" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="99" y="106" text-anchor="middle" class="svg-nota" fill="#116329">4 目标视角真值图像 I</text>
+      <text x="99" y="122" text-anchor="middle" class="svg-nota" fill="#116329">（target views）</text>
+      <line x1="184" y1="49" x2="228" y2="63" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="230" y="40" width="170" height="52" rx="6" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="315" y="60" text-anchor="middle" class="svg-nota-b" fill="#0550ae">光栅化渲染</text>
+      <text x="315" y="78" text-anchor="middle" class="svg-nota" fill="#0550ae">Î [3,256,256] ×4</text>
+      <line x1="400" y1="66" x2="438" y2="66" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="440" y="30" width="300" height="72" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="590" y="50" text-anchor="middle" class="svg-nota-b" fill="#5c4400">L = ‖Î−I‖² + 0.05·LPIPS</text>
+      <text x="590" y="68" text-anchor="middle" class="svg-nota" fill="#5c4400">只在目标视角上算（不监督输入视角）</text>
+      <text x="590" y="86" text-anchor="middle" class="svg-nota" fill="#5c4400">整张图一个标量</text>
+      <line x1="740" y1="66" x2="778" y2="66" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="780" y="40" width="70" height="52" rx="6" fill="#cf222e"/>
+      <text x="815" y="72" text-anchor="middle" class="svg-nota-b" fill="#ffffff">Σ L</text>
+      <text x="870" y="130" text-anchor="start" class="svg-nota">回传：光栅化 → 高斯头 → 代价体积 → 特征提取</text>
+    </svg>
+    <div class="figcap">图 3-1 · 损失链路：两个输入视图出高斯，渲染四个目标视角，与真值图像算 L2 + LPIPS。</div>
+  </div>
+
+  <h3><span class="no">3.2</span>训练配方速查</h3>
+  <table>
+    <tr><th style="width:24%">项目</th><th>设置</th></tr>
+    <tr><td>数据</td><td class="mono">RealEstate10K（67,477 训练场景）· ACID（11,075 训练场景）· 256×256</td></tr>
+    <tr><td>每个样本</td><td class="mono">1 个场景 · 2 context + 4 target 帧 · 帧距从近到远逐渐拉大</td></tr>
+    <tr><td>batch / 迭代</td><td class="mono">batch 14 场景 · 300K 迭代</td></tr>
+    <tr><td>优化器</td><td class="mono">Adam · lr 2e-4 · cosine 衰减 · warmup 2K · 梯度裁剪 0.5</td></tr>
+    <tr><td>代价体积</td><td class="mono">128 个逆深度候选 · 特征 1/4 分辨率（64×64）· near/far = 1/100（DTU：2.125/4.525）</td></tr>
+    <tr><td>初始化</td><td>UniMatch（GMDepth）预训练权重；随机初始化也能训（450K 步到 26.29）</td></tr>
+    <tr><td>算力</td><td class="mono">单张 A100 · 300K 迭代</td></tr>
+    <tr><td>损失</td><td class="mono">MSE 1.0 + LPIPS 0.05（从第 0 步启用）</td></tr>
+  </table>
+</section>
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">除特别说明外，指标都在 256×256 上评测；每场景 2 输入视图、渲染 3 个新视角，数字照抄论文表 1~4 与附录表。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">26.39 <small>PSNR</small></div><div class="k">RealEstate10K（2 视图输入）<br>pixelSplat 25.89，MuRF 26.10</div></div>
+    <div class="metric"><div class="v">28.25 <small>PSNR</small></div><div class="k">ACID（室外航拍）<br>pixelSplat 28.14</div></div>
+    <div class="metric"><div class="v">0.044 <small>s</small></div><div class="k">端到端（≈22 FPS）<br>编码 0.043s + 渲染 0.0015s</div></div>
+    <div class="metric"><div class="v">12.0 <small>M</small></div><div class="k">参数量<br>pixelSplat 125.4M（约 1/10）</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>与 SOTA 对比（图像质量 + 效率）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">时间(s)</th><th class="mono">参数(M)</th><th class="mono">RE10K PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th><th class="mono">ACID PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td>pixelNeRF</td><td class="mono">5.299</td><td class="mono">28.2</td><td class="mono">20.43</td><td class="mono">0.589</td><td class="mono">0.550</td><td class="mono">20.97</td><td class="mono">0.547</td><td class="mono">0.533</td></tr>
+    <tr><td>GPNR</td><td class="mono">13.340</td><td class="mono">9.6</td><td class="mono">24.11</td><td class="mono">0.793</td><td class="mono">0.255</td><td class="mono">25.28</td><td class="mono">0.764</td><td class="mono">0.332</td></tr>
+    <tr><td>AttnRend</td><td class="mono">1.325</td><td class="mono">125.1</td><td class="mono">24.78</td><td class="mono">0.820</td><td class="mono">0.213</td><td class="mono">26.88</td><td class="mono">0.799</td><td class="mono">0.218</td></tr>
+    <tr><td>MuRF</td><td class="mono">0.186</td><td class="mono">5.3</td><td class="mono">26.10</td><td class="mono">0.858</td><td class="mono">0.143</td><td class="mono">28.09</td><td class="mono">0.841</td><td class="mono">0.155</td></tr>
+    <tr><td>pixelSplat</td><td class="mono">0.104</td><td class="mono">125.4</td><td class="mono">25.89</td><td class="mono">0.858</td><td class="mono">0.142</td><td class="mono">28.14</td><td class="mono">0.839</td><td class="mono">0.150</td></tr>
+    <tr><td>MVSplat</td><td class="mono up">0.044</td><td class="mono">12.0</td><td class="mono up">26.39</td><td class="mono up">0.869</td><td class="mono up">0.128</td><td class="mono up">28.25</td><td class="mono up">0.843</td><td class="mono up">0.144</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1。时间含编码 + 渲染（3DGS 类的渲染约 500 FPS，慢的都是 NeRF 类）。MVSplat 三项指标全 SOTA，同时是最快、最小。</p>
+
+  <h3><span class="no">4.2</span>效率与高斯数量（附录）</h3>
+  <table>
+    <tr><th>设置</th><th class="mono">渲染时间(s)</th><th class="mono">PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td>MVSplat（每像素 1 个高斯，默认）</td><td class="mono up">0.0015</td><td class="mono">26.39</td><td class="mono">0.869</td><td class="mono">0.128</td></tr>
+    <tr><td>MVSplat（每像素 3 个高斯）</td><td class="mono">0.0023</td><td class="mono up">26.54</td><td class="mono up">0.872</td><td class="mono up">0.127</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文附录表 C。多一点高斯能再涨 0.15 dB，但渲染慢 53%——默认选 1 个，把「快」留在主线里。编码器 0.043 秒对 pixelSplat 0.102 秒；渲染 0.0015 对 0.0025 秒（高斯数量差 3 倍）。</p>
+
+  <h3><span class="no">4.3</span>零样本跨数据集与更多视图</h3>
+  <table>
+    <tr><th>训练数据</th><th>方法</th><th class="mono">ACID PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th><th class="mono">DTU PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td rowspan="2">RealEstate10K（室内）</td><td>pixelSplat</td><td class="mono">27.64</td><td class="mono">0.830</td><td class="mono">0.160</td><td class="mono">12.89</td><td class="mono">0.382</td><td class="mono">0.560</td></tr>
+    <tr><td>MVSplat</td><td class="mono up">28.15</td><td class="mono up">0.841</td><td class="mono up">0.147</td><td class="mono up">13.94</td><td class="mono up">0.473</td><td class="mono up">0.385</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 2。RE10K 上训、ACID（室外航拍）/ DTU（物体）上直接测，不微调。域差越大赢得越多（DTU LPIPS 0.560→0.385）；ACID 上的零样本 28.15 甚至略超 pixelSplat 在 ACID 上训练的 28.14。</p>
+  <ul class="dots">
+    <li><b>更多视图（DTU，3 视图输入）：</b>MVSplat 14.30 / 0.508 / 0.371，pixelSplat 12.52 / 0.367 / 0.585。训练只见过 2 视图，测试加视图反而变好——代价体积把「多出来的视图」当成更多匹配证据；pixelSplat 绑定了 2 视图的特征分布，扩展反而掉。</li>
+  </ul>
+
+  <h3><span class="no">4.4</span>消融（RealEstate10K）</h3>
+  <table>
+    <tr><th>设置</th><th class="mono">PSNR↑</th><th class="mono">SSIM↑</th><th class="mono">LPIPS↓</th></tr>
+    <tr><td>base + 深度精化（最终模型）</td><td class="mono up">26.39</td><td class="mono up">0.869</td><td class="mono up">0.128</td></tr>
+    <tr><td>base（无深度精化）</td><td class="mono">26.12</td><td class="mono">0.864</td><td class="mono">0.133</td></tr>
+    <tr><td>去掉代价体积</td><td class="mono">22.83</td><td class="mono">0.753</td><td class="mono">0.197</td></tr>
+    <tr><td>去掉跨视图注意力</td><td class="mono">25.19</td><td class="mono">0.852</td><td class="mono">0.152</td></tr>
+    <tr><td>去掉代价体积精化 U-Net</td><td class="mono">25.45</td><td class="mono">0.847</td><td class="mono">0.150</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 3。代价体积是命根子（-3.56 dB）；跨视图注意力 -1.2 dB，而且去掉后会过拟合（论文只报了它最好的 checkpoint）；精化 U-Net 管单视图区域的细节（-0.67 dB）。所有消融以 base 为基准、300K 步收敛。</p>
+  <ul class="dots">
+    <li><b>把代价体积装进 pixelSplat：</b>25.89 → 26.63 / 0.875 / 0.122——验证「匹配优先」是通用思路，不是 MVSplat 专属技巧（附录表 A）。</li>
+    <li><b>Swin vs 极线 Transformer：</b>0.038s vs 0.055s，质量持平（26.12 vs 26.09）——省掉极线采样是纯赚（附录表 B）。</li>
+    <li><b>初始化：</b>UniMatch 26.39（300K）· 随机初始化 26.01（300K）/ 26.29（450K）——预训练加速收敛，但不是必需品（附录表 D）。</li>
+  </ul>
+</section>
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li><b>关键瓶颈是「高斯中心放哪」，解法是换问题形式：</b>把中心定位从「从图像特征回归深度」换成「跨视图特征匹配」，代价体积的匹配峰给出了可靠的几何证据——去掉代价体积 PSNR 掉 3.56 dB，装上它 pixelSplat 也能涨 0.74 dB。同一个几何问题，换一种表述（匹配 vs 回归）就是质量与效率的分水岭。</li>
+    <li><b>结构取舍同样重要：</b>不用 3D 卷积（2D U-Net 精化）、不用极线采样（Swin 局部窗口）、每像素 1 个高斯——三处一起把参数从 125.4M 压到 12.0M、端到端从 0.104s 压到 0.044s，同时质量还更高。前馈 3DGS 的「重」不是必需的。</li>
+    <li><b>纯光度监督也能出干净几何：</b>几何线索被显式编码在代价体积里，渲染梯度只需要微调，不需要额外的深度真值或正则微调（pixelSplat 需要 5 万步）。</li>
+    <li><b>相对相似度带来跨域泛化：</b>RE10K→ACID/DTU 零样本都赢，域差越大赢得越多；ACID 零样本甚至超过在 ACID 上训练的 pixelSplat。匹配是「相对量」这个性质，是泛化的物理来源。</li>
+    <li><b>视图数无感：</b>训练 2 视图、测试 3 视图反而更好——聚合式设计（相关平均、cross-attn 对其它视图）让模型天然支持任意视图数。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读代码看出来的）</h3>
+  <ul class="dots">
+    <li><b>必须有相机参数：</b>输入要求 P = K[R|t] 全给；没有位姿就先要跑 SfM / DUSt3R / VGGT 之类的几何前端。这是它和免标定路线（DUSt3R、VGGT）的根本分工。</li>
+    <li><b>分辨率固定 256×256：</b>模型按 256 训练和评测；更高分辨率需要重新适配/训练（后续 MVSplat360、PanSplat 在补）。</li>
+    <li><b>训练数据只有 RealEstate10K（部分实验加 ACID）：</b>场景多样性有限，野外复杂场景（大尺度、强光照、非刚性）没有验证；论文自己把「规模化训练数据」列为未来方向。</li>
+    <li><b>反射/非朗伯面会失败：</b>玻璃、镜面、窗户这类不满足朗伯假设的表面，匹配和渲染都不可靠（附录失败案例图）。</li>
+    <li><b>静态场景假设：</b>动态物体（行人、车辆）没有专门机制，会当成静态几何硬拟合——这也是为什么后来的 4D 路线（本站「前馈 4D 高斯」）要另起炉灶。</li>
+    <li><b>表达力上限：</b>每像素 1 个高斯是效率取舍；3 个能涨 0.15 dB 但渲染慢 53%。要更高质量需要别的表示或更多基元。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向（本站路线图把它们串成了一条线）</h3>
+  <ul class="dots">
+    <li><b>MVSplat360</b>（NeurIPS 2024，路线图「前馈 3D 高斯」节点）：把 MVSplat 扩到 360° 大场景——5 个稀疏视图输入，用视频扩散模型补全未见区域，渲染稳定视角的视频。</li>
+    <li><b>DepthSplat</b>（CVPR 2025）：在 DL3DV-10K 上扩展到 12 个输入视图，处理更复杂的场景。</li>
+    <li><b>PanSplat</b>（CVPR 2025）：层次化球面代价体积 + 两步延迟反传，把分辨率推到 4K 全景。</li>
+    <li><b>与免标定几何基座串联：</b>先用 <a href="../4d-reconstruct/2024-dust3r.html" style="color:var(--c-enc);text-decoration:none">DUSt3R</a> / <a href="2025-vggt.html" style="color:var(--c-enc);text-decoration:none">VGGT</a> 从无标定图像估出位姿与深度，再喂 MVSplat 出可渲染高斯——「几何前端 + 高斯后端」是 2025-2026 年最实用的组合拳。</li>
+    <li><b>数据规模化：</b>论文展望把训练集从 RealEstate10K 扩到多数据集混合，进一步提升野外泛化。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= 目录 scrollspy ================= */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>

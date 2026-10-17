@@ -142,7 +142,7 @@ footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:12.
           <div class="maxis"></div>
           <div class="mnode up" style="left:8%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>SplatterImage</b><i>CVPR 24</i></span></div>
           <div class="mnode dn" style="left:18%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>pixelSplat</b><i>CVPR 24</i></span></div>
-          <div class="mnode up ms" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MVSplat <span class="st">★</span></b><i>ECCV 24</i></span></div>
+          <div class="mnode up ms read" style="left:30%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MVSplat <span class="st">★</span></b><i>ECCV 24</i></span></div>
           <div class="mnode dn" style="left:47%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>MVSplat360</b><i>CVPR 25</i></span></div>
           <div class="mnode up" style="left:55%"><span class="mdot"></span><span class="mstem"></span><span class="mlab"><b>NoPoSplat</b><i>CVPR 25</i></span></div>
         </div></div>
@@ -223,6 +223,17 @@ const PAPERS = [
     file: "scene-reconstruct/2025-vggt.html",
     read: true,   // 已勾（写完即标，源码只读）
     desc: "把全部帧的 token 送进一个 24 层「帧内 / 全局」交替注意力的 Transformer，一次前馈直接输出每帧的相机参数、深度图、点图与跟踪特征——重建不再需要两两前馈与全局对齐，一个网络直接成为 3D 重建的基座",
+    star: true,
+  },
+  {
+    domain: "前馈式重建", route: "前馈 3D 高斯",
+    title: "MVSplat",
+    full: "MVSplat: Efficient 3D Gaussian Splatting from Sparse Multi-View Images",
+    venue: "ECCV 2024",
+    year: 2024,
+    file: "scene-reconstruct/2024-mvsplat.html",
+    read: true,   // 已勾（写完即标，源码只读）
+    desc: "用平面扫描构造跨视图代价体积，把高斯中心定位变成特征匹配问题，深度、协方差、颜色一次前馈全部预测出来——只靠光度监督，12M 参数、0.044 秒出 3D 高斯",
     star: true,
   },
   // ── 前馈式重建（2026-09 新增域，原名「场景级重建」，2026-10 改名）──
