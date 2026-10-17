@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L4GM 论文解读 · 结合代码</title>
+<style>
+/* ===== GitHub (Primer) 主题 ===== */
+:root{
+  --ink:#1f2328; --ink2:#59636e; --ink3:#818b98;
+  --bg:#f6f8fa; --card:#ffffff; --line:#d1d9e0;
+  --c-input:#1a7f37; --c-input-bg:#dafbe1; --c-input-line:#a4e8b5;
+  --c-enc:#0969da;  --c-enc-bg:#ddf4ff;  --c-enc-line:#a5d8ff;
+  --c-scan-bg:#fffbe9; --c-scan-line:#f0e6c3;
+  --c-render:#9a6700; --c-render-bg:#fff8c5; --c-render-line:#eac54f;
+  --c-out:#cf222e;  --c-out-bg:#ffebe9;  --c-out-line:#ffd3d0;
+  --c-loss:#cf222e;
+  --c-mask:#59636e; --c-mask-bg:#eff2f5;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;font-size:14px}
+.layout{display:flex;max-width:1460px;margin:0 auto;gap:12px;padding:0 2px}
+
+/* ============ 左侧目录（GitHub 侧栏风） ============ */
+.toc{width:178px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:22px 2px 40px 0;border-right:1px solid var(--line)}
+.toc h3{font-size:12px;letter-spacing:.08em;color:var(--ink3);margin-bottom:14px;padding-left:9px;font-weight:600}
+.toc a{display:block;color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 8px;border-radius:6px;border-left:2px solid transparent;transition:background .12s}
+.toc a:hover{background:var(--bg);color:var(--ink)}
+.toc a.lv2{padding-left:19px;font-size:13px}
+.toc a.active{color:var(--c-enc);border-left-color:var(--c-enc);background:var(--c-enc-bg);font-weight:600}
+
+/* ============ 内容区 ============ */
+.content{flex:1;min-width:0;padding-bottom:120px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:28px 30px;margin-top:24px}
+h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:#fff;background:var(--c-enc);border-radius:6px;padding:2px 10px;letter-spacing:.04em}
+h3{font-size:17px;margin:28px 0 10px;color:var(--ink)}
+h3 .no{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-right:6px}
+.sec-sub{color:var(--ink2);font-size:13.5px;margin-bottom:20px}
+p{margin:10px 0}
+b,strong{font-weight:650}
+
+/* 顶部（GitHub 仓库页头风） */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:24px 30px;margin-top:24px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700;color:var(--ink)}
+.hero .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-top:8px}
+.hero .meta a{color:var(--c-enc);text-decoration:none}
+.hero .desc{font-size:14px;color:var(--ink2);margin-top:14px;max-width:860px}
+.hero .desc b{color:var(--ink)}
+
+/* 通用卡片组 */
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--card)}
+.card h4{font-size:15px;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;font-family:var(--mono);border-radius:6px;padding:0 7px;margin-right:6px;vertical-align:2px}
+.tag.green{background:var(--c-input-bg);color:var(--c-input);border:1px solid var(--c-input-line)}
+.tag.blue{background:var(--c-enc-bg);color:var(--c-enc);border:1px solid var(--c-enc-line)}
+.tag.orange{background:var(--c-render-bg);color:var(--c-render);border:1px solid var(--c-render-line)}
+.tag.red{background:var(--c-out-bg);color:var(--c-out);border:1px solid var(--c-out-line)}
+.tag.gray{background:var(--c-mask-bg);color:var(--c-mask);border:1px solid var(--line)}
+
+/* 圆点解释（GitHub task-list 风） */
+ul.dots{margin:14px 0 4px;padding-left:0;list-style:none}
+ul.dots li{position:relative;padding-left:26px;margin:9px 0;color:var(--ink2);font-size:14px}
+ul.dots li::before{content:"";position:absolute;left:6px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--c-enc)}
+ul.dots li b{color:var(--ink)}
+/* 子条目（如 训练 下的 输入/输出/GT/Loss） */
+ul.dots ul.sub{margin:4px 0 2px;padding-left:0;list-style:none}
+ul.dots ul.sub li{position:relative;padding-left:20px;margin:5px 0;font-size:13.5px}
+ul.dots ul.sub li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--ink3)}
+.mono{font-family:var(--mono);font-size:.92em;color:#24292f;white-space:nowrap}
+/* 真值记号 X̄：不用组合横杠字符（字体里会偏右），改用上划线 */
+.ovl{text-decoration:overline}
+
+/* 公式卡片（GitHub 代码块风） */
+.formula{background:none;border:none;padding:4px 0;margin:14px 0}
+.formula .fx{font-weight:400;font-family:var(--mono);font-size:16.5px;letter-spacing:.02em;white-space:nowrap;text-align:center;line-height:2;color:#24292f;overflow-x:auto}
+.formula .fx sub,.formula .fx sup{font-size:.68em}
+.formula .note{font-size:14px;color:var(--ink2);text-align:left;margin-top:8px;line-height:1.75}
+.fhuman{border:1px solid var(--c-render-line);border-left:4px solid #d4a72c;background:var(--c-render-bg);padding:12px 18px;border-radius:6px;margin:10px 0;font-size:14px;color:#5c4400}
+.fhuman b{color:#6e4f00}
+
+/* 提示框（GitHub Alerts 风） */
+.callout{border-radius:6px;padding:12px 18px;margin:16px 0;font-size:14px;border:1px solid}
+.callout.warn{background:#fff8c5;border-color:var(--c-render-line);color:#5c4400;border-left:4px solid #d4a72c}
+.callout.code{background:#ddf4ff;border-color:var(--c-enc-line);color:#0a3069;border-left:4px solid #54aeff}
+.callout.good{background:#dafbe1;border-color:var(--c-input-line);color:#116329;border-left:4px solid #4ac26b}
+.callout b{font-weight:700}
+
+/* QA 档案条目 */
+.qa{border:1px solid var(--line);border-left:4px solid var(--c-enc);border-radius:6px;padding:12px 18px;margin:12px 0;background:var(--card)}
+.qa .qa-q{font-weight:650;font-size:14px;margin-bottom:6px}
+.qa .qa-a{font-size:14px;color:var(--ink2)}
+
+/* 表格（GitHub markdown 风） */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;border:1px solid var(--line)}
+th{background:var(--bg);text-align:left;padding:8px 12px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+td{padding:7px 12px;border:1px solid var(--line)}
+tr:nth-child(even) td{background:var(--bg)}
+td.mono,th.mono{font-family:var(--mono);font-size:12px}
+.up{color:var(--c-input);font-weight:700}
+
+/* 图容器 */
+.fig{border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0;background:var(--card)}
+.fig .figcap{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px}
+.fig svg{width:100%;height:auto;display:block}
+.svg-nota{font-family:var(--mono);font-size:11.5px;fill:#59636e}
+.svg-nota-b{font-family:var(--mono);font-size:11px;font-weight:700}
+.svg-cn{font-size:12px;fill:#1f2328}
+.fig.small-svg .svg-cn{font-size:9.8px}
+.fig.small-svg .svg-nota{font-size:9.2px}
+.fig.small-svg .svg-nota-b{font-size:8.8px}
+
+/* 一行流程图（无交互，自动换行不出滚动条） */
+.flowrow{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:0;margin:16px 0;padding:6px 2px}
+.stepcard{flex:0 0 auto;width:158px;border:1px solid var(--line);border-radius:6px;background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.stepcard .art{padding:8px 8px 2px;background:var(--bg)}
+.stepcard .art svg{width:100%;height:auto;display:block}
+.stepcard .lab{padding:8px 10px 4px;font-size:13px;font-weight:650;color:var(--ink)}
+.stepcard .lab .n{display:inline-block;font-family:var(--mono);font-size:11px;color:#fff;background:var(--c-enc);border-radius:4px;padding:0 6px;margin-right:6px}
+.stepcard.render .lab .n{background:var(--c-render)}
+.stepcard .desc{padding:0 10px 10px;font-size:11.5px;color:var(--ink2);line-height:1.55}
+#render-flow .stepcard{width:127px}
+#render-flow .stepcard .lab{font-size:12px}
+#render-flow .stepcard .lab .n{font-size:10px}
+#render-flow .stepcard .desc{font-size:10.5px;padding:0 8px 8px;line-height:1.5}
+.flowarrow{align-self:center;flex:0 0 auto;color:#818b98;font-size:15px;padding:0 1px;font-family:var(--sans);font-weight:700}
+.metrics{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.metric{flex:1;min-width:170px;border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:var(--bg)}
+.metric .v{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--c-input)}
+.metric .v small{font-size:12px;color:var(--ink2);font-weight:500}
+.metric .k{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.55}
+details.deep{border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:14px 0;background:var(--bg)}
+details.deep summary{cursor:pointer;font-weight:600;color:var(--c-enc);font-size:13.5px;user-select:none}
+details.deep[open] summary{margin-bottom:6px}
+details.deep ul{margin:4px 0}
+.flowarrow.down{padding:6px 0;font-size:19px}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;font-size:12.5px;color:var(--ink2);margin-top:12px}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .sw.line{width:26px;height:0;border-radius:0;border-top:2.5px solid}
+.legend .sw.dash{width:26px;height:0;border-radius:0;border-top:2.5px dashed var(--c-loss)}
+
+/* SVG 通用 */
+.box{stroke-width:1.6}
+.arrow{stroke:#818b98;stroke-width:2;fill:none;marker-end:url(#ah)}
+.arrow-c{stroke:var(--c-loss);stroke-width:2;stroke-dasharray:6 5;fill:none;marker-end:url(#ahr)}
+.arrow-b{stroke:var(--c-enc);stroke-width:2;fill:none;marker-end:url(#ahb)}
+.flowlabel{font-family:var(--mono);font-size:10.5px;fill:#59636e}
+
+/* §0 速览卡：极浅黄底（便签纸感），与下方白色的逐节解读区分（2026-10-11 用户点名） */
+#s0{background:var(--c-scan-bg);border-color:var(--c-scan-line)}
+
+@media(max-width:960px){
+  .layout{flex-direction:column}
+  .toc{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line);padding:16px 4px}
+  section{padding:22px 18px}
+  .hero{padding:26px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ================= 左侧目录 ================= -->
+<nav class="toc" id="toc">
+  <a href="../index.html" style="display:block;color:#0969da;text-decoration:none;font-size:13.5px;font-weight:600;padding:2px 8px 12px;margin:0 0 12px;border-bottom:1px solid var(--line)">&#8592; 返回</a>
+  <h3>目 录</h3>
+  <a href="#s0">§0 速览卡</a>
+  <a href="#s0a" class="lv2">核心解读</a>
+  <a href="#s0c" class="lv2">QA 档案</a>
+  <a href="#s1">§1 Motivation</a>
+  <a href="#s2">§2 Architecture</a>
+  <a href="#s21" class="lv2">2.1 Overall Pipeline</a>
+  <a href="#s22" class="lv2">2.2 LGM 基座与 14 参数高斯</a>
+  <a href="#s23" class="lv2">2.3 时间注意力</a>
+  <a href="#s24" class="lv2">2.4 自回归与 4D 插值</a>
+  <a href="#s3">§3 Loss</a>
+  <a href="#s4">§4 Results</a>
+  <a href="#s5">§5 Conclusion</a>
+</nav>
+
+<!-- ================= 内容 ================= -->
+<main class="content">
+
+<!-- ============ 封面 ============ -->
+<div class="hero" id="top">
+  <h1>L4GM：单目视频一次前馈，直接输出可动画的 4D 高斯</h1>
+  <div class="meta">L4GM: Large 4D Gaussian Reconstruction Model · arXiv 2406.10324 · github.com/nv-tlabs/L4GM-official · 12M 视频 / 300M 帧 · NeurIPS 2024</div>
+</div>
+
+<!-- ============ §0 速览卡 ============ -->
+<section id="s0">
+  <h2><span class="no">§0</span>速览卡</h2>
+
+  <h3 id="s0a">核心解读</h3>
+
+  <p>前馈 3D 物体重建（LRM、LGM）已经能用一张图或几张视图、一次前馈吐出 3D 高斯；L4GM 把时间轴接上去：输入一段单目视频，输出<b>每一帧</b>一组 3D 高斯（整段视频就是一串 3D 高斯），一次前馈约 0.3 秒——4D 重建第一次变成「前馈」而不是「优化」。做法不复杂，三件事搭起来：① 数据——把 Objaverse 里 4.4 万个可动画物体渲染成 1200 万段多视图视频（3 亿帧），这是 4D 版的「训练燃料」；② 架构——直接从静态 3D 大模型 LGM 初始化，在每个 U-Net 块里加一层<b>时间自注意力</b>（把视图轴当 batch、把「时间×空间」摊平做注意力），让网络学会跨帧一致；③ 输入——不需要整段多视图视频，只需要第一帧的多视图扩散生成图 + 整段单目视频，时间一致性由注意力从首帧传播出去。长视频用自回归一段段接；帧率用单独训练的 4D 插值模型从 8fps 补到 24fps。整套方法概括起来就是：从预训练的 3D 大模型出发，加一层时间自注意力、喂 1200 万段多视图动画视频，单目视频一次前馈就变成一串 3D 高斯——4D 重建有了自己的「LRM 时刻」。</p>
+
+  <ul class="dots">
+    <li><b>目标：</b>输入一段单目视频（物体级，抠好背景、裁到 256×256），输出每帧一组 3D 高斯（每帧 65,536 个 = 128×128 像素 × 4 视图），整段视频就是一串 3D 高斯序列 {P_t}。一次前馈 0.3 秒（另外约 2 秒用于从第一帧生成多视图）；支持自回归处理长视频、支持 3× 帧率插值（8fps→24fps）。结构见图 0-1。
+      <div class="fig">
+        <svg viewBox="0 0 1400 500" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahb" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0969da"/></marker>
+            <marker id="ahr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+
+          <!-- 输入 -->
+          <rect x="20" y="40" width="160" height="70" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">单目视频 I₁…I_T</text>
+          <text x="100" y="88" text-anchor="middle" class="svg-nota">[3,256,256] · 抠好背景</text>
+          <text x="100" y="104" text-anchor="middle" class="svg-nota">物体级 · 相机静止</text>
+          <rect x="20" y="150" width="160" height="80" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="176" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">第一帧 I₁</text>
+          <text x="100" y="198" text-anchor="middle" class="svg-nota">→ ImageDream 生成</text>
+          <text x="100" y="218" text-anchor="middle" class="svg-nota">4 个正交视图 J₁ [4,3,256,256]</text>
+
+          <!-- 网格 -->
+          <line x1="180" y1="90" x2="226" y2="120" class="arrow"/>
+          <rect x="228" y="52" width="200" height="176" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="328" y="78" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">拼成 (B T V) 网格</text>
+          <text x="328" y="100" text-anchor="middle" class="svg-nota">T 帧 × V=4 视图</text>
+          <text x="328" y="120" text-anchor="middle" class="svg-nota">首帧多视图复制到所有时刻</text>
+          <text x="328" y="140" text-anchor="middle" class="svg-nota">每格 9 通道：RGB(3) + Plücker(6)</text>
+          <text x="328" y="160" text-anchor="middle" class="svg-nota">256×256 · 相机外参一起嵌入</text>
+          <text x="328" y="184" text-anchor="middle" class="svg-cn" fill="#59636e">关键取舍：不生成整段多视图视频</text>
+          <text x="328" y="204" text-anchor="middle" class="svg-cn" fill="#59636e">只生成首帧的 4 个正交视图</text>
+
+          <!-- U-Net -->
+          <line x1="428" y1="140" x2="474" y2="140" class="arrow"/>
+          <rect x="476" y="40" width="240" height="200" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="596" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">LGM 非对称 U-Net（4D 版）</text>
+          <text x="596" y="88" text-anchor="middle" class="svg-nota">6 个下采样块 [64,128,256,512,1024,1024]</text>
+          <text x="596" y="108" text-anchor="middle" class="svg-nota">1 个中间块 + 5 个上采样块</text>
+          <text x="596" y="130" text-anchor="middle" class="svg-nota">每块：残差 → 跨视图自注意力</text>
+          <rect x="486" y="140" width="220" height="26" rx="5" fill="#8250df" opacity=".85"/>
+          <text x="596" y="158" text-anchor="middle" class="svg-nota-b" fill="#fff">→ 时间自注意力（新增）</text>
+          <text x="596" y="184" text-anchor="middle" class="svg-nota">时间注意力：视图轴进 batch，</text>
+          <text x="596" y="202" text-anchor="middle" class="svg-nota">(B·V)(T·H·W)C 摊平后做注意力</text>
+          <text x="596" y="224" text-anchor="middle" class="svg-nota">→ 每帧信息跨时间传播</text>
+
+          <!-- 高斯 -->
+          <line x1="716" y1="140" x2="762" y2="140" class="arrow"/>
+          <rect x="764" y="48" width="230" height="184" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="879" y="74" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">输出 14 通道图</text>
+          <text x="879" y="96" text-anchor="middle" class="svg-nota">每个像素 = 一个高斯：</text>
+          <text x="879" y="116" text-anchor="middle" class="svg-nota">中心 3 + 透明度 1 + 尺度 3</text>
+          <text x="879" y="136" text-anchor="middle" class="svg-nota">+ 四元数 4 + RGB 3</text>
+          <text x="879" y="160" text-anchor="middle" class="svg-nota">splat 128×128 · 每视图 16,384 个</text>
+          <text x="879" y="180" text-anchor="middle" class="svg-nota">4 视图合并 → 65,536 个/帧</text>
+          <text x="879" y="204" text-anchor="middle" class="svg-cn" fill="#59636e">T 帧 → {P_t} 4D 高斯序列</text>
+
+          <!-- 渲染 -->
+          <line x1="994" y1="110" x2="1040" y2="110" class="arrow" marker-end="url(#ahr)"/>
+          <rect x="1042" y="48" width="150" height="120" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="1117" y="74" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">光栅化渲染</text>
+          <text x="1117" y="96" text-anchor="middle" class="svg-nota">多视图 / 新视角</text>
+          <text x="1117" y="116" text-anchor="middle" class="svg-nota">512×512</text>
+          <text x="1117" y="140" text-anchor="middle" class="svg-nota">前馈 0.3s</text>
+          <text x="1117" y="158" text-anchor="middle" class="svg-nota">每帧 &gt;6 万高斯</text>
+
+          <!-- 监督 -->
+          <rect x="764" y="300" width="430" height="76" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+          <text x="979" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：4 输入 + 4 监督相机的多视图渲染</text>
+          <text x="979" y="350" text-anchor="middle" class="svg-nota">L = MSE(RGB) + MSE(alpha mask) + 1.0·LPIPS</text>
+          <path d="M 1117,168 L 1117,336 L 1198,336" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <path d="M 900,376 L 900,430 L 596,430 L 596,244" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+          <text x="300" y="462" text-anchor="start" class="svg-cn" fill="#a40e26">反向传播：全量微调（不冻结 LGM）· 只在合成数据上训 · 野外视频零样本迁移</text>
+          <text x="300" y="488" text-anchor="start" class="svg-cn" fill="#59636e">可选：4D 插值模型把 8fps 补到 24fps；自回归分块处理长视频（图 0-3）</text>
+        </svg>
+        <div class="figcap">图 0-1 · L4GM 核心机制：单目视频 + 首帧生成的 4 正交视图拼成 (T,V) 网格 → 带时间注意力的 LGM U-Net → 每帧 65,536 个高斯。shape 取自发布「big」配置（输入 256、splat 128、渲染 512）。</div>
+      </div>
+    </li>
+    <li><b>训练：</b>
+      <ul class="sub">
+        <li><b>数据（论文的隐藏主角）：</b>Objaverse 1.0 里 80 万个物体只有 4.4 万个带动画（共 11 万段动画，24fps）；每段动画切 1 秒子片，用 Blender EEVEE 渲染 48 个视角（16 个固定相机：0° 仰角、方位均匀分布；32 个随机相机：仰角和方位都随机），得到约 2600 万段视频；再按光流幅度滤掉约 50% 运动太小的，剩 <b>1200 万段视频 / 3 亿帧</b>。渲染本身花了 3 天、200 张 GPU。</li>
+        <li><b>输入：</b>训练时把视频降到 8fps，T=8 帧、V=4 个输入视图（从 16 个固定相机里采），拼成 (B T V) 网格；每个格子 9 通道 = RGB 3 + Plücker 射线 6（相机位姿编码成射线）；分辨率 256×256。</li>
+        <li><b>输出：</b>每个 (t,v) 格子一张 14 通道图（splat 分辨率 128×128），4 个视图合并成该时刻的 65,536 个高斯；T 帧 → 4D 高斯序列 {P_t}。</li>
+        <li><b>GT：</b>监督相机（从 32 个随机相机里采 4 个）渲染出的 RGB 图 + 前景 alpha mask，分辨率 512×512；训练损失只在监督视图上算（输入视图不监督）。</li>
+        <li><b>Loss：</b>三项相加：
+          <div class="formula" style="margin:6px 0 2px">
+            <div class="fx" style="font-size:14.5px">L = MSE(Î<sup>O</sup>, I<sup>O</sup>) + MSE(α̂<sup>O</sup>, α<sup>O</sup>) + 1.0 · LPIPS(Î<sup>O</sup>, I<sup>O</sup>)</div>
+            <div class="note">符号：<b>Î<sup>O</sup>、α̂<sup>O</sup></b> 是在监督相机 O 下渲染出的 RGB 图与前景 alpha 图（[3,512,512]、[1,512,512]）；<b>I<sup>O</sup>、α<sup>O</sup></b> 是对应真值；LPIPS 前先把图降到 256 算（省显存），权重 1.0。O 遍历 4 个监督相机 + 4 个输入相机（共 8 个视角参与渲染监督），对 T 帧逐帧算。<br>
+            <b>代码细节：</b>GT 图像先按 mask 和白背景合成（<span class="mono">gt_images * gt_masks + white * (1 - gt_masks)</span>），和渲染的合成方式对齐；loss 就是 <span class="mono">mse(pred_images, gt_images) + mse(pred_alphas, gt_masks) + 1.0·lpips</span>，与论文一致。</div>
+          </div>
+        </li>
+      </ul>
+      训练配置：单卡一个 8 帧片段，128 张 80G A100，200 epochs（约 1 天）；Adam lr 4e-4、梯度裁剪 1.0、bf16；对非参考视图做网格畸变增强、可选的相机抖动增强（<span class="mono">prob_cam_jitter 0.5</span>，L4GM 训练命令里关掉）。<b>注意：README 明说发布的 checkpoint 用了 500 epochs</b>，不是论文正文写的 200——复现发布权重按 500。
+      <div class="fig">
+        <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+            <marker id="ahrT" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+          </defs>
+          <rect x="20" y="30" width="190" height="78" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="115" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">Objaverse 4D 数据</text>
+          <text x="115" y="78" text-anchor="middle" class="svg-nota">12M 视频 / 300M 帧</text>
+          <text x="115" y="96" text-anchor="middle" class="svg-nota">48 视角 · 8fps 训练</text>
+          <rect x="260" y="30" width="210" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="365" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">采样 (T×V) 网格</text>
+          <text x="365" y="78" text-anchor="middle" class="svg-nota">T=8 帧 · V=4 输入视图</text>
+          <text x="365" y="96" text-anchor="middle" class="svg-nota">+ 4 监督相机</text>
+          <rect x="520" y="30" width="190" height="78" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="615" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">L4GM 前馈（图 0-1）</text>
+          <text x="615" y="78" text-anchor="middle" class="svg-nota">LGM 初始化 + 时间注意力</text>
+          <text x="615" y="96" text-anchor="middle" class="svg-nota">每帧 65,536 个高斯</text>
+          <rect x="760" y="30" width="190" height="78" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="855" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">渲染监督视角</text>
+          <text x="855" y="78" text-anchor="middle" class="svg-nota">RGB + alpha · 512×512</text>
+          <text x="855" y="96" text-anchor="middle" class="svg-nota">逐帧算损失</text>
+          <rect x="760" y="190" width="190" height="70" rx="8" class="box" fill="#fff8c5" stroke="#d4a72c"/>
+          <text x="855" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#5c4400">MSE + MSE + LPIPS</text>
+          <text x="855" y="238" text-anchor="middle" class="svg-nota">RGB / alpha / 感知</text>
+          <rect x="20" y="190" width="700" height="70" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="370" y="216" text-anchor="middle" class="svg-cn" style="font-weight:700">训练配方</text>
+          <text x="370" y="238" text-anchor="middle" class="svg-nota">128×80G A100 · 200 epochs ≈ 1 天（发布权重 500 epochs）· lr 4e-4 · 梯度裁剪 1.0 · bf16 · 网格畸变增强</text>
+          <line x1="210" y1="69" x2="256" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="470" y1="69" x2="516" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="710" y1="69" x2="756" y2="69" class="arrow" marker-end="url(#ahT)"/>
+          <line x1="855" y1="108" x2="855" y2="186" marker-end="url(#ahT)" stroke="#818b98" stroke-width="1.8"/>
+          <path d="M 855,190 L 855,160 L 615,160 L 615,112" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahrT)"/>
+          <text x="735" y="154" text-anchor="middle" class="svg-cn" fill="#a40e26">反向传播（全量微调）</text>
+        </svg>
+        <div class="figcap">图 0-2 · 训练流程：采 (T,V) 网格 → L4GM 前馈 → 渲染监督视角 → RGB/alpha/LPIPS 三项损失 → 全量反向传播。数据是合成 renditions，模型没见过真实视频。</div>
+      </div>
+    </li>
+    <li><b>推理：</b>
+      <ul class="sub">
+        <li><b>输入：</b>一段单目视频（物体级，抠好背景、裁到 256×256，相机静止、物体运动）。不需要相机参数；不需要多视图视频。</li>
+        <li><b>输出：</b>每帧一组 3D 高斯（4D 序列），可以直接渲染任意视角 / 任意时刻；推理设 T=16。一次前馈 0.3 秒；此外每段视频开场约 2 秒用于「稀疏视图生成」——ImageDream 生成 4 个正交视图 + LGM 重建 + 方位角对齐。</li>
+        <li><b>方位角对齐（一个容易忽略的细节）：</b>ImageDream 生成的 4 个视图不一定和输入第一帧的角度对齐。做法：先用 LGM 从生成的视图重建一组初始高斯 P_init，把它从 -180°~180° 的方位角逐个渲染，取和 I₁ 最像的 θ_align（argmin‖f(P_init,θ)−I₁‖²），再渲染 θ_align + {0°,90°,180°,270°} 这 4 个视图当输入。</li>
+        <li><b>长视频（自回归）：</b>video 超过 T 帧就分块。第一块用首帧生成的多视图；之后不再用扩散模型，而是把<b>上一块最后一个时刻的高斯从 4 个正交角度渲染出来</b>，当作下一块的多视图输入；相邻块重叠 1 帧。实测连续接 10 次以上质量没有明显下降。</li>
+        <li><b>帧率（4D 插值模型）：</b>模型不追踪单个高斯，不能插值高斯轨迹；改为在 4D 空间插——取相隔 3 帧的两组高斯的多视图渲染，用 RGB 加权平均造出两个中间时刻的输入网格，插值模型输出对应的中间高斯，实现 3× 帧率（8fps→24fps）；每对间隔 0.065 秒。例：10 秒 30fps 视频 → 15fps 重建 + 45fps 插值，全程 15 秒（2s 稀疏视图 + 3s 重建 + 10s 插值）。</li>
+        <li><b>后处理：</b>没有优化步骤；「后处理」只有可选的插值模型和自回归拼接——整个流程是纯前馈 + 分块。</li>
+      </ul>
+      <div class="fig">
+        <svg viewBox="0 0 1180 330" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahI" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+          </defs>
+          <rect x="20" y="40" width="160" height="76" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+          <text x="100" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">单目视频</text>
+          <text x="100" y="88" text-anchor="middle" class="svg-nota">物体级 256×256</text>
+          <text x="100" y="106" text-anchor="middle" class="svg-nota">相机静止</text>
+          <rect x="230" y="30" width="230" height="96" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="345" y="56" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">稀疏视图生成（≈2s）</text>
+          <text x="345" y="78" text-anchor="middle" class="svg-nota">ImageDream 4 视图 + LGM 重建</text>
+          <text x="345" y="98" text-anchor="middle" class="svg-nota">+ 方位角对齐（渲染找 θ_align）</text>
+          <rect x="510" y="40" width="200" height="76" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+          <text x="610" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">L4GM 前馈</text>
+          <text x="610" y="88" text-anchor="middle" class="svg-nota">T=16 帧 · 0.3s/块</text>
+          <text x="610" y="106" text-anchor="middle" class="svg-nota">每帧 65,536 高斯</text>
+          <rect x="760" y="40" width="190" height="76" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+          <text x="855" y="66" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">4D 高斯序列</text>
+          <text x="855" y="88" text-anchor="middle" class="svg-nota">渲染任意视角 / 时刻</text>
+          <text x="855" y="106" text-anchor="middle" class="svg-nota">每帧 &gt;6 万高斯</text>
+          <rect x="230" y="180" width="480" height="60" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="470" y="204" text-anchor="middle" class="svg-cn" style="font-weight:700">长视频：自回归分块</text>
+          <text x="470" y="226" text-anchor="middle" class="svg-nota">上一块末帧高斯 → 渲染 4 正交视图 → 下一块输入；1 帧重叠；&gt;10 次稳定</text>
+          <rect x="230" y="256" width="480" height="60" rx="8" class="box" fill="#f6f8fa" stroke="#818b98"/>
+          <text x="470" y="280" text-anchor="middle" class="svg-cn" style="font-weight:700">高帧率：4D 插值模型（可选）</text>
+          <text x="470" y="302" text-anchor="middle" class="svg-nota">多视图 RGB 加权平均补 2 个中间时刻 → 8fps→24fps · 0.065s/对</text>
+          <line x1="180" y1="78" x2="226" y2="78" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="460" y1="78" x2="506" y2="78" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="710" y1="78" x2="756" y2="78" class="arrow" marker-end="url(#ahI)"/>
+          <line x1="855" y1="116" x2="855" y2="150" marker-end="url(#ahI)" stroke="#818b98" stroke-width="1.8"/>
+          <line x1="855" y1="150" x2="470" y2="150" stroke="#818b98" stroke-width="1.8"/>
+          <line x1="470" y1="150" x2="470" y2="176" stroke="#818b98" stroke-width="1.8" marker-end="url(#ahI)"/>
+          <text x="1060" y="120" text-anchor="middle" class="svg-cn" fill="#59636e">10s 30fps 视频：</text>
+          <text x="1060" y="140" text-anchor="middle" class="svg-cn" fill="#59636e">15s 完成 15→45fps</text>
+        </svg>
+        <div class="figcap">图 0-3 · 推理流程：首帧生成稀疏视图 → L4GM 前馈出 4D 高斯 → 渲染；长视频自回归分块，帧率靠 4D 插值模型补齐。时间取自论文附录（RTX 4080 Super）。</div>
+      </div>
+    </li>
+    <li><b>效果：</b>
+      <ul class="sub">
+        <li><b>定量：</b>Consistent4D 视频到 4D 基准：LPIPS 0.12 / CLIP 0.94 / FVD 691.87 / 3 秒（STAG4D 0.13/0.91/992/1 小时；DG4D 0.16/0.87/–/10 分钟；Efficient4D 0.14/0.92/–/6 分钟）——全部指标最优，速度快 100~1000 倍。用户研究对 DG4D / OpenLRM / STAG4D 在总体质量、3D 外观、3D 对齐、运动对齐、运动真实感五项全部胜出（总体质量 65.4% vs 25.0% / 57.9% vs 33.3% / 54.2% vs 35.0%）。</li>
+        <li><b>定性：</b>只在合成数据上训练，却直接泛化到 Sora / Veo 生成的视频和 ActivityNet 真实视频；每帧 6 万+高斯（优化方法通常只有几千个，为的是能优化得动）。</li>
+      </ul>
+    </li>
+    <li><b>结论：</b>「预训练 3D 大模型 + 时间注意力 + 大规模合成 4D 数据」三件套，足以把 4D 重建从「每段视频优化几十分钟」变成「一次前馈 0.3 秒」；4D 内容创作有了自己的 LRM 时刻——虽然还只是物体级、还需要抠图与静态相机假设。</li>
+  </ul>
+  <h3 id="s0c">QA 档案</h3>
+  <div class="qa">
+    <div class="qa-q">Q：为什么不生成整段视频的多视图，只用第一帧的 4 个视图？后面帧的几何从哪来？</div>
+    <div class="qa-a">A：两个原因。① <b>一致性成本</b>：用扩散模型生成逐帧一致的多视图视频很难（时序闪烁、跨视图不一致），首帧一致只是 4 张图的一致问题，容易得多。② <b>信息其实够用</b>：每帧的单目视频帧本身含「这一时刻物体从输入视角长什么样」的信息；时间自注意力把「形状先验（首帧多视图）」和「逐帧观测（单目帧）」在特征空间里融合——网络只需要学「同一物体在不同姿态下怎么变」，不需要每帧都看多视图。消融里去掉时间注意力（模型退化成逐帧 3D 重建）时，PSNR 更低且新视角视频有明显闪烁——说明跨帧信息确实需要显式建模，而不是每帧独立重建就够。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：时间自注意力具体怎么接？为什么把「视图轴」塞进 batch 而不是「时间轴」？</div>
+    <div class="qa-a">A：形变公式（论文 Eq.1）：输入特征 [B·T·V, C, H, W] → 先重排成 (B, T, V, C, H, W) → permute 成 (B·V, T, C, H, W) → 摊平成 (B·V, T·H·W, C) 做标准自注意力 → 再还原。也就是说：<b>每个视图单独看自己的整段时间序列</b>（T×H×W 个 token 一起注意），不同视图之间不在这里交换信息。视图内的时间一致性由这层管；视图之间的空间一致性在前面那层 cross-view self-attention 管。两者交替出现，一层管空间、一层管时间——和视频扩散模型里「空间注意力 + 时间注意力」交替的经典做法同构。代码里 <span class="mono">TempAttention</span> 就插在每个 U-Net 块的跨视图注意力之后，输入输出形状不变，残差连接。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：为什么必须从 LGM（静态 3D 大模型）初始化？从零训练不行吗？</div>
+    <div class="qa-a">A：消融给了很硬的答案：<b>不从 LGM 初始化，同配方直接不收敛</b>。作者解释：1200 万段视频听着多，但要让网络同时学会 3D 理解和时间动态，数据不够；先在大规模静态 3D 数据上学会「一张图/多视图怎么变成 3D」，再只学「时间怎么变」，才是可行的课程。补充消融：换成小号 LGM 可以收敛但 PSNR 明显低；<b>冻结</b> LGM 只训时间注意力层也不行（前期涨得快、最终 PSNR 更低）——所以必须全量微调。这其实就是「视频扩散模型先图后视频」的配方在 4D 重建上的复刻。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：每帧 65,536 个高斯是怎么来的？14 个参数各自怎么激活？</div>
+    <div class="qa-a">A：输出是高斯的像素网格：发布「big」配置的 splat 分辨率 128×128、4 个视图 → 128×128×4 = 65,536 个/帧。U-Net 每个 (t,v) 输出 14 通道图，每像素一个高斯：<b>中心 (3)</b> 经过位置激活（落在 [-1,1]³ 的规范化空间，cam_radius 1.5）；<b>透明度 (1)</b> sigmoid；<b>尺度 (3)</b> 激活到正数；<b>旋转 (4)</b> 归一化成四元数；<b>颜色 (3)</b> RGB 激活。渲染监督分辨率 512×512（big 配置的 output_size），比 splat 网格高 4 倍——高分辨率渲染逼出更细的几何，但高斯数量不增加。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：自回归为什么能接长视频？为什么不崩、又会怎么慢慢掉？</div>
+    <div class="qa-a">A：每块结束后，把最后时刻的高斯从 4 个正交角度渲染成 4 张图，当作下一块的「多视图输入」——等价于用重建结果自己给自己供条件，不再依赖扩散模型；相邻块重叠 1 帧保证连续性。因为每块都是同一模型前馈、输入分布相似，接 10 次以上质量没有明显下降。掉点来自误差累积：每块的高斯重建都有误差，渲染出来的下一块输入会带着上一块的误差（相当于自训练漂移）；论文附录的曲线显示：用真值多视图时质量只随 T 轻微下降；纯自回归时每接一块 PSNR 缓慢下降，T 越短起点越高但掉得越快（需要接更多次），所以推理取 T=16 折中。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：4D 插值模型为什么不直接插值高斯？它具体怎么工作？</div>
+    <div class="qa-a">A：L4GM 输出的高斯是「逐帧独立预测」的，不同帧之间没有身份对应（第 t 帧的第 k 个高斯和第 t+1 帧的第 k 个高斯不是同一个物理点），所以不能对高斯参数做线性插值——会插出一团乱。做法是转成「图像域插值」：取相隔 3 帧的两组高斯，各自渲染出多视图图像；对两边的多视图图像按 RGB 加权平均造出两个中间时刻的「伪多视图」输入；插值模型（在 L4GM 上微调的同一个 U-Net 架构）输出这两个中间时刻的高斯，监督用的是 24fps 真值。于是帧率 3× 提升（8→24fps），每对 0.065 秒。这是「用渲染图像当中间桥梁」的思路——和视频插帧模型借帧间光流/像素混合是同一类做法，只是这里混合的是多视图图像。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：论文和发布代码有哪些出入？复现时按哪个？</div>
+    <div class="qa-a">A：① <b>训练轮数</b>：论文正文写 200 epochs，README 明说<b>发布的 checkpoint 用了 500 epochs</b>——复现发布权重按 500。② <b>插值模型</b>：论文写 100 epochs，README 的训练命令是 200 epochs、num_frames=4。③ <b>训练帧率</b>：论文训练用 8fps 数据（24fps 降采样），插值模型训练用 24fps 原始数据——和 README 的 <span class="mono">datalist_8fps.txt / datalist_24fps.txt</span> 一致。④ <b>相机抖动</b>：代码默认 <span class="mono">prob_cam_jitter 0.5</span>，L4GM 训练命令显式关掉（<span class="mono">--prob_cam_jitter 0</span>）。⑤ <b>模型配置</b>：发布「big」配置 = 多一层上采样（up_channels 5 层、末层 128 通道）、splat 128、渲染 512——论文附录的通道表写的是另一档（默认 4 层上采样、splat 64、输出 256），以 big 为准。⑥ 论文说 128 张 80G A100；README 训练脚本是 8 卡 accelerate 配置——用的是别的规模，别被吓到，这是「至少需要」的量级差异。</div>
+  </div>
+  <div class="qa">
+    <div class="qa-q">Q：它的边界在哪？什么场景不要用它？</div>
+    <div class="qa-a">A：边界很清楚：<b>物体级、单目、静态相机、前景已抠图</b>。它不是场景重建（背景不建模），不是多视图视频重建（只吃一段单目视频），也不处理相机运动（假设相机静止、物体动）；输入需要第三方工具去背景、裁 256×256，分割质量直接影响结果。初始多视图靠 ImageDream（2 秒、有随机性），扩散模型的视角错配要靠方位角渲染对齐兜底；只在 Objaverse 合成数据上训练，真实视频的材质/光照分布外时质量会掉。商用要谨慎：模型基于非商用数据集训练，论文注明 research-only。想用于「真实场景 + 移动相机 + 多人交互」的 4D 重建，得等后续的场景级 4D 路线（本站「前馈 4D 高斯」里的 DrivingRecon / MoVieS / VG3S 等节点走的是另一条路）。</div>
+  </div>
+</section>
+<!-- ============ §1 Motivation ============ -->
+<section id="s1">
+  <h2><span class="no">§1</span>Motivation</h2>
+  <div class="sec-sub">问题是什么、难在哪、别人怎么解、L4GM 怎么解。</div>
+
+  <p>动画 3D 资产现在还是手工活：建模、绑定骨骼（rigging）、蒙皮（skinning）、打关键帧，每一步都靠人。如果能从随处可见的单目视频直接生成「会动的 3D 物体」，内容创作的门槛会低一个数量级。已有的自动路线分两类，各有硬伤：一类用<b>多视图视频</b>做 4D 重建，需要环绕拍摄的多机位视频（昂贵、难采集），而且逐场景优化；另一类靠<b>视频扩散模型的分数蒸馏（SDS）</b>优化 4D 表示，每段视频要几十分钟到几小时，对提示词敏感、几何也粗糙。而单图 3D 的 LRM 路线已经证明：大模型 + 大数据 + 一次前馈可以又快又好地出静态 3D。L4GM 的问题就是：<b>把 LRM 的配方推到 4D</b>——只用一段单目视频，一次前馈输出整段动画。整套方法概括起来就是：从预训练的 3D 大模型出发，加一层时间自注意力、喂 1200 万段多视图动画视频，单目视频一次前馈就变成一串 3D 高斯——4D 重建有了自己的「LRM 时刻」。</p>
+
+  <h3><span class="no">1.1</span>面临的问题和难点</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>4D 数据稀缺</h4>
+      <p>静态 3D 有 Objaverse 这种百万级数据集；带时间轴的 4D 数据几乎没有。没有数据，4D 大模型无从谈起——这是整条路线最根本的瓶颈。</p>
+      <p>解法只能是合成：把带骨骼动画的资产渲染成多视图视频，用渲染引擎「造」出一份 4D 训练集。渲染本身也是重活（L4GM 用了 200 张 GPU、3 天）。</p>
+    </div>
+    <div class="card">
+      <h4>时间一致性难学</h4>
+      <p>逐帧独立做 3D 重建（比如把 LRM 跑在每一帧上）会得到「每帧都对、帧间打架」的结果：同一物体在不同帧的高斯位置/颜色跳变，渲染视频闪烁。</p>
+      <p>4D 表示还要处理「运动」：物体的形变、遮挡、出入画面。没有显式对应（光流/轨迹）时，网络必须在特征层面自己学会跨时间传播信息。</p>
+    </div>
+  </div>
+
+  <h3><span class="no">1.2</span>别人是怎么解决的</h3>
+  <table>
+    <tr><th style="width:20%">路线</th><th style="width:28%">代表工作</th><th>做法 &amp; 痛点</th></tr>
+    <tr>
+      <td>多视图 4D 重建</td>
+      <td class="mono">D-NeRF / K-Planes / HexPlane / Consistent4D</td>
+      <td>用多机位同步视频逐场景优化 4D 表示，质量高；但需要昂贵多视图视频 + 每场景几十分钟到几小时优化，不是前馈。</td>
+    </tr>
+    <tr>
+      <td>视频 SDS 生成 4D</td>
+      <td class="mono">DG4D / STAG4D / 4DGen / Efficient4D</td>
+      <td>用视频扩散模型的分数蒸馏优化 4D 表示（形变场/高斯）。不需要 4D 数据，但每段视频 10 分钟~2 小时，对 prompt 敏感，几何只有几千个高斯、细节差。</td>
+    </tr>
+    <tr>
+      <td>单图 3D LRM</td>
+      <td class="mono">LRM / OpenLRM / LGM</td>
+      <td>大模型一次前馈从单图/多视图出 3D，快且质量高；但只做静态。把 OpenLRM 逐帧跑成 4D 序列，帧间完全不一致。</td>
+    </tr>
+    <tr>
+      <td>视频生成模型</td>
+      <td class="mono">Sora / Emu / Video LDM</td>
+      <td>能生成高质量 2D 视频（甚至看起来像 3D），但输出是像素不是 3D 资产，不能换视角、不能进渲染管线。</td>
+    </tr>
+  </table>
+
+  <h3><span class="no">1.3</span>L4GM 是怎么解决的</h3>
+  <p><b>核心思想：把「视频扩散模型先图后视频」的训练课程，搬到「3D 大模型先静态后动态」上。</b>三个关键决定：</p>
+  <ul class="dots">
+    <li><b>数据合成：</b>Objaverse 里 4.4 万个带动画的物体、11 万段动画，渲染成 48 视角 × 1 秒的片段，过滤掉运动太小的，得到 1200 万段多视图视频 / 3 亿帧。数量级和静态 3D 数据集对齐，4D 大模型才有得学。</li>
+    <li><b>从 LGM 初始化 + 时间注意力：</b>骨干直接用预训练 LGM（静态 3D 大模型）的非对称 U-Net；在每个 U-Net 块的跨视图注意力后加一层时间自注意力，让「每个视图的整段时间序列」互相注意。全量微调（不冻结 LGM）——消融显示从零训练不收敛、冻结也学不好。</li>
+    <li><b>首帧多视图 + 单目视频：</b>不生成整段多视图视频，只用 ImageDream 从第一帧生成 4 个正交视图；这 4 个视图复制到所有时刻，和单目视频一起构成 (T×V) 输入网格。时间注意力负责把首帧的形状先验传播到后续帧。</li>
+    <li><b>工程补丁：</b>长视频用自回归分块（上一块末帧高斯渲染 4 视图当下一块输入）；帧率用单独微调的 4D 插值模型做 3× 提升。两者都是在不改主干的前提下扩展能力。</li>
+  </ul>
+
+  <h3><span class="no">1.4</span>优点和效果</h3>
+  <ul class="dots">
+    <li>第一个前馈 4D 大重建模型：单目视频 → 每帧 65,536 个高斯，0.3 秒一次前馈；对比优化方法快 100~1000 倍。</li>
+    <li>质量 SOTA：Consistent4D 基准 LPIPS 0.12 / CLIP 0.94 / FVD 691.87，全部优于 STAG4D、DG4D、Efficient4D；用户研究五项全部胜出。</li>
+    <li>合成数据 → 真实视频零样本泛化：Sora、Veo 生成的视频和 ActivityNet 真实视频都能重建。</li>
+    <li>能力可扩展：自回归接 10 段以上不明显掉点；插值模型把 8fps 补到 24fps；配合 ImageDream 还能做「视频 → 4D」之外的多视图条件重建。</li>
+    <li>代价是边界清晰：物体级、单目、静态相机、需抠图——离「场景级 4D 世界模型」还有一段距离。</li>
+  </ul>
+</section>
+<!-- ============ §2 网络结构 ============ -->
+<section id="s2">
+  <h2><span class="no">§2</span>Architecture</h2>
+  <div class="sec-sub">先看总图（输入怎么拼、U-Net 怎么接、输出怎么变成高斯），再拆 LGM 基座（2.2）、时间注意力（2.3）、自回归与插值（2.4）。</div>
+
+  <h3 id="s21"><span class="no">2.1</span>Overall Pipeline</h3>
+  <div class="fig">
+    <svg viewBox="0 0 1400 600" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker>
+        <marker id="ahr2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#cf222e"/></marker>
+      </defs>
+
+      <!-- 左：输入拼装 -->
+      <rect x="20" y="50" width="200" height="120" rx="8" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="120" y="76" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#116329">单目视频 T 帧</text>
+      <text x="120" y="98" text-anchor="middle" class="svg-nota">[T,3,256,256] · 8fps 训练</text>
+      <text x="120" y="118" text-anchor="middle" class="svg-nota">第一帧 I₁ → ImageDream</text>
+      <text x="120" y="138" text-anchor="middle" class="svg-nota">→ 4 正交视图 J₁</text>
+      <text x="120" y="158" text-anchor="middle" class="svg-nota">方位角对齐（θ_align）</text>
+
+      <!-- 网格示意 -->
+      <line x1="220" y1="110" x2="266" y2="110" class="arrow"/>
+      <rect x="268" y="40" width="230" height="170" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="383" y="64" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">(B T V) 输入网格</text>
+      <!-- grid -->
+      <g>
+        <rect x="292" y="80" width="34" height="22" rx="3" fill="#dafbe1" stroke="#1a7f37"/>
+        <rect x="332" y="80" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="372" y="80" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="412" y="80" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="292" y="108" width="34" height="22" rx="3" fill="#dafbe1" stroke="#1a7f37"/>
+        <rect x="332" y="108" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="372" y="108" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="412" y="108" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="292" y="136" width="34" height="22" rx="3" fill="#dafbe1" stroke="#1a7f37"/>
+        <rect x="332" y="136" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="372" y="136" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <rect x="412" y="136" width="34" height="22" rx="3" fill="#ddf4ff" stroke="#0969da"/>
+        <text x="309" y="95" text-anchor="middle" class="svg-nota">t1</text>
+        <text x="309" y="123" text-anchor="middle" class="svg-nota">t2</text>
+        <text x="309" y="151" text-anchor="middle" class="svg-nota">⋮</text>
+      </g>
+      <text x="383" y="180" text-anchor="middle" class="svg-nota">每格 9 通道：RGB 3 + Plücker 6</text>
+      <text x="383" y="196" text-anchor="middle" class="svg-nota">视频帧（绿）· 复制到所有时刻的多视图（蓝）</text>
+
+      <!-- U-Net -->
+      <line x1="498" y1="110" x2="544" y2="110" class="arrow"/>
+      <rect x="546" y="36" width="330" height="300" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="711" y="62" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">LGM 非对称 U-Net（全量微调）</text>
+      <text x="711" y="82" text-anchor="middle" class="svg-nota">输入 256×256 · 6 个下采样块</text>
+      <text x="711" y="100" text-anchor="middle" class="svg-nota">[64,128,256,512,1024,1024]</text>
+      <rect x="566" y="110" width="290" height="22" rx="4" fill="#ddf4ff" stroke="#a5d8ff"/>
+      <text x="711" y="126" text-anchor="middle" class="svg-nota-b" fill="#0550ae">残差块 + 跨视图自注意力</text>
+      <rect x="566" y="138" width="290" height="22" rx="4" fill="#8250df" opacity=".8"/>
+      <text x="711" y="154" text-anchor="middle" class="svg-nota-b" fill="#fff">+ 时间自注意力（每块都加）</text>
+      <text x="711" y="178" text-anchor="middle" class="svg-nota">↓ 下采样 ×5（通道翻倍）</text>
+      <text x="711" y="198" text-anchor="middle" class="svg-nota">中间块 [1024]（跨视图 + 时间注意力）</text>
+      <text x="711" y="218" text-anchor="middle" class="svg-nota">↑ 上采样 ×5（跳连拼接）</text>
+      <text x="711" y="242" text-anchor="middle" class="svg-nota">发布「big」配置多一层上采样 → 末层 128 通道</text>
+      <text x="711" y="264" text-anchor="middle" class="svg-nota">输出 splat 128×128 × 14 通道 / 每 (t,v)</text>
+      <text x="711" y="288" text-anchor="middle" class="svg-cn" fill="#59636e">时间注意力：视图轴进 batch，</text>
+      <text x="711" y="306" text-anchor="middle" class="svg-nota">(B·V)(T·H·W)C 摊平后注意（§2.3）</text>
+
+      <!-- 高斯化 -->
+      <line x1="876" y1="150" x2="922" y2="150" class="arrow"/>
+      <rect x="924" y="48" width="220" height="180" rx="8" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="1034" y="74" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#0550ae">14 通道 → 高斯</text>
+      <text x="1034" y="96" text-anchor="middle" class="svg-nota">中心 3 · 透明度 1 · 尺度 3</text>
+      <text x="1034" y="116" text-anchor="middle" class="svg-nota">旋转 4 · RGB 3（共 14）</text>
+      <text x="1034" y="140" text-anchor="middle" class="svg-nota">每视图 128×128 = 16,384 个</text>
+      <text x="1034" y="162" text-anchor="middle" class="svg-nota">4 视图合并 → 65,536 个/帧</text>
+      <text x="1034" y="186" text-anchor="middle" class="svg-nota">T 帧 → 4D 高斯序列 {P_t}</text>
+      <text x="1034" y="210" text-anchor="middle" class="svg-cn" fill="#59636e">无跨帧高斯对应</text>
+
+      <!-- 渲染 -->
+      <line x1="1144" y1="110" x2="1190" y2="110" class="arrow" marker-end="url(#ahr2)"/>
+      <rect x="1192" y="60" width="188" height="150" rx="8" class="box" fill="#ffebe9" stroke="#cf222e"/>
+      <text x="1286" y="86" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">光栅化渲染</text>
+      <text x="1286" y="108" text-anchor="middle" class="svg-nota">监督视角 512×512</text>
+      <text x="1286" y="128" text-anchor="middle" class="svg-nota">4 输入 + 4 监督相机</text>
+      <text x="1286" y="152" text-anchor="middle" class="svg-nota">推理：任意视角/时刻</text>
+      <text x="1286" y="174" text-anchor="middle" class="svg-nota">前馈 0.3s</text>
+
+      <!-- 监督 -->
+      <rect x="924" y="300" width="456" height="74" rx="8" fill="#ffffff" stroke="#cf222e" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <text x="1152" y="326" text-anchor="middle" class="svg-cn" style="font-weight:700" fill="#a40e26">监督：RGB + alpha mask + LPIPS</text>
+      <text x="1152" y="350" text-anchor="middle" class="svg-nota">逐帧、逐监督视角；渲染分辨率 512</text>
+      <path d="M 1286,210 L 1286,336 L 1384,336" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <path d="M 1030,374 L 1030,420 L 711,420 L 711,340" fill="none" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahr2)"/>
+      <text x="420" y="470" text-anchor="start" class="svg-cn" fill="#59636e">输入通道 = RGB(3) + Plücker 射线(6) = 9；第一帧的 4 视图复制到所有时间步，视图与时间的关系靠注意力自己学</text>
+      <text x="420" y="500" text-anchor="start" class="svg-cn" fill="#59636e">训练 T=8、V=4；推理 T=16；长视频自回归分块（§2.4）；帧率靠单独训练的 4D 插值模型补齐</text>
+      <text x="420" y="530" text-anchor="start" class="svg-cn" fill="#59636e">骨干从发布 LGM 权重初始化；消融：从零训练不收敛，冻结主干也只能收敛到更低 PSNR</text>
+      <text x="420" y="566" text-anchor="start" class="svg-cn" fill="#59636e">输出高斯 65,536 个/帧 = 128×128 像素 × 4 视图，每帧独立预测、帧间没有身份对应</text>
+    </svg>
+    <div class="figcap">图 2-1 · L4GM 总流程：拼 (T,V) 网格 → LGM U-Net（每块加时间注意力）→ 14 通道图变高斯 → 多视图渲染监督。shape 取自发布「big」配置。</div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-input-bg);border:1px solid var(--c-input)"></span>输入</span>
+      <span><span class="sw" style="background:var(--c-enc-bg);border:1px solid var(--c-enc)"></span>U-Net / 输出头</span>
+      <span><span class="sw" style="background:#8250df;opacity:.7"></span>时间注意力</span>
+      <span><span class="sw" style="background:var(--c-out-bg);border:1px solid var(--c-out)"></span>渲染 / 输出</span>
+      <span><span class="sw dash"></span>监督</span>
+    </div>
+  </div>
+</section>
+<!-- ============ §2.2 LGM 基座 ============ -->
+<section id="s22">
+  <h2><span class="no">2.2</span>LGM 基座与 14 参数高斯</h2>
+
+  <ul class="dots">
+    <li><b>LGM 是什么：</b>Large Multi-View Gaussian Model——静态 3D 的大重建模型：输入几视图 + 相机位姿，输出像素对齐的 3D 高斯。L4GM 不重新发明骨干，直接用 LGM 的非对称 U-Net，权重从官方发布的静态 LGM checkpoint 初始化，然后全量微调。</li>
+    <li><b>输入怎么编码：</b>每个视图的相机位姿表示成 Plücker 射线（6 通道），和 RGB（3 通道）拼成 9 通道输入；图像 256×256。相机外参因此不是外挂条件，而是直接进输入张量。</li>
+    <li><b>U-Net 结构（发布「big」配置）：</b>6 个下采样块（通道 64→128→256→512→1024→1024）、1 个中间块（1024）、5 个上采样块（多一层 128 通道收尾）；跳连拼接。每个块里：残差块 → 跨视图自注意力 → <b>时间自注意力</b>（L4GM 新增）。</li>
+    <li><b>输出与高斯化：</b>每个 (t,v) 输出 14 通道图（splat 分辨率 128×128），每像素一个高斯：<b>中心 3</b>（激活到 [-1,1]³ 规范空间）、<b>透明度 1</b>（sigmoid）、<b>尺度 3</b>（正数）、<b>旋转 4</b>（归一化四元数）、<b>RGB 3</b>。4 个视图合并成每帧 65,536 个高斯；T 帧就是 4D 序列。</li>
+    <li><b>为什么「每帧独立预测」很重要：</b>模型不追踪单个高斯的身份（第 t 帧第 k 个高斯和第 t+1 帧第 k 个高斯不是同一个点），所以后面不能直接插值高斯轨迹——这直接决定了插值模型必须走「图像域」路线（§2.4）。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.3 时间注意力 ============ -->
+<section id="s23">
+  <h2><span class="no">2.3</span>时间注意力</h2>
+
+  <p>L4GM 相对 LGM 的架构改动只有一处：每个 U-Net 块里、跨视图注意力之后，加一层时间自注意力。改动小，但它是「3D 模型」变「4D 模型」的关键：</p>
+
+  <div class="formula">
+    <div class="fx" style="font-size:14px">x = rearrange(x, (B T V) H W C → (B V) (T H W) C)</div>
+    <div class="note">论文 Eq.1 的 einops 写法：把视图轴 V 移进 batch，把时间轴 T 和空间轴 H×W 摊平成一条序列，对<b>每个视图自己的整段时间序列</b>做自注意力；算完再 reshape 回去。含义：同一视图内，任意两个时刻、任意两个像素都能直接交换信息——时间一致性在这里学；跨视图的空间一致性归上一层的跨视图注意力管。代码里（<span class="mono">core/unet.py</span> 的 <span class="mono">TempAttention</span>）就是 GroupNorm → 重排 → memory-efficient attention → 残差。</div>
+  </div>
+
+  <ul class="dots">
+    <li><b>为什么视图轴进 batch：</b>每个视图就是一段「T 帧的视频」，独立地在自己的时间序列上做注意力最自然；如果反过来把时间轴进 batch、视图轴进序列，就变成了跨视图注意力（它已经有单独一层了）。两者交替，正好对应「空间一致 + 时间一致」两个需求。</li>
+    <li><b>为什么不加时间嵌入：</b>论文试过正弦时间编码加到相机嵌入上——PSNR 没有提升。作者的解释：输入视频帧本身就携带了时间关系（物体在动），网络不需要额外的时间戳；不加时间嵌入还让模型对任意 T 更灵活。</li>
+    <li><b>消融：</b>去掉时间注意力，模型退化成「逐帧 3D 重建 + 异步多视图输入」，PSNR 更低，渲染视频有明显闪烁——这层是时间一致性的全部来源。</li>
+    <li><b>代价：</b>每个视图内做 T·H·W 个 token 的全局注意力，显存和算力都不小（所以用了 memory-efficient attention，且 U-Net 高分辨率层只做低通道数）；训练用 80G A100 × 128 张，一部分原因就在这里。</li>
+  </ul>
+</section>
+
+<!-- ============ §2.4 自回归与 4D 插值 ============ -->
+<section id="s24">
+  <h2><span class="no">2.4</span>自回归重构与 4D 插值</h2>
+
+  <ul class="dots">
+    <li><b>自回归（长视频）：</b>模型只吃固定长度 T 的片段。长视频切成 T 帧一块：第一块用首帧扩散生成的多视图；之后把<b>上一块最后时刻的高斯 P_T 从 4 个正交角度渲染</b>（Δθ ∈ {0°,90°,180°,270°}）得到下一块的多视图输入，拼上下一段 T 帧视频（和上一块重叠 1 帧），继续前馈。重复到整段视频结束；实测 10 次以上没有明显掉点。</li>
+    <li><b>为什么用「渲染自己的高斯」而不是再用扩散模型：</b>省掉每块 2 秒的稀疏视图生成，且渲染结果和上一块天然一致（同一组高斯）；同时把「上一块的误差」也传下去——这是自回归掉点的来源，但在 10 块内可控。</li>
+    <li><b>4D 插值模型：</b>L4GM 输出 8fps 的 4D 序列；要更平滑就再训一个插值模型（从 L4GM 权重微调）：输入是相隔 3 帧的两组「多视图渲染」，中间两个时刻的输入用两组图像的 RGB <b>加权平均</b>伪造；模型输出这两个时刻的高斯；监督用 24fps 真值。推理时把重建结果渲染成多视图视频喂进去，就把 8fps 提到 24fps（3×），每对间隔 0.065 秒。</li>
+    <li><b>为什么不插值高斯参数：</b>没有跨帧对应（§2.2），直接线性插值会把不同物理点平均在一起，插出一团糊。图像域加权平均是安全的桥：两张图平均仍然像一张图，模型再把它解码成高斯。</li>
+  </ul>
+</section>
+<!-- ============ §3 Loss ============ -->
+<section id="s3">
+  <h2><span class="no">§3</span>Loss</h2>
+  <div class="sec-sub">记号：Î、α̂ 为渲染的 RGB 与前景 alpha；I、α 为对应真值；上标 O 表示监督相机。所有监督都只在渲染图上算，不直接监督高斯参数。</div>
+
+  <h3><span class="no">3.1</span>损失与逐符号解释</h3>
+
+  <div class="formula">
+    <div class="fx" style="font-size:14.5px">L = Σ<sub>O∈𝒪∪𝒪<sub>sup</sub></sub> Σ<sub>t=1</sub><sup>T</sup> [ MSE(Î<sub>t</sub><sup>O</sup>, I<sub>t</sub><sup>O</sup>) + MSE(α̂<sub>t</sub><sup>O</sup>, α<sub>t</sub><sup>O</sup>) + 1.0 · LPIPS(Î<sub>t</sub><sup>O</sup>, I<sub>t</sub><sup>O</sup>) ]</div>
+    <div class="note">符号逐项：<br>
+      <b>𝒪、𝒪<sub>sup</sub></b>：输入相机集合（训练时 4 个，取自 16 个固定相机）与监督相机集合（训练时 4 个，取自 32 个随机相机）——损失在两组共 8 个视角上算；<br>
+      <b>t</b>：时间步，T=8（训练）；<br>
+      <b>Î<sub>t</sub><sup>O</sup></b>：用该时刻的高斯在相机 O 下渲染的 RGB 图（[3,512,512]）；<b>I<sub>t</sub><sup>O</sup></b> 是真值；<br>
+      <b>α̂<sub>t</sub><sup>O</sup>、α<sub>t</sub><sup>O</sup></b>：渲染 alpha 与真值前景 mask（[1,512,512]）——管「轮廓对不对、浮动高斯清不干净」；<br>
+      <b>LPIPS</b> 权重 1.0，感知损失；代码先把图双线性降到 256 再算（省显存），梯度照常回传；<br>
+      <b>MSE</b> 是逐像素均方误差，作用于「按 mask 与白背景合成后」的图像（<span class="mono">gt*mask + white*(1−mask)</span>），保证渲染与真值的前背景处理一致。</div>
+  </div>
+
+  <ul class="dots">
+    <li><b>没有 4D 真值监督形式：</b>不监督高斯位置/轨迹/速度，只监督渲染结果。几何、动态、外观全靠渲染损失从数据里学——和 LGM 一脉相承。</li>
+    <li><b>逐帧 + 多视角：</b>每个时刻、每个相机独立渲染算损失；时间一致性不靠损失项，而靠时间注意力层（架构承担），这是「结构负责一致、损失负责像」的分工。</li>
+    <li><b>插值模型的损失：</b>同一套三项损失，只是监督换成 24fps 真值、输入是「RGB 加权平均伪造的中间多视图」，T=4 帧（2 真 + 2 假）。</li>
+  </ul>
+
+  <div class="fig small-svg">
+    <svg viewBox="0 0 980 140" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah7" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#818b98"/></marker></defs>
+      <rect x="12" y="26" width="160" height="46" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="92" y="45" text-anchor="middle" class="svg-nota" fill="#116329">(T,V) 输入网格</text>
+      <text x="92" y="62" text-anchor="middle" class="svg-nota" fill="#116329">RGB 3 + Plücker 6</text>
+      <rect x="12" y="88" width="160" height="42" rx="6" class="box" fill="#dafbe1" stroke="#1a7f37"/>
+      <text x="92" y="106" text-anchor="middle" class="svg-nota" fill="#116329">4 输入 + 4 监督相机</text>
+      <text x="92" y="122" text-anchor="middle" class="svg-nota" fill="#116329">512×512 真值 + mask</text>
+      <line x1="172" y1="49" x2="216" y2="63" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="218" y="40" width="190" height="52" rx="6" class="box" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="313" y="60" text-anchor="middle" class="svg-nota-b" fill="#0550ae">L4GM 前馈 → 渲染</text>
+      <text x="313" y="78" text-anchor="middle" class="svg-nota" fill="#0550ae">Î / α̂（每帧每视角）</text>
+      <line x1="408" y1="66" x2="446" y2="66" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="448" y="28" width="330" height="76" rx="6" class="box" fill="#fff8c5" stroke="#9a6700"/>
+      <text x="613" y="48" text-anchor="middle" class="svg-nota-b" fill="#5c4400">MSE(RGB) + MSE(alpha) + 1.0·LPIPS</text>
+      <text x="613" y="66" text-anchor="middle" class="svg-nota" fill="#5c4400">逐帧、逐相机；图先按 mask 合成白背景</text>
+      <text x="613" y="84" text-anchor="middle" class="svg-nota" fill="#5c4400">LPIPS 在 256 分辨率上算</text>
+      <line x1="778" y1="66" x2="816" y2="66" stroke="#818b98" stroke-width="1.8" marker-end="url(#ah7)"/>
+      <rect x="818" y="40" width="70" height="52" rx="6" fill="#cf222e"/>
+      <text x="853" y="72" text-anchor="middle" class="svg-nota-b" fill="#ffffff">Σ L</text>
+      <text x="905" y="130" text-anchor="start" class="svg-nota">回传：全量微调 U-Net（含时间注意力），不冻结 LGM</text>
+    </svg>
+    <div class="figcap">图 3-1 · 损失链路：每个时刻的高斯渲染 8 个相机视角，三项损失求和后全量反向传播。</div>
+  </div>
+
+  <h3><span class="no">3.2</span>训练配方速查</h3>
+  <table>
+    <tr><th style="width:24%">项目</th><th>主模型</th><th>4D 插值模型</th></tr>
+    <tr><td>数据</td><td class="mono" colspan="2">Objaverse-4D：12M 视频 / 300M 帧 · 48 视角 · 训练主模型用 8fps 降采样，插值模型用 24fps 原始数据</td></tr>
+    <tr><td>每样本</td><td class="mono">T=8 帧 · V=4 输入视图 · 4 监督相机 · 256×256 输入</td><td class="mono">4 帧（2 真 + 2 个 RGB 平均伪造）</td></tr>
+    <tr><td>迭代 / 轮数</td><td class="mono">200 epochs（≈1 天）；发布 checkpoint 用 500 epochs</td><td class="mono">100 epochs（论文）/ 200 epochs（README 训练命令）</td></tr>
+    <tr><td>算力</td><td class="mono">128×80G A100 · 单卡一个 8 帧片段</td><td class="mono">64×80G A100 · 单卡 4 帧</td></tr>
+    <tr><td>优化器</td><td class="mono">Adam · lr 4e-4 · 梯度裁剪 1.0 · bf16</td><td class="mono">同左</td></tr>
+    <tr><td>初始化</td><td class="mono">官方 LGM 静态权重（model_fixrot）</td><td class="mono">主模型权重（recon.safetensors）</td></tr>
+    <tr><td>增强</td><td class="mono">非参考视图网格畸变；相机抖动关闭（L4GM 训练命令）</td><td class="mono">网格畸变与相机抖动都关闭</td></tr>
+    <tr><td>渲染监督</td><td class="mono">512×512；8 个相机（4 输入 + 4 监督）</td><td class="mono">同左</td></tr>
+  </table>
+</section>
+<!-- ============ §4 效果 ============ -->
+<section id="s4">
+  <h2><span class="no">§4</span>Results</h2>
+  <div class="sec-sub">评测在 Consistent4D 视频到 4D 基准上（8 段 4 秒动态物体，8fps；1 个视角做输入、4 个视角做评测）。数字照抄论文表 1、表 2 与附录。</div>
+
+  <div class="metrics">
+    <div class="metric"><div class="v">0.12 <small>LPIPS↓</small></div><div class="k">一致 4D 感知相似度<br>STAG4D 0.13 · DG4D 0.16</div></div>
+    <div class="metric"><div class="v">0.94 <small>CLIP↑</small></div><div class="k">跨视角语义相似度<br>Efficient4D 0.92 · STAG4D 0.91</div></div>
+    <div class="metric"><div class="v">691.87 <small>FVD↓</small></div><div class="k">视频质量（越低越好）<br>STAG4D 992.21</div></div>
+    <div class="metric"><div class="v">3 <small>s</small></div><div class="k">端到端重建<br>DG4D 10 min · STAG4D 1 hr</div></div>
+  </div>
+
+  <h3><span class="no">4.1</span>与 SOTA 对比（Consistent4D）</h3>
+  <table>
+    <tr><th>方法</th><th class="mono">LPIPS↓</th><th class="mono">CLIP↑</th><th class="mono">FVD↓</th><th class="mono">时间</th></tr>
+    <tr><td>Consistent4D</td><td class="mono">0.16</td><td class="mono">0.87</td><td class="mono">1133.44</td><td class="mono">2 hr</td></tr>
+    <tr><td>4DGen</td><td class="mono">0.13</td><td class="mono">0.89</td><td class="mono">–</td><td class="mono">1 hr</td></tr>
+    <tr><td>GaussianFlow †</td><td class="mono">0.14</td><td class="mono">0.91</td><td class="mono">–</td><td class="mono">–</td></tr>
+    <tr><td>STAG4D</td><td class="mono">0.13</td><td class="mono">0.91</td><td class="mono">992.21</td><td class="mono">1 hr</td></tr>
+    <tr><td>DG4D †</td><td class="mono">0.16</td><td class="mono">0.87</td><td class="mono">–</td><td class="mono">10 min</td></tr>
+    <tr><td>Efficient4D</td><td class="mono">0.14</td><td class="mono">0.92</td><td class="mono">–</td><td class="mono">6 min</td></tr>
+    <tr><td>L4GM</td><td class="mono up">0.12</td><td class="mono up">0.94</td><td class="mono up">691.87</td><td class="mono up">3 s</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 1。† = 数字取自 GaussianFlow 的复现。三个质量指标全部最优，时间快 100~1000 倍。7 个场景的逐项均值同样是最优（LPIPS 0.12 / CLIP 0.94，论文附录全表）。</p>
+
+  <h3><span class="no">4.2</span>用户研究（24 个合成 4D 场景）</h3>
+  <table>
+    <tr><th>对比项（L4GM 胜出%）</th><th class="mono">vs DG4D</th><th class="mono">vs OpenLRM</th><th class="mono">vs STAG4D</th></tr>
+    <tr><td>总体质量</td><td class="mono up">65.4 / 25.0</td><td class="mono up">57.9 / 33.3</td><td class="mono up">54.2 / 35.0</td></tr>
+    <tr><td>3D 外观</td><td class="mono up">67.1 / 25.8</td><td class="mono up">58.8 / 31.7</td><td class="mono up">55.0 / 34.2</td></tr>
+    <tr><td>与输入视频的 3D 对齐</td><td class="mono up">61.3 / 26.3</td><td class="mono up">51.3 / 32.1</td><td class="mono up">50.0 / 36.7</td></tr>
+    <tr><td>与输入视频的运动对齐</td><td class="mono up">61.3 / 22.6</td><td class="mono up">50.9 / 29.2</td><td class="mono up">50.4 / 31.7</td></tr>
+    <tr><td>运动真实感</td><td class="mono up">62.1 / 30.0</td><td class="mono up">54.2 / 35.0</td><td class="mono up">50.4 / 36.7</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--ink3)">论文表 2（Amazon Mechanical Turk，百分比；未列出的部分是「无偏好」）。五项指标全部领先——不只是「更像」，是「运动也像」。</p>
+
+  <h3><span class="no">4.3</span>消融与设计选择（论文附录图）</h3>
+  <ul class="dots">
+    <li><b>3D 预训练是硬前提：</b>不从 LGM 初始化、同配方从零训练——<b>不收敛</b>；换小号 LGM 能收敛但 PSNR 明显更低；从 LGM 初始化是全量微调的前提。</li>
+    <li><b>冻结 LGM 不行：</b>只训时间注意力层，前期涨得快，最终 PSNR 低于全量微调——4D 任务需要动到 LGM 的空间层。</li>
+    <li><b>时间注意力是时间一致性的来源：</b>去掉后模型退化成逐帧 3D 重建，PSNR 更低，渲染视频有明显闪烁。</li>
+    <li><b>形变场（HexPlane）学不动：</b>改成「规范高斯 + HexPlane 形变场」的表示，能过拟合单段数据，但大规模训练时 PSNR 几乎不涨、输出始终是静态的。作者推测：SDS 方法靠隐式表示的平滑性兜底，而 L4GM 直接从 4D 数据里学平滑表示，形变场的归纳偏置反而不匹配。</li>
+    <li><b>时间嵌入没有收益：</b>正弦时间编码加进相机嵌入后 PSNR 没变——视频帧本身已经携带时间信息；不加还让模型对任意 T 更灵活。</li>
+    <li><b>自回归长度：</b>T 越短起点 PSNR 越高但掉得越快（要接更多块）；T 越长单块质量略低；推理选 T=16 折中，自回归 10+ 次不明显掉点。</li>
+  </ul>
+
+  <h3><span class="no">4.4</span>效率拆解</h3>
+  <ul class="dots">
+    <li>单次前馈（T=16）：<b>0.3 秒</b>；稀疏视图生成（ImageDream + LGM + 方位角对齐）：约 2 秒；4D 插值：<b>0.065 秒/对</b>。</li>
+    <li>例：10 秒 30fps 视频 → 15fps 重建 + 45fps 插值，全程 15 秒 = 2s 稀疏视图 + 3s 重建 + 10s 插值（不含抠图）。</li>
+    <li>每帧 65,536 个高斯（&gt;6 万）——优化类方法为了可优化通常只用几千个，这是「前馈大模型」在分辨率/细节上的结构性优势。</li>
+    <li>推理硬件：RTX 4080 Super（16G）即可，不需要 A100——这一点对落地很关键。</li>
+  </ul>
+</section>
+<!-- ============ §5 结论 ============ -->
+<section id="s5">
+  <h2><span class="no">§5</span>Conclusion</h2>
+
+  <h3><span class="no">5.1</span>这篇论文证明了什么</h3>
+  <ul class="dots">
+    <li><b>4D 重建可以前馈：</b>「预训练 3D 大模型 + 时间注意力 + 大规模合成 4D 数据」三件套，让单目视频一次前馈出 4D 高斯（0.3 秒），质量全面超过优化类方法，速度是它们的 100~1000 倍——4D 内容生成第一次有了「LRM 时刻」。</li>
+    <li><b>合成数据够用：</b>1200 万段 Objaverse 渲染视频（3 亿帧）就能训出泛化到 Sora/Veo 生成视频和真实视频的模型——4D 数据不必真采，可以造。</li>
+    <li><b>预训练课程是关键：</b>先静态 3D（LGM）、再动态 4D；从零训练直接不收敛，冻结主干也不行。这个「先图后视频」的课程是 4D 大模型能训起来的隐藏前提。</li>
+    <li><b>时间注意力是最小改动：</b>架构上只加了一层「视图进 batch 的时序自注意力」，就完成了 3D→4D；时间一致性由结构承担，损失仍是纯渲染监督。</li>
+    <li><b>4D 插值可以走图像桥：</b>不追踪高斯、不插值参数，在「多视图渲染图像」上加权平均再解码回高斯，实现 3× 帧率——一个简单但在「无跨帧对应」约束下唯一可行的巧解。</li>
+  </ul>
+
+  <h3><span class="no">5.2</span>局限（论文自述 + 读代码看出来的）</h3>
+  <ul class="dots">
+    <li><b>物体级，不是场景级：</b>输入要求抠好背景的单物体视频；背景、多物体交互、环境光照都不建模——离「4D 场景世界模型」还有明显距离。</li>
+    <li><b>单目 + 静态相机假设：</b>只处理一段单目视频、相机静止；相机运动的视频需要先把相机稳定/估计，超出设计范围。</li>
+    <li><b>依赖外部扩散模型：</b>首帧的 4 个正交视图靠 ImageDream（约 2 秒、有随机性）；视角错配要靠方位角渲染对齐兜底，生成质量直接影响重建。</li>
+    <li><b>合成到真实的域差：</b>只在 Objaverse 渲染数据上训练，真实视频的材质/光照/运动分布外时质量会掉；论文靠 8 点光源固定、0° 仰角等假设缩小这个差距。</li>
+    <li><b>长视频缓慢漂移：</b>自回归每接一块都把上一块的误差带下去，10 块内可控、更长会累积；插值模型只在相邻重建之间工作，不解决长期一致性。</li>
+    <li><b>无编辑能力：</b>论文自述这是「4D 内容创作的早期尝试」，真正的工具需要人在环的编辑能力（human-in-the-loop），尚未实现。</li>
+    <li><b>许可：</b>基于非商用公开数据集训练，论文写明 research-only——商用要另找数据或许可路径。</li>
+  </ul>
+
+  <h3><span class="no">5.3</span>后续方向（本站路线图把它们串成了一条线）</h3>
+  <ul class="dots">
+    <li><b>从物体到场景：</b>本站「前馈 4D 高斯」路线上的 <a href="2025-driverecon.html" style="color:var(--c-enc);text-decoration:none">DrivingRecon</a>（自动驾驶环视 4D 高斯）、<a href="2026-movies.html" style="color:var(--c-enc);text-decoration:none">MoVieS</a>（CVPR 2026，单目动态 4D 视图合成）、<a href="2026-vg3s.html" style="color:var(--c-enc);text-decoration:none">VG3S</a>（IROS 2026，VGGT 特征接高斯占用）走的就是「场景级 4D」——L4GM 解决「物体能动」，这些工作解决「世界能动」。</li>
+    <li><b>更强的动态建模：</b>HexPlane 形变场在本工作里没学起来，但后续工作（如 MoVieS 的运动头、DGGT 的显式 3D 运动头）用不同的运动表示把这件事补上了。</li>
+    <li><b>与几何基座结合：</b>L4GM 的首帧多视图依赖 ImageDream；把 <a href="../4d-reconstruct/2024-dust3r.html" style="color:var(--c-enc);text-decoration:none">DUSt3R</a> / <a href="2025-vggt.html" style="color:var(--c-enc);text-decoration:none">VGGT</a> 这类几何基座接到前端，可望让「视频 → 位姿/几何 → 4D 高斯」整条链更稳。</li>
+    <li><b>编辑与工具化：</b>论文点名的下一步：人在环的 4D 编辑（改动作、换材质、拼场景），把「重建」变成「创作工具」。</li>
+  </ul>
+</section>
+
+  <footer style="text-align:center;font-size:12px;color:var(--ink3);padding:16px 0 8px;border-top:1px solid var(--line);margin-top:24px">© 2026 Mrwvisa · 解读内容原创，论文版权归原作者所有</footer>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ================= 目录 scrollspy ================= */
+(function(){
+  const links = Array.from(document.querySelectorAll(".toc a"));
+  const map = {};
+  links.forEach(a=>{ map[a.getAttribute("href").slice(1)] = a; });
+  const targets = Object.keys(map).map(id=>document.getElementById(id)).filter(Boolean);
+  let ticking = false;
+  function update(){
+    ticking = false;
+    let cur = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top < 150) cur = t; }
+    links.forEach(a=>a.classList.remove("active"));
+    if(cur && map[cur.id]) map[cur.id].classList.add("active");
+  }
+  window.addEventListener("scroll", ()=>{ if(!ticking){ requestAnimationFrame(update); ticking = true; } }, {passive:true});
+  update();
+})();
+</script>
+</body>
+</html>
